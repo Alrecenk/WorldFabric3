@@ -67,13 +67,17 @@ void TraceApp::run() {
 	//Trace the model
 	std::shared_ptr<GLTF> model = scene->getModelController("pawn");
 	float t = model->rayTrace(ray_origin, ray_direction);
-	
+	float bt = model->rayTraceBoundingBox(ray_origin, ray_direction);
 	//Place the mouse particle
 	glm::vec3 mouse_position;
 	if (t > 0) { // collision
 		particles->setColor(mouse_particle_id, glm::vec4(0, 0, 1, 1)); // blue
 		mouse_position = window->window_target->camera_position + window->getMouseRay() * t; // hit postion
-	} else { // no collision
+	}
+	else if(bt > 0) { //collides only with bounding box
+		particles->setColor(mouse_particle_id, glm::vec4(0.7f, 0, .7f, 1)); // purple
+		mouse_position = window->window_target->camera_position + window->getMouseRay() * bt; // hit bounding box
+	}else{ // no collision
 		particles->setColor(mouse_particle_id, glm::vec4(1, 0, 0, 1)); // red
 		mouse_position = window->window_target->camera_position + window->getMouseRay() * 3.0f; // arbitrary depth on no collision
 	}

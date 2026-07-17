@@ -173,7 +173,7 @@ void SteamworksPlugin::setSteamEventReceiver(SteamEventReceiver* receiver){
 }
 
 
-// Create a Steam lobby and return a to communicate with those who join it
+// Create a Steam lobby and return a socket to communicate with those who join it
 std::shared_ptr<SteamworksPlugin::SteamSocket> SteamworksPlugin::hostPrivateLobby(const SteamServerInfo& info){
 	printf("Attempting to host a private lobby\n");
 	SteamAPICall_t hCall = SteamMatchmaking()->CreateLobby(

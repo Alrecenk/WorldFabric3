@@ -324,7 +324,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -541,8 +541,6 @@ int exampleMain(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	//Narball::main(argc, argv);
+	exampleMain(argc, argv);
 }
-
-
