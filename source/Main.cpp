@@ -7,8 +7,8 @@
 #include "SteamworksPlugin.h"
 #include "GLTF.h"
 #include "SavePlugin.h"
+
 #include "StatePlugin.h"
-#include "local_ptr.h"
 
 #include "BallTestApp.h"
 #include "VulkanDemoApp.h"
@@ -22,6 +22,8 @@
 #include "ConstraintTestApp.h"
 #include "CollisionTestApp.h"
 #include "PyramidApp.h"
+
+#include "ChessApp.h"
 
 #include "Timeline.h"
 #include "VulkanPlugin.h"
@@ -43,13 +45,11 @@ using std::string;
 
 
 std::shared_ptr<RenderTarget> createRenderTarget(int width, int height, VulkanPlugin* window) {
-
 	VkClearColorValue background_color = { 0.7f,0.7f,0.9f,1.0f };
 	VkClearColorValue background_normal = { 0.0f,0.0f,0.0f,0.0f };
 	VkClearColorValue background_point = { 0.0f,0.0f,0.0f,0.0f };
 	VkClearColorValue start_light = { 0.0f,0.0f,0.0f,0.0f };
 	VkClearColorValue panel_background = { 0.0f,0.0f,0.0f,0.0f };
-
 	//Initialize the images we will draw into
 	VkImageUsageFlags drawImageUsages = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	std::shared_ptr<WFImage> color_image = std::shared_ptr<WFImage>(new WFImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, drawImageUsages));
@@ -147,7 +147,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		window->device,
 		shadow_vertex_shader,
 		shadow_frag_shader,
-		sizeof(ScenePlugin::TranslucentPushConstants),
+		sizeof(ScenePlugin::DefaultPushConstants),
 		num_textures,
 		VK_CULL_MODE_FRONT_BIT,
 		scene->getAShadowTarget(),
@@ -204,7 +204,7 @@ ScenePlugin* setUpScene(VulkanPlugin* window, OpenXRPlugin* xr){
 	//std::vector< std::shared_ptr<VulkanImage>> screen_images = {window_color_image, window_normal_image, window_point_image };
 	auto ambient_program = std::shared_ptr<ScreenShaderProgram>(new ScreenShaderProgram(window->device, ambient_shader, sizeof(ScenePlugin::ScreenPushConstants), window->window_target->images, 16));
 	auto ambient_post_effect = std::shared_ptr<ScreenModel<ScenePlugin::ScreenPushConstants, ScenePlugin::AmbientComponent>>(new ScreenModel<ScenePlugin::ScreenPushConstants, ScenePlugin::AmbientComponent>(ambient_program));
-	std::vector<ScenePlugin::AmbientComponent> ambient_components = { {glm::vec4(0.5,0.5,0.5,1)} };
+	std::vector<ScenePlugin::AmbientComponent> ambient_components = { {glm::vec4(0.15,0.15,0.15,1)} };
 	ambient_post_effect->setModel(ambient_components);
 	ambient_post_effect->setConstantLocations(&ambient_post_effect->push_constants.world_matrix, &ambient_post_effect->push_constants.camera_position, &ambient_post_effect->push_constants.component_buffer);
 	ambient_post_effect->phase = ScenePlugin::LIGHT_PHASE;
@@ -323,7 +323,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 
 	std::shared_ptr<SavePlugin> files(new SavePlugin());
 	addTool(files);
-	std::shared_ptr<SteamworksPlugin> steamworks(new SteamworksPlugin(4404880, command));
+	std::shared_ptr<SteamworksPlugin> steamworks(new SteamworksPlugin(3485250, command));
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
@@ -335,6 +335,8 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(worlds);
 	std::shared_ptr<OpenXRPlugin> openXR(new OpenXRPlugin("./assets/controller_actions.json"));
 	addTool(openXR);
+	std::shared_ptr<ViewPlugin> view(new ViewPlugin());
+	addTool(view);
 
 	
 	std::unordered_set<std::shared_ptr<RenderTarget>> render_targets ;
@@ -380,6 +382,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	plugins.push_back(scene);
 	plugins.push_back(panels);
 	plugins.push_back(steamworks);
+	plugins.push_back(view);
 
 }
 
@@ -393,18 +396,21 @@ void setupGameStates() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	StatePlugin* app = getTool<StatePlugin>();
 
+
 	//app->add(VulkanDemoApp::state_name, std::shared_ptr<VulkanDemoApp>(new VulkanDemoApp()));
 	//app->setState(VulkanDemoApp::state_name);
-
-	//app->add(BallTestApp::state_name, std::shared_ptr<BallTestApp>(new BallTestApp()));
-	//app->setState(BallTestApp::state_name);
 
 	//app->add(SceneDemoApp::state_name, std::shared_ptr<SceneDemoApp>(new SceneDemoApp()));
 	//app->setState(SceneDemoApp::state_name);
 
 	//app->add(SceneDemoApp2::state_name, std::shared_ptr<SceneDemoApp2>(new SceneDemoApp2()));
 	//app->setState(SceneDemoApp2::state_name);
+
+	//app->add(BallTestApp::state_name, std::shared_ptr<BallTestApp>(new BallTestApp()));
+	//app->setState(BallTestApp::state_name);
+
 	
+
 	//app->add(SocketTest::state_name, std::shared_ptr<SocketTest>(new SocketTest()));
 	//app->setState(SocketTest::state_name);
 
@@ -420,11 +426,14 @@ void setupGameStates() {
 	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
 	//app->setState(CollisionTestApp::state_name);
 
-	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
-	app->setState(ConstraintTestApp::state_name);
+	// app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	// app->setState(ConstraintTestApp::state_name);
 
 	//app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
 	//app->setState(PyramidApp::state_name);
+
+	app->add(Chess::ChessApp::state_name, std::shared_ptr<Chess::ChessApp>(new Chess::ChessApp()));
+	app->setState(Chess::ChessApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -439,8 +448,8 @@ int exampleMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str());
 
-	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = false; // Enable this for VR support
+	SteamworksPlugin::enabled = true; // can turn this on when you've got your own steam app id you want to boot
+	OpenXRPlugin::ENABLED = false ; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
@@ -511,10 +520,9 @@ int exampleMain(int argc, char* argv[]) {
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
 		int stagger_step = (int)(sync_time / (3 * plugins.size()));
-		if(stagger_step > 500){ // don't stagger too much if framerate is dropping
-			stagger_step = 500 ;
+		if(stagger_step > 1000){ // prevent death spiral from a single slow frame
+			stagger_step = 0 ;
 		}
-		stagger_step  = 0 ;
 		int stagger = 0;
 		for (auto& p : plugins) {
 			p->stagger_micros = stagger;
@@ -548,14 +556,15 @@ int exampleMain(int argc, char* argv[]) {
 
 	// World Plugin makes more threads with its sockets that need to be cleaned up to not get an error on exit
 	WorldPlugin* worlds = getTool<WorldPlugin>();
+	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
 	if (worlds) {
 		printf("Cleaning up sockets...\n");
 		worlds->disconnect();
+		steam->disconnect();
 	}
 
 	return 0;
 }
-
 
 int main(int argc, char* argv[]) {
 	//Narball::main(argc, argv);

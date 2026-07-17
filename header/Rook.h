@@ -1,0 +1,32 @@
+#pragma once
+#include "Piece.h"
+#include "Board.h"
+
+namespace Chess {
+
+    class Rook :
+        public Piece
+    {
+    public:
+
+        Rook(const glm::vec3& position, const int64_t& board_id, const Piece::COLOR& color)
+            : Piece(position, board_id, color, std::string("rook") + (color ? "_white" : "_black")) {};
+
+        Rook() = default;
+
+
+        //This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+        // Just change the template parameter to match your class
+        int getTypeId(Registry* r) const {
+            return r->getIdForType<Rook>();
+        }
+
+        bool isValidMove(const glm::vec3& destination) const override;
+        void castle();
+    };
+
+    auto static getStructure(Rook& obj) {
+        return std::tie(obj.position, obj.model_name, obj.color, obj.board_id, obj.has_moved);
+    };
+
+}

@@ -29,20 +29,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>PGOptimize</WholeProgramOptimization>
   </PropertyGroup>
@@ -147,7 +147,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll;.\Narball\header</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
@@ -161,7 +161,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <Profile>false</Profile>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)/BIn;$(VULKAN_SDK)/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/Bin;$(VULKAN_SDK)/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -184,7 +184,6 @@
     <ClInclude Include="engine\header\OptimizationProblem.h" />
     <ClInclude Include="engine\header\PanelPlugin.h" />
     <ClInclude Include="engine\header\ParticlePlugin.h" />
-    <ClInclude Include="engine\header\Physics.h" />
     <ClInclude Include="engine\header\Polygon.h" />
     <ClInclude Include="engine\header\RadialVolume.h" />
     <ClInclude Include="engine\header\Registry.h" />
@@ -212,9 +211,13 @@
     <ClInclude Include="header\BallThrowApp.h" />
     <ClInclude Include="header\BasicSlime.h" />
     <ClInclude Include="header\BasicSlimeNav.h" />
+    <ClInclude Include="header\Bishop.h" />
+    <ClInclude Include="header\Board.h" />
     <ClInclude Include="header\Bridge.h" />
     <ClInclude Include="header\CollisionTestApp.h" />
     <ClInclude Include="header\ConstraintTestApp.h" />
+    <ClInclude Include="header\ChessApp.h" />
+    <ClInclude Include="header\ChessClickAction.h" />
     <ClInclude Include="header\Crate.h" />
     <ClInclude Include="header\Defender.h" />
     <ClInclude Include="header\EarthSpikeDefender.h" />
@@ -226,11 +229,17 @@
     <ClInclude Include="header\FieldNote.h" />
     <ClInclude Include="header\FieldPortal.h" />
     <ClInclude Include="header\FlamethrowerDefender.h" />
+    <ClInclude Include="header\glove.h" />
+    <ClInclude Include="header\King.h" />
+    <ClInclude Include="header\Knight.h" />
     <ClInclude Include="header\LevelInterface.h" />
     <ClInclude Include="header\DevMenu.h" />
     <ClInclude Include="header\MapApp.h" />
     <ClInclude Include="header\MirrorApp.h" />
-    <ClInclude Include="header\PyramidApp.h" />
+    <ClInclude Include="header\Pawn.h" />
+    <ClInclude Include="header\Piece.h" />
+    <ClInclude Include="header\Queen.h" />
+    <ClInclude Include="header\Rook.h" />
     <ClInclude Include="header\TraceApp.h" />
     <ClInclude Include="Narball\header\Ball.h" />
     <ClInclude Include="Narball\header\HighlightParticle.h" />
@@ -250,6 +259,7 @@
     <ClInclude Include="header\WaterShotDefender.h" />
     <ClInclude Include="header\WaveButton.h" />
     <ClInclude Include="header\WhirlwindDefender.h" />
+    <ClInclude Include="Narball\header\NarballMain.h" />
     <ClInclude Include="include\begin_code.h" />
     <ClInclude Include="include\close_code.h" />
     <ClInclude Include="include\glew.h" />
@@ -880,7 +890,6 @@
     <ClCompile Include="engine\source\OptimizationProblem.cpp" />
     <ClCompile Include="engine\source\PanelPlugin.cpp" />
     <ClCompile Include="engine\source\ParticlePlugin.cpp" />
-    <ClCompile Include="engine\source\Physics.cpp" />
     <ClCompile Include="engine\source\Polygon.cpp" />
     <ClCompile Include="engine\source\RadialVolume.cpp" />
     <ClCompile Include="engine\source\SavePlugin.cpp" />
@@ -900,9 +909,6 @@
     <ClCompile Include="engine\source\WorldPlugin.cpp" />
     <ClCompile Include="include\glm\detail\glm.cpp" />
     <ClCompile Include="include\stb_vorbis.c" />
-    <ClCompile Include="Narball\header\NarballMain.h">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll,.\Narball\header,.\Narball\source</AdditionalIncludeDirectories>
-    </ClCompile>
     <ClCompile Include="Narball\source\Ball.cpp" />
     <ClCompile Include="Narball\source\Nameplate.cpp" />
     <ClCompile Include="Narball\source\NarballMenu.cpp" />
@@ -913,11 +919,15 @@
     <ClCompile Include="source\BallThrowApp.cpp" />
     <ClCompile Include="source\CollisionTestApp.cpp" />
     <ClCompile Include="source\ConstraintTestApp.cpp" />
+    <ClCompile Include="source\Board.cpp" />
+    <ClCompile Include="source\ChessApp.cpp" />
+    <ClCompile Include="source\Glove.cpp" />
     <ClCompile Include="source\Main.cpp" />
     <ClCompile Include="Narball\source\NarballGame.cpp" />
     <ClCompile Include="source\MirrorApp.cpp" />
+    <ClCompile Include="source\Piece.cpp" />
     <ClCompile Include="source\PlaySong.cpp" />
-    <ClCompile Include="source\PyramidApp.cpp" />
+    <ClCompile Include="source\Rook.cpp" />
     <ClCompile Include="source\SceneDemoApp.cpp" />
     <ClCompile Include="source\SceneDemoApp2.cpp" />
     <ClCompile Include="source\SocketTest.cpp" />

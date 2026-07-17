@@ -1539,19 +1539,40 @@
     <ClInclude Include="header\ConstraintTestApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="header\CollisionTestApp.h">
+    <ClInclude Include="header\ChessApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="engine\header\content_ptr.h">
+    <ClInclude Include="Narball\header\NarballMain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="engine\header\local_ptr_test.h">
+    <ClInclude Include="header\Board.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="engine\header\Physics.h">
+    <ClInclude Include="header\Piece.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="header\PyramidApp.h">
+    <ClInclude Include="header\glove.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\ChessClickAction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Bishop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\King.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Knight.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Pawn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Queen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Rook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="engine\header\BSPNode.h">
@@ -2131,8 +2152,8 @@
     <ClCompile Include="engine\source\PanelPlugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Narball\header\NarballMain.h">
-      <Filter>Header Files</Filter>
+    <ClCompile Include="Narball\source\NarballMain.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Narball\source\NarballObjects.cpp">
       <Filter>Source Files</Filter>
@@ -2165,15 +2186,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\ConstraintTestApp.cpp">
+		<Filter>Source Files</Filter>
+	</ClCompile>
+    <ClCompile Include="source\ChessApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\CollisionTestApp.cpp">
+    <ClCompile Include="source\Board.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="engine\source\Physics.cpp">
+    <ClCompile Include="source\Piece.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\PyramidApp.cpp">
+    <ClCompile Include="source\Glove.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Rook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="engine\source\BSPNode.cpp">

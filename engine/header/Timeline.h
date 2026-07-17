@@ -72,6 +72,9 @@ public:
 		bool destroyed = false;// set to true to "delete" an object, this will cause attempted reads aftyerward to return nullptr and event executions to fail
 		int64_t random_seed = 0 ;
 
+		WorldObject() = default;
+		WorldObject(const glm::vec3& position) : position(position) {};
+
 		virtual ~WorldObject() = default; // Force to be polymorphic
 
 		// returns the type id of the object in the given registry
