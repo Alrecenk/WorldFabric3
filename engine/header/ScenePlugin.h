@@ -409,6 +409,8 @@ public:
 	// returns a pointer the the GLTF for the given model (Can be used for IK, raytracing, or physics collisions)
 	std::shared_ptr<GLTF> getModelController(const std::string& model_name);
 
+	std::shared_ptr<GLTF> getModelController(int instance_id, int model_index = 0);
+
 	std::shared_ptr<GLTF> getAnimationController(const std::string& animation_name);
 
 	//Fetch an approximate bounding shape of the given model (useful for cursor triggers and physics objects)
