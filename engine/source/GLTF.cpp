@@ -1563,21 +1563,9 @@ void GLTF::setModel(const std::vector<Vertex>& vertices, const std::vector<Trian
     this->model_changed = true;
     this->position_changed = true;
 
-    // caslculate AABB on transformed data
-    applyTransforms();
-    this->min = {9999999,9999999,9999999};
-    this->max = {-9999999,-9999999,-9999999};
-    //update AABB
     
-    for(int k=0;k<this->vertices.size(); k++){
-        auto &v = this->vertices[k].transformed_position;
-        if(v.x < this->min.x)this->min.x = v.x;
-        if(v.y < this->min.y)this->min.y = v.y;
-        if(v.z < this->min.z)this->min.z = v.z;
-        if(v.x > this->max.x)this->max.x = v.x;
-        if(v.y > this->max.y)this->max.y = v.y;
-        if(v.z > this->max.z)this->max.z = v.z;
-    }
+    applyTransforms();
+   
 
     //printf("Total vertices: %d\n",(int) this->vertices.size());
     //printf("Total triangles: %d\n",(int) this->triangles.size());
@@ -1713,9 +1701,72 @@ float GLTF::trace(Triangle tri, const vec3 &p, const vec3 &v){
     }
 }
 
+// Given a ray in model space (p + v*t) return the t value of the nearest collision with the bounding box
+        // return negative if no collision
+float GLTF::rayTraceBoundingBox(const glm::vec3& p, const glm::vec3& v) {
+
+    float enter_t = -std::numeric_limits<float>::max();
+    float exit_t = std::numeric_limits<float>::max();
+
+    if (fabs(v.x) > 0.0001f) {
+        float t1 = (min.x - p.x) / v.x;
+        float t2 = (max.x - p.x) / v.x;
+        if (t2 < t1) {
+            float temp = t1;
+            t1 = t2;
+            t2 = temp;
+        }
+            enter_t = fmax(t1, enter_t);
+            exit_t = fmin(t2, exit_t);
+    }else if(p.x < min.x || p.x > max.x){ // np change in axis means either always in or always out
+        return -1.0f;
+    }
+
+    if (fabs(v.y) > 0.0001f) {
+        float t1 = (min.y - p.y) / v.y;
+        float t2 = (max.y - p.y) / v.y;
+        if (t2 < t1) {
+            float temp = t1;
+            t1 = t2;
+            t2 = temp;
+        }
+        enter_t = fmax(t1, enter_t);
+        exit_t = fmin(t2, exit_t);
+    }
+    else if (p.y < min.y || p.y > max.y) { // np change in axis means either always in or always out
+        return -1.0f;
+    }
+
+    if (fabs(v.z) > 0.0001f) {
+        float t1 = (min.z - p.z) / v.z;
+        float t2 = (max.z - p.z) / v.z;
+        if (t2 < t1) {
+            float temp = t1;
+            t1 = t2;
+            t2 = temp;
+        }
+        enter_t = fmax(t1, enter_t);
+        exit_t = fmin(t2, exit_t);
+    }
+    else if (p.z < min.z || p.z > max.z) { // np change in axis means either always in or always out
+        return -1.0f;
+    }
+    
+    if (exit_t < 0 || exit_t < enter_t) {
+        return -1.0f;
+    }
+    else {
+        return enter_t;
+    }
+}
+
 // Given a ray in model space (p + v*t) return the t value of the nearest collision
 // return negative if no collision
 float GLTF::rayTrace(const vec3 &p, const vec3 &v){
+    if (rayTraceBoundingBox(p, v) < 0) {
+        return -1.0f;
+    }
+
     last_traced_tri = -1 ;
     float min_t = std::numeric_limits<float>::max() ;
     for(int k=0;k<this->triangles.size();k++){
@@ -1727,7 +1778,8 @@ float GLTF::rayTrace(const vec3 &p, const vec3 &v){
     }
     if(min_t < std::numeric_limits<float>::max() ){
         return min_t ;
-    }return -1;
+    }
+    return -1;
 }
 
 // Returns the index of the closest vertex to the given point
@@ -1846,6 +1898,19 @@ void GLTF::applyTransforms(){
         v.transformed_normal = glm::normalize(v.transformed_normal);
     }
     
+    // caslculate AABB on transformed data
+    this->min = { 9999999,9999999,9999999 };
+    this->max = { -9999999,-9999999,-9999999 };
+    for (int k = 0;k < this->vertices.size(); k++) {
+        auto& v = this->vertices[k].transformed_position;
+        if (v.x < this->min.x)this->min.x = v.x;
+        if (v.y < this->min.y)this->min.y = v.y;
+        if (v.z < this->min.z)this->min.z = v.z;
+        if (v.x > this->max.x)this->max.x = v.x;
+        if (v.y > this->max.y)this->max.y = v.y;
+        if (v.z > this->max.z)this->max.z = v.z;
+    }
+
     this->position_changed = true;
 }
 

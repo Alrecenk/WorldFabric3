@@ -332,6 +332,10 @@ class GLTF : public OptimizationProblem, public TableInterface {
         // returns the model with {vertices:float_array vertices, faces:(int_array or short_array) triangles}
         std::map<std::string,Variant> getModel();
 
+        // Given a ray in model space (p + v*t) return the t value of the nearest collision with the bounding box
+        // return negative if no collision
+        float rayTraceBoundingBox(const glm::vec3& p, const glm::vec3& v);
+
         // Given a ray in model space (p + v*t) return the t value of the nearest collision
         // return negative if no collision
         float rayTrace(const glm::vec3 &p, const glm::vec3 &v);
