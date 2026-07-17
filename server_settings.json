@@ -1,0 +1,9 @@
+{
+  "name": "A Narball Server",
+  "port": 27015,
+  "balls": 2,
+  "points": 10,
+  "max_players": 16,
+  "min_players": 1,
+  "min_time_in_lobby": 5
+}

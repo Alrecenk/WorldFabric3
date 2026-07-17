@@ -1,0 +1,83 @@
+{
+  "actions": [
+    {
+      "name": "/actions/default/in/HandSkeletonLeft",
+      "skeleton": "/skeleton/hand/left",
+      "type": "skeleton"
+    },
+    {
+      "name": "/actions/default/in/HandSkeletonRight",
+      "skeleton": "/skeleton/hand/right",
+      "type": "skeleton"
+    },
+    {
+      "name": "/actions/general/out/left_haptic",
+      "type": "vibration"
+    },
+    {
+      "name": "/actions/general/out/right_haptic",
+      "type": "vibration"
+    },
+    {
+      "name": "/actions/general/in/press_y",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/general/in/press_b",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/general/in/press_a",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/general/in/press_x",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/general/in/left_joystick",
+      "type": "vector2"
+    },
+    {
+      "name": "/actions/general/in/right_joystick",
+      "type": "vector2"
+    },
+    {
+      "name": "/actions/general/in/left_pose",
+      "type": "pose"
+    },
+    {
+      "name": "/actions/general/in/right_pose",
+      "type": "pose"
+    },
+    {
+      "name": "/actions/general/in/left_trigger_pull",
+      "type": "vector1"
+    },
+    {
+      "name": "/actions/general/in/right_trigger_pull",
+      "type": "vector1"
+    },
+    {
+      "name": "/actions/general/in/left_grip_pull",
+      "type": "vector1"
+    },
+    {
+      "name": "/actions/general/in/right_grip_pull",
+      "type": "vector1"
+    }
+
+
+  ],
+   "default_bindings" : [
+      {
+         "binding_url" : "generic_controller_binding.json",
+         "controller_type" : "generic"
+      }
+   ],
+   "localization" : [
+      {
+         "language_tag" : "en_US"
+      }
+   ]
+}

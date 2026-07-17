@@ -1,0 +1,325 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba8,set = 0, binding = 0) uniform image2D color;
+layout(rgba16f,set = 0, binding = 1) uniform image2D normal;
+layout(rgba16f,set = 0, binding = 2) uniform image2D position;
+layout(rgba8,set = 0, binding = 3) uniform image2D final_image;
+//4 is now UI image on the render target, s skip oer that to get extra image start
+layout(r32f,set = 0, binding = 5) uniform image2D light_map_depth;
+
+struct Component{
+	vec4 light_position ;
+	vec4 light_color ;
+	mat4 light_matrix ;
+	vec4 water_color ;
+	vec4 foam_color ;
+	vec4 caustic_color ;
+	vec4 flow ;
+	float ambient_brightness ;
+	float time;
+};
+
+layout(buffer_reference, std430) readonly buffer ComponentBuffer{ 
+	Component components[];
+};
+
+//push constants block
+layout( push_constant ) uniform constants
+{	
+	mat4 render_matrix;
+	vec3 camera_position ;
+	ComponentBuffer component_buffer;
+} PushConstants;
+
+
+float sampleShadowMap(vec3 relative_to_light, ivec2 light_map_size){
+
+
+	vec2 sp = vec2(relative_to_light.x * light_map_size.x,relative_to_light.y * light_map_size.y) ;
+	ivec2 isp = ivec2(int(sp.x), int(sp.y)) ;
+
+	float l00 = relative_to_light.z <= imageLoad(light_map_depth, isp).r ? 1 : 0 ;
+	float l01 = relative_to_light.z  <= imageLoad(light_map_depth, ivec2(isp.x,isp.y+1)).r ? 1 : 0 ;
+	float l10 = relative_to_light.z <= imageLoad(light_map_depth, ivec2(isp.x+1,isp.y)).r ? 1 : 0 ;
+	float l11 = relative_to_light.z  <= imageLoad(light_map_depth, ivec2(isp.x+1,isp.y+1)).r ? 1 : 0 ;
+
+	float t = sp.x-isp.x ;
+	float s = sp.y-isp.y ;
+	float l = (1-t)*(1-s) * l00 + (1-t)*s*l01 + t*(1-s)*l10 + t*s*l11 ;
+
+	return l ;
+
+}
+
+
+
+//return the height of the water at a given position and time
+float height(float x, float z, float time, vec4 flow){
+	return (sin(x*0.75+time*flow.x) + sin(z+time*flow.y) )*0.15f ;
+	//return 0 ;
+}
+
+// returns the t value where the given ray intersect the height function
+float raytraceHeight(vec3 origin, vec3 direction, float time, vec4 flow){
+	float s = 0 ;
+	vec3 p = origin ;
+	float error = p.y - height(p.x,p.z,time, flow) ;
+	s -= error/direction.y ;
+	p = origin+direction*s ;
+	error = p.y - height(p.x,p.z,time, flow) ;
+	s -= error/direction.y ;
+	p = origin+direction*s ;
+	error = p.y - height(p.x,p.z,time, flow) ;
+	s -= error/direction.y ;
+	//p = origin+direction*s ;
+	//error = p.y - height(p.x,p.z,time, flow) ;
+	//s -= error/direction.y ;
+	return s ;
+}
+
+float rayTraceYPlane(vec3 origin, vec3 direction, float y){
+	float s = 0 ;
+	vec3 p = origin ;
+	float error = p.y - y ;
+	s -= error/direction.y ;
+	return s ;
+}
+
+vec3 getPixelRay(){
+	ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = imageSize(color);
+	float x = (2.0f * texelCoord.x) / size.x - 1.0f;
+	float y = (2.0f * texelCoord.y) / size.y - 1.0f;
+	vec4 clip_point = vec4(x, y, 1.0, 1.0f);
+	mat4 camera_inverse = inverse(PushConstants.render_matrix);
+	vec4 world_point = camera_inverse * clip_point;
+	vec3 unprojected = vec3(world_point / world_point.w);
+	return normalize(unprojected - PushConstants.camera_position);
+}
+
+float distanceSquared( vec3 A, vec3 B ){
+
+    vec3 C = A - B;
+    return dot( C, C );
+
+}
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+// Compound versions to hash vectors
+uint hash( uvec2 v ) { 
+    return hash( v.x ^ hash(v.y));
+}
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
+}
+
+// Pseudo-random float in [0,1) from hashes of various inputs
+float random(float x){ 
+    return floatConstruct(hash(floatBitsToUint(x))); 
+   }
+
+
+vec2 randomVec2(ivec2 seed){
+	return vec2(((seed.x*7457 ^ seed.y*7459)&0xff)*0.0039f, ((seed.x*7867 ^ seed.y*7853)&0xff)*0.0039f) ;
+}
+
+// returns a random vec2 bilinearly smoothed from samples at whole number points
+vec2 randomGridSmoothed(vec2 p, vec2 mid, vec2 variance){
+	float fs = p.x - floor(p.x) ;
+	float ft = p.y - floor(p.y) ;
+	ivec2 cA = ivec2(floor(p.x)+10000,floor(p.y)+12000) ;
+	ivec2 cB = ivec2(cA.x+1,cA.y) ;
+	ivec2 cC = ivec2(cA.x+1,cA.y+1) ;
+	ivec2 cD = ivec2(cA.x,cA.y+1) ;
+
+	vec2 rA = randomVec2(cA) ;
+	vec2 rB = randomVec2(cB) ;
+	vec2 rC = randomVec2(cC) ;
+	vec2 rD = randomVec2(cD) ;
+
+	vec2 r = (rA * (1-fs) * (1-ft)) + (rD * (1-fs) * ft) + (rC * fs * ft) + (rB * fs * (1-ft)) ;
+	return vec2(mid.x + (2.0f*r.x-1.0f) * variance.x, mid.y + (2.0f*r.y-1.0f) * variance.y) ;
+
+
+}
+
+
+void main() {
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = imageSize(color);
+    vec4 light_color = PushConstants.component_buffer.components[0].light_color ;
+	vec4 light_position = PushConstants.component_buffer.components[0].light_position ;
+	mat4 light_view = PushConstants.component_buffer.components[0].light_matrix ;
+	vec4 water_color = PushConstants.component_buffer.components[0].water_color ;
+	vec4 foam_color = PushConstants.component_buffer.components[0].foam_color ;
+	vec4 flow = PushConstants.component_buffer.components[0].flow;
+	vec4 caustic_color = PushConstants.component_buffer.components[0].caustic_color ;
+	float ambient_brightness = PushConstants.component_buffer.components[0].ambient_brightness ;
+	float time = PushConstants.component_buffer.components[0].time ;
+	vec4 raw_p = imageLoad(position, texelCoord) ;
+	vec4 raw_color = imageLoad(color, texelCoord) ;
+	vec3 raw_normal = normalize(imageLoad(normal, texelCoord).xyz) ;
+
+	vec4 lit_color = vec4(0,0,0,1);
+	ivec2 light_map_size = imageSize(light_map_depth);
+	
+	float pool_bottom = -3.0f ;
+
+	if(raw_p.w > 0 && raw_p.y  > pool_bottom){ 
+
+		
+		vec3 to_light = normalize(light_position.xyz-raw_p.xyz) ;
+		
+		//vec4 lit_color = imageLoad(final_image, texelCoord); // get the existing light we need to add to
+
+
+		vec4 light_h = light_view*raw_p ;
+		vec3 relative_to_light = vec3(light_h.x/light_h.w, light_h.y/light_h.w, light_h.z/light_h.w ) ;
+		relative_to_light.x = (relative_to_light.x+1.0f)*0.5f ; // scale into 0 to 1 texture coordinates
+		relative_to_light.y = (relative_to_light.y+1.0f)*0.5f ;
+
+		// If within the spotlight area
+		if(relative_to_light.x > 0 && relative_to_light.y > 0 && relative_to_light.x < 1.0f && relative_to_light.y < 1.0f){
+
+			
+			float l = 1.0 * sampleShadowMap(relative_to_light, light_map_size) ;
+			
+			/*
+			float o = 0.5/light_map_size.x ;
+			l+= 0.15 * sampleShadowMap(relative_to_light+vec3(o,o,0), light_map_size);
+			l+= 0.15 * sampleShadowMap(relative_to_light+vec3(o,-o,0), light_map_size);
+			l+= 0.15 * sampleShadowMap(relative_to_light+vec3(-o,o,0), light_map_size);
+			l+= 0.15 * sampleShadowMap(relative_to_light+vec3(-o,-o,0), light_map_size);
+			*/
+			//float l = 1.0 ;
+		
+			float brightness = l * max(dot(raw_normal,to_light),0)  ;
+			brightness = brightness > 0.25 ? 1.2 : ambient_brightness + (1.2-ambient_brightness) *brightness * 4.0;
+
+			//brightness = round(brightness*5)*0.2 + ambient_brightness ;
+
+			lit_color.r = lit_color.r + raw_color.r * light_color.r*brightness ;
+				lit_color.g = lit_color.g + raw_color.g * light_color.g*brightness ;
+				lit_color.b = lit_color.b + raw_color.b * light_color.b*brightness ;
+
+				lit_color.r = min(raw_color.r, lit_color.r) ;
+				lit_color.g = min(raw_color.g, lit_color.g) ;
+				lit_color.b = min(raw_color.b, lit_color.b) ;
+	
+		}
+		
+	}
+
+
+
+
+	vec4 result_color = lit_color ;
+
+	vec3 ray = getPixelRay();
+		vec3 camera_position = PushConstants.camera_position ;
+
+	float s = raytraceHeight(camera_position, ray, time, flow) ;
+	vec3 water_point = camera_position + ray* s ;
+	// If not point or point is below the water
+	if(raw_p.w < 0.5f || distanceSquared(water_point,camera_position) < distanceSquared(vec3(raw_p),camera_position)){
+
+		result_color = water_color; 
+		//result_color = vec4((n+vec3(1.0,1.0,1.0))*0.5,1.0 ) ;
+
+		//result_color = vec4((p.x+8.0)/16.0, 0 , (p.z+4.5)/9.0, 1) ;
+
+		if(raw_p.w >=0.5){
+			result_color = result_color * water_color.a +  lit_color * (1.0-water_color.a) ;
+		}
+		
+
+
+		// Add water foam around the border of things that touch the water
+		int border = int(ceil(size.y/500.0) );
+		bool foam = false;
+		vec4 up = imageLoad(position, texelCoord + ivec2(0,-border)) ;
+		foam = foam || (up.w > 0.5 && up.y > water_point.y && up.y < water_point.y + 0.1);
+		vec4 left = imageLoad(position, texelCoord + ivec2(border,-border)) ;
+		foam = foam || (left.w > 0.5 && left.y > water_point.y && left.y < water_point.y + 0.1);
+		vec4 right = imageLoad(position, texelCoord + ivec2(-border,-border)) ;
+		foam = foam || (right.w > 0.5 && right.y > water_point.y && right.y < water_point.y + 0.1);
+		vec4 down = imageLoad(position, texelCoord + ivec2(0,+border)) ;
+		foam = foam || (down.w > 0.5 && down.y > water_point.y);
+		
+
+		//Add foam lines to a distorted grid pattern
+		vec2 offset = randomGridSmoothed(vec2(water_point.x*5+ 1000, water_point.z*5+1000), vec2(0,0), vec2(0.1,0.1)) ;
+		offset += randomGridSmoothed(vec2(water_point.x+ 1000, water_point.z+1000), vec2(0,0), vec2(0.5,0.5)) ;
+		offset += randomGridSmoothed(vec2(water_point.x*0.3+ 1000, water_point.z*0.3+1000), vec2(0,0), vec2(1.5,1.5)) ;
+		float x = 0.5 * ((water_point.x) + offset.x) + time*flow.x;
+		float z = 0.5 * ((water_point.z) + offset.y) + time*flow.y;
+
+		foam = foam ||  abs(x-round(x)) <0.025 || abs(z-round(z) ) < 0.025;
+
+		if(foam){
+			result_color = foam_color*foam_color.a+ result_color*(1-foam_color.a) ;
+		}else if(raw_p.w < 0.5){ // shadows are under water so only appear beneath things
+			vec2 offset = randomGridSmoothed(vec2(water_point.x*5+ 2000, water_point.z*5+2000), vec2(0,0), vec2(0.1,0.1)) ;
+			offset += randomGridSmoothed(vec2(water_point.x+ 2000, water_point.z+2000), vec2(0,0), vec2(0.5,0.5)) ;
+			offset += randomGridSmoothed(vec2(water_point.x*0.3+ 2000, water_point.z*0.3+2000), vec2(0,0), vec2(1.5,1.5)) ;
+			float x =  ((water_point.x) + offset.x) + time*flow.x;
+			float z =  ((water_point.z) + offset.y) + time*flow.y;
+			bool shadowed = abs(x-round(x)) <0.02 || abs(z-round(z) ) < 0.02 ; // caustic shadow
+
+			//get point onbottom of pool
+			float bs = rayTraceYPlane(camera_position, ray, pool_bottom) ;
+			vec3 bottom = camera_position + ray*bs ;
+
+			//check if in shadow by object shadow
+			vec4 light_h = light_view*vec4(bottom,1) ;
+			vec3 relative_to_light = vec3(light_h.x/light_h.w, light_h.y/light_h.w, light_h.z/light_h.w ) ;
+			relative_to_light.x = (relative_to_light.x+1.0f)*0.5f ; // scale into 0 to 1 texture coordinates
+			relative_to_light.y = (relative_to_light.y+1.0f)*0.5f ;
+			if(relative_to_light.x > 0 && relative_to_light.y > 0 && relative_to_light.x < 1.0f && relative_to_light.y < 1.0f){
+				float l = sampleShadowMap(relative_to_light, light_map_size);
+				if(l < 0.5){
+					shadowed = true ;
+				}
+			}
+
+
+
+			if(shadowed){
+				result_color = caustic_color ;
+			}
+		}
+
+	}
+		
+
+
+
+
+	//raw_p = vec4(p,1.0) ;
+	//imageStore(position, texelCoord, raw_p); 
+
+	result_color.a = 1.0 ;
+	imageStore(final_image, texelCoord, result_color); // put the modified light back into the image
+}

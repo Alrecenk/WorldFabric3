@@ -1,0 +1,50 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba8,set = 0, binding = 0) uniform image2D color;
+layout(rgba16f,set = 0, binding = 1) uniform image2D normal;
+layout(rgba16f,set = 0, binding = 2) uniform image2D position;
+layout(rgba8,set = 0, binding = 3) uniform image2D final_image;
+
+struct Component{
+	vec4 light_color ;
+};
+
+layout(buffer_reference, std430) readonly buffer ComponentBuffer{ 
+	Component components[];
+};
+
+//push constants block
+layout( push_constant ) uniform constants
+{	
+	mat4 render_matrix;
+	vec3 camera_position ;
+	ComponentBuffer component_buffer;
+} PushConstants;
+
+
+void main() {
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	//ivec2 size = imageSize(color);
+    vec4 light_color = PushConstants.component_buffer.components[0].light_color ;
+	vec4 raw_p = imageLoad(position, texelCoord) ;
+	vec4 raw_color = imageLoad(color, texelCoord) ;
+	
+	if(raw_p.w > 0){
+		vec4 lit_color = imageLoad(final_image, texelCoord) ;
+		lit_color.r = lit_color.r + raw_color.r * light_color.r ;
+		lit_color.g = lit_color.g + raw_color.g * light_color.g  ;
+		lit_color.b = lit_color.b + raw_color.b * light_color.b  ;
+
+		lit_color.r = min(raw_color.r, lit_color.r) ;
+		lit_color.g = min(raw_color.g, lit_color.g) ;
+		lit_color.b = min(raw_color.b, lit_color.b) ;
+		imageStore(final_image, texelCoord, lit_color);
+	}else{
+	
+		imageStore(final_image, texelCoord, raw_color);
+	}
+	
+}

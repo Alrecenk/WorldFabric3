@@ -1,0 +1,81 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba8,set = 0, binding = 0) uniform image2D color;
+layout(rgba16f,set = 0, binding = 1) uniform image2D normal;
+layout(rgba16f,set = 0, binding = 2) uniform image2D position;
+
+
+struct Component{
+	vec4 some_data ;
+};
+
+layout(buffer_reference, std430) readonly buffer ComponentBuffer{ 
+	Component components[];
+};
+
+//push constants block
+layout( push_constant ) uniform constants
+{	
+	mat4 render_matrix;
+	vec3 camera_position ;
+	ComponentBuffer component_buffer;
+} PushConstants;
+
+
+
+void main() 
+{
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+	ivec2 size = imageSize(color);
+
+    vec4 first_color = PushConstants.component_buffer.components[0].some_data ;
+
+	vec4 raw_p = imageLoad(position, texelCoord) ;
+	vec3 p = raw_p.xyz ;
+	vec4 raw_color = imageLoad(color, texelCoord) ;
+	vec3 raw_normal = normalize(imageLoad(normal, texelCoord).xyz) ;
+	
+	if(raw_p.w > 0){
+		vec3 light_pos = vec3(0,-10,-10) ;
+		//float light = 0.5*(1.0+max(raw_normal.z,0));
+		vec3 to_light = normalize(light_pos-p) ;
+
+		float light = 0.3+ 0.7 * max(dot(raw_normal,to_light),0);
+		vec4 lit_color = raw_color*light ;
+		lit_color.a = 1.0f ;
+
+		imageStore(color, texelCoord, lit_color);
+}
+	
+
+	/*
+	int border = 2 ;
+	vec4 up = imageLoad(position, texelCoord + ivec2(0,border)) ;
+
+	float dist = length(up.xyz-p) ;
+
+
+	vec4 down = imageLoad(position, texelCoord + ivec2(0,-border)) ;
+	dist = max(dist, length(down.xyz-p) );
+
+	vec4 left = imageLoad(position, texelCoord + ivec2(border,0)) ;
+	dist = max(dist, length(left.xyz-p) );
+
+	vec4 right = imageLoad(position, texelCoord + ivec2(-border,0)) ;
+	dist = max(dist, length(right.xyz-p) );
+	
+
+
+	if(dist > 0.03f){
+        imageStore(color, texelCoord, first_color);
+    }else if(raw_p.w > 0.5){
+	
+		imageStore(color, texelCoord, lit_color);
+	}*/
+	
+}
+

@@ -1,0 +1,109 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba8,set = 0, binding = 0) uniform image2D color;
+layout(rgba16f,set = 0, binding = 1) uniform image2D normal;
+layout(rgba16f,set = 0, binding = 2) uniform image2D position;
+layout(rgba8,set = 0, binding = 3) uniform image2D final_image;
+
+struct Component{
+	vec4 light_color ;
+};
+
+layout(buffer_reference, std430) readonly buffer ComponentBuffer{ 
+	Component components[];
+};
+
+struct Fragment {
+	uint  color;
+    float depth;
+};
+
+layout(buffer_reference, std430) buffer FragmentBuffer {
+    Fragment frame[];
+};
+
+layout(buffer_reference, std430) buffer CountBuffer {
+    uint counts[];
+};
+
+//push constants block
+layout( push_constant ) uniform constants
+{	
+	mat4 render_matrix;
+	vec3 camera_position ;
+	ComponentBuffer component_buffer;
+
+	FragmentBuffer fragment_buffer;
+	CountBuffer count_buffer ;
+	int frame_width;
+	int frame_height;
+	int frame_fragments;
+} PushConstants;
+
+
+
+void main() {
+	ivec2 pixel_coord = ivec2(gl_GlobalInvocationID.xy);
+
+	
+	uint pixel_index = pixel_coord.y * PushConstants.frame_width + pixel_coord.x;
+
+	FragmentBuffer fb = PushConstants.fragment_buffer;
+	CountBuffer cb = PushConstants.count_buffer;
+
+	uint num_fragments = min(PushConstants.frame_fragments, cb.counts[pixel_index]) ; // cannot have more than the frame buffer but the count could be higher
+
+
+	if(num_fragments >0 && num_fragments <= PushConstants.frame_fragments){
+		
+
+		vec4 raw_p = imageLoad(position, pixel_coord) ;
+		vec4 clip_p = PushConstants.render_matrix * raw_p ;
+        float opaque_depth = clip_p.z / clip_p.w;
+		
+		Fragment local[8] ; // array needs fixed size so this is an even harder max than frame fragments
+		
+		for (uint i = 0; i < num_fragments; i++) {
+			local[i] = fb.frame[(pixel_index * PushConstants.frame_fragments) + i];
+		}
+		
+		//Sort the fragments
+		for(int i = 0 ; i < num_fragments - 1; i++){
+			for(int j=i+1;j<num_fragments; j++){
+				if(local[j].depth > local[i].depth){	
+					Fragment temp = local[i] ;
+					local[i] = local[j];
+					local[j] = temp;
+				}
+			}
+		}
+		
+
+		
+		vec4 result = imageLoad(final_image, pixel_coord) ; // start with the opaque color
+		
+		for (uint i = 0; i < num_fragments; i++) {
+			if(local[i].depth < opaque_depth){
+				vec4 translucent =	unpackUnorm4x8(local[i].color);
+				float a = translucent.a ;
+				float m = 1.0 - a;
+				result = vec4(translucent.r * a + result.r * m ,translucent.g * a + result.g * m ,translucent.g * a + result.g * m ,  1.0) ;
+			}
+		}
+			
+		imageStore(final_image, pixel_coord, result);
+		
+		
+		
+	}
+	
+	/*
+		vec4 result = vec4(num_fragments/4.0,PushConstants.frame_fragments/8.0,0,1 ) ;
+		imageStore(final_image, pixel_coord, result);
+	*/
+
+	
+}

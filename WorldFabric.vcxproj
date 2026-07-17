@@ -1,0 +1,915 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{076de337-ee41-4414-8665-9e2a9621348d}</ProjectGuid>
+    <RootNamespace>CritterTD</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>PGOptimize</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);include;header</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);</LibraryPath>
+    <SourcePath>$(VC_SourcePath);source;</SourcePath>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);include;header</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);</LibraryPath>
+    <SourcePath>$(VC_SourcePath);source;</SourcePath>
+    <IntDir>intermediate\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>.\engine\header;</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>.\engine\header;</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <Optimization>Disabled</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>.\engine\header;</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll;.\Narball\header</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <OmitFramePointers>true</OmitFramePointers>
+      <FloatingPointModel>Strict</FloatingPointModel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <Profile>false</Profile>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)/BIn;$(VULKAN_SDK)/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="engine\header\AsyncPlugin.h" />
+    <ClInclude Include="engine\header\AudioPlugin.h" />
+    <ClInclude Include="engine\header\ConvexShape.h" />
+    <ClInclude Include="engine\header\ConvexSolid.h" />
+    <ClInclude Include="engine\header\CSVLog.h" />
+    <ClInclude Include="engine\header\FileInterface.h" />
+    <ClInclude Include="engine\header\FlagSet.h" />
+    <ClInclude Include="engine\header\GLTF.h" />
+    <ClInclude Include="engine\header\LinearPredictiveCode.h" />
+    <ClInclude Include="engine\header\MachineState.h" />
+    <ClInclude Include="engine\header\OpenXRPlugin.h" />
+    <ClInclude Include="engine\header\OptimizationProblem.h" />
+    <ClInclude Include="engine\header\PanelPlugin.h" />
+    <ClInclude Include="engine\header\ParticlePlugin.h" />
+    <ClInclude Include="engine\header\Polygon.h" />
+    <ClInclude Include="engine\header\RadialVolume.h" />
+    <ClInclude Include="engine\header\Registry.h" />
+    <ClInclude Include="engine\header\Saveable.h" />
+    <ClInclude Include="engine\header\SavePlugin.h" />
+    <ClInclude Include="engine\header\ScenePlugin.h" />
+    <ClInclude Include="engine\header\Sockets.h" />
+    <ClInclude Include="engine\header\StateMachine.h" />
+    <ClInclude Include="engine\header\StatePlugin.h" />
+    <ClInclude Include="engine\header\SteamworksPlugin.h" />
+    <ClInclude Include="engine\header\TableInterface.h" />
+    <ClInclude Include="engine\header\ThreadSignals.h" />
+    <ClInclude Include="engine\header\Timeline.h" />
+    <ClInclude Include="engine\header\Utilities.h" />
+    <ClInclude Include="engine\header\Variant.h" />
+    <ClInclude Include="engine\header\VkBootstrap.h" />
+    <ClInclude Include="engine\header\VkBootstrapDispatch.h" />
+    <ClInclude Include="engine\header\vk_initializers.h" />
+    <ClInclude Include="engine\header\vk_mem_alloc.h" />
+    <ClInclude Include="engine\header\vk_types.h" />
+    <ClInclude Include="engine\header\VulkanPlugin.h" />
+    <ClInclude Include="engine\header\WorldPlugin.h" />
+    <ClInclude Include="header\BallTestApp.h" />
+    <ClInclude Include="header\BallThrowApp.h" />
+    <ClInclude Include="header\BasicSlime.h" />
+    <ClInclude Include="header\BasicSlimeNav.h" />
+    <ClInclude Include="header\Bridge.h" />
+    <ClInclude Include="header\Crate.h" />
+    <ClInclude Include="header\Defender.h" />
+    <ClInclude Include="header\EarthSpikeDefender.h" />
+    <ClInclude Include="header\EditorApp.h" />
+    <ClInclude Include="header\Fieldable.h" />
+    <ClInclude Include="header\FieldApp.h" />
+    <ClInclude Include="header\FieldEquipment.h" />
+    <ClInclude Include="header\FieldFileInterface.h" />
+    <ClInclude Include="header\FieldNote.h" />
+    <ClInclude Include="header\FieldPortal.h" />
+    <ClInclude Include="header\FlamethrowerDefender.h" />
+    <ClInclude Include="header\LevelInterface.h" />
+    <ClInclude Include="header\DevMenu.h" />
+    <ClInclude Include="header\MapApp.h" />
+    <ClInclude Include="header\MirrorApp.h" />
+    <ClInclude Include="header\TraceApp.h" />
+    <ClInclude Include="Narball\header\Ball.h" />
+    <ClInclude Include="Narball\header\HighlightParticle.h" />
+    <ClInclude Include="Narball\header\Nameplate.h" />
+    <ClInclude Include="Narball\header\NarballMenu.h" />
+    <ClInclude Include="Narball\header\NarballGame.h" />
+    <ClInclude Include="header\PinnedPanel.h" />
+    <ClInclude Include="header\PlaySong.h" />
+    <ClInclude Include="header\SceneDemoApp.h" />
+    <ClInclude Include="header\SceneDemoApp2.h" />
+    <ClInclude Include="header\SocketTest.h" />
+    <ClInclude Include="header\TitleScreen.h" />
+    <ClInclude Include="header\TownApp.h" />
+    <ClInclude Include="header\VoxelField.h" />
+    <ClInclude Include="header\VoxelIcon.h" />
+    <ClInclude Include="header\VulkanDemoApp.h" />
+    <ClInclude Include="header\WaterShotDefender.h" />
+    <ClInclude Include="header\WaveButton.h" />
+    <ClInclude Include="header\WhirlwindDefender.h" />
+    <ClInclude Include="include\begin_code.h" />
+    <ClInclude Include="include\close_code.h" />
+    <ClInclude Include="include\glew.h" />
+    <ClInclude Include="include\glm\common.hpp" />
+    <ClInclude Include="include\glm\detail\compute_common.hpp" />
+    <ClInclude Include="include\glm\detail\compute_vector_relational.hpp" />
+    <ClInclude Include="include\glm\detail\qualifier.hpp" />
+    <ClInclude Include="include\glm\detail\setup.hpp" />
+    <ClInclude Include="include\glm\detail\type_float.hpp" />
+    <ClInclude Include="include\glm\detail\type_half.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat2x2.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat2x3.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat2x4.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat3x2.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat3x3.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat3x4.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat4x2.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat4x3.hpp" />
+    <ClInclude Include="include\glm\detail\type_mat4x4.hpp" />
+    <ClInclude Include="include\glm\detail\type_quat.hpp" />
+    <ClInclude Include="include\glm\detail\type_vec1.hpp" />
+    <ClInclude Include="include\glm\detail\type_vec2.hpp" />
+    <ClInclude Include="include\glm\detail\type_vec3.hpp" />
+    <ClInclude Include="include\glm\detail\type_vec4.hpp" />
+    <ClInclude Include="include\glm\detail\_features.hpp" />
+    <ClInclude Include="include\glm\detail\_fixes.hpp" />
+    <ClInclude Include="include\glm\detail\_noise.hpp" />
+    <ClInclude Include="include\glm\detail\_swizzle.hpp" />
+    <ClInclude Include="include\glm\detail\_swizzle_func.hpp" />
+    <ClInclude Include="include\glm\detail\_vectorize.hpp" />
+    <ClInclude Include="include\glm\exponential.hpp" />
+    <ClInclude Include="include\glm\ext.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_clip_space.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_common.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double2x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double3x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_double4x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float2x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float3x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_float4x4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int2x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int3x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_int4x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_integer.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_projection.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_relational.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_transform.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint2x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint3x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x2.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x3.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x4.hpp" />
+    <ClInclude Include="include\glm\ext\matrix_uint4x4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_common.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_double.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_double_precision.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_exponential.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_float.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_float_precision.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_geometric.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_relational.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_transform.hpp" />
+    <ClInclude Include="include\glm\ext\quaternion_trigonometric.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_common.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_constants.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_integer.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_int_sized.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_packing.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_reciprocal.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_relational.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_uint_sized.hpp" />
+    <ClInclude Include="include\glm\ext\scalar_ulp.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool1.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool1_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool2.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool3.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool4.hpp" />
+    <ClInclude Include="include\glm\ext\vector_bool4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_common.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double1.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double1_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double2.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double3.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double4.hpp" />
+    <ClInclude Include="include\glm\ext\vector_double4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float1.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float1_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float2.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float2_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float3.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float3_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float4.hpp" />
+    <ClInclude Include="include\glm\ext\vector_float4_precision.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int1.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int1_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int2.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int3.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int4.hpp" />
+    <ClInclude Include="include\glm\ext\vector_int4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_integer.hpp" />
+    <ClInclude Include="include\glm\ext\vector_packing.hpp" />
+    <ClInclude Include="include\glm\ext\vector_reciprocal.hpp" />
+    <ClInclude Include="include\glm\ext\vector_relational.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint1.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint1_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint2.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint2_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint3.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint3_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint4.hpp" />
+    <ClInclude Include="include\glm\ext\vector_uint4_sized.hpp" />
+    <ClInclude Include="include\glm\ext\vector_ulp.hpp" />
+    <ClInclude Include="include\glm\fwd.hpp" />
+    <ClInclude Include="include\glm\geometric.hpp" />
+    <ClInclude Include="include\glm\glm.hpp" />
+    <ClInclude Include="include\glm\gtc\bitfield.hpp" />
+    <ClInclude Include="include\glm\gtc\color_space.hpp" />
+    <ClInclude Include="include\glm\gtc\constants.hpp" />
+    <ClInclude Include="include\glm\gtc\epsilon.hpp" />
+    <ClInclude Include="include\glm\gtc\integer.hpp" />
+    <ClInclude Include="include\glm\gtc\matrix_access.hpp" />
+    <ClInclude Include="include\glm\gtc\matrix_integer.hpp" />
+    <ClInclude Include="include\glm\gtc\matrix_inverse.hpp" />
+    <ClInclude Include="include\glm\gtc\matrix_transform.hpp" />
+    <ClInclude Include="include\glm\gtc\noise.hpp" />
+    <ClInclude Include="include\glm\gtc\packing.hpp" />
+    <ClInclude Include="include\glm\gtc\quaternion.hpp" />
+    <ClInclude Include="include\glm\gtc\random.hpp" />
+    <ClInclude Include="include\glm\gtc\reciprocal.hpp" />
+    <ClInclude Include="include\glm\gtc\round.hpp" />
+    <ClInclude Include="include\glm\gtc\type_aligned.hpp" />
+    <ClInclude Include="include\glm\gtc\type_precision.hpp" />
+    <ClInclude Include="include\glm\gtc\type_ptr.hpp" />
+    <ClInclude Include="include\glm\gtc\ulp.hpp" />
+    <ClInclude Include="include\glm\gtc\vec1.hpp" />
+    <ClInclude Include="include\glm\gtx\associated_min_max.hpp" />
+    <ClInclude Include="include\glm\gtx\bit.hpp" />
+    <ClInclude Include="include\glm\gtx\closest_point.hpp" />
+    <ClInclude Include="include\glm\gtx\color_encoding.hpp" />
+    <ClInclude Include="include\glm\gtx\color_space.hpp" />
+    <ClInclude Include="include\glm\gtx\color_space_YCoCg.hpp" />
+    <ClInclude Include="include\glm\gtx\common.hpp" />
+    <ClInclude Include="include\glm\gtx\compatibility.hpp" />
+    <ClInclude Include="include\glm\gtx\component_wise.hpp" />
+    <ClInclude Include="include\glm\gtx\dual_quaternion.hpp" />
+    <ClInclude Include="include\glm\gtx\easing.hpp" />
+    <ClInclude Include="include\glm\gtx\euler_angles.hpp" />
+    <ClInclude Include="include\glm\gtx\extend.hpp" />
+    <ClInclude Include="include\glm\gtx\extended_min_max.hpp" />
+    <ClInclude Include="include\glm\gtx\exterior_product.hpp" />
+    <ClInclude Include="include\glm\gtx\fast_exponential.hpp" />
+    <ClInclude Include="include\glm\gtx\fast_square_root.hpp" />
+    <ClInclude Include="include\glm\gtx\fast_trigonometry.hpp" />
+    <ClInclude Include="include\glm\gtx\functions.hpp" />
+    <ClInclude Include="include\glm\gtx\gradient_paint.hpp" />
+    <ClInclude Include="include\glm\gtx\handed_coordinate_space.hpp" />
+    <ClInclude Include="include\glm\gtx\hash.hpp" />
+    <ClInclude Include="include\glm\gtx\integer.hpp" />
+    <ClInclude Include="include\glm\gtx\intersect.hpp" />
+    <ClInclude Include="include\glm\gtx\io.hpp" />
+    <ClInclude Include="include\glm\gtx\log_base.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_cross_product.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_decompose.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_factorisation.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_interpolation.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_major_storage.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_operation.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_query.hpp" />
+    <ClInclude Include="include\glm\gtx\matrix_transform_2d.hpp" />
+    <ClInclude Include="include\glm\gtx\mixed_product.hpp" />
+    <ClInclude Include="include\glm\gtx\norm.hpp" />
+    <ClInclude Include="include\glm\gtx\normal.hpp" />
+    <ClInclude Include="include\glm\gtx\normalize_dot.hpp" />
+    <ClInclude Include="include\glm\gtx\number_precision.hpp" />
+    <ClInclude Include="include\glm\gtx\optimum_pow.hpp" />
+    <ClInclude Include="include\glm\gtx\orthonormalize.hpp" />
+    <ClInclude Include="include\glm\gtx\pca.hpp" />
+    <ClInclude Include="include\glm\gtx\perpendicular.hpp" />
+    <ClInclude Include="include\glm\gtx\polar_coordinates.hpp" />
+    <ClInclude Include="include\glm\gtx\projection.hpp" />
+    <ClInclude Include="include\glm\gtx\quaternion.hpp" />
+    <ClInclude Include="include\glm\gtx\range.hpp" />
+    <ClInclude Include="include\glm\gtx\raw_data.hpp" />
+    <ClInclude Include="include\glm\gtx\rotate_normalized_axis.hpp" />
+    <ClInclude Include="include\glm\gtx\rotate_vector.hpp" />
+    <ClInclude Include="include\glm\gtx\scalar_multiplication.hpp" />
+    <ClInclude Include="include\glm\gtx\scalar_relational.hpp" />
+    <ClInclude Include="include\glm\gtx\spline.hpp" />
+    <ClInclude Include="include\glm\gtx\std_based_type.hpp" />
+    <ClInclude Include="include\glm\gtx\string_cast.hpp" />
+    <ClInclude Include="include\glm\gtx\texture.hpp" />
+    <ClInclude Include="include\glm\gtx\transform.hpp" />
+    <ClInclude Include="include\glm\gtx\transform2.hpp" />
+    <ClInclude Include="include\glm\gtx\type_aligned.hpp" />
+    <ClInclude Include="include\glm\gtx\type_trait.hpp" />
+    <ClInclude Include="include\glm\gtx\vector_angle.hpp" />
+    <ClInclude Include="include\glm\gtx\vector_query.hpp" />
+    <ClInclude Include="include\glm\gtx\vec_swizzle.hpp" />
+    <ClInclude Include="include\glm\gtx\wrap.hpp" />
+    <ClInclude Include="include\glm\integer.hpp" />
+    <ClInclude Include="include\glm\mat2x2.hpp" />
+    <ClInclude Include="include\glm\mat2x3.hpp" />
+    <ClInclude Include="include\glm\mat2x4.hpp" />
+    <ClInclude Include="include\glm\mat3x2.hpp" />
+    <ClInclude Include="include\glm\mat3x3.hpp" />
+    <ClInclude Include="include\glm\mat3x4.hpp" />
+    <ClInclude Include="include\glm\mat4x2.hpp" />
+    <ClInclude Include="include\glm\mat4x3.hpp" />
+    <ClInclude Include="include\glm\mat4x4.hpp" />
+    <ClInclude Include="include\glm\matrix.hpp" />
+    <ClInclude Include="include\glm\packing.hpp" />
+    <ClInclude Include="include\glm\simd\common.h" />
+    <ClInclude Include="include\glm\simd\exponential.h" />
+    <ClInclude Include="include\glm\simd\geometric.h" />
+    <ClInclude Include="include\glm\simd\integer.h" />
+    <ClInclude Include="include\glm\simd\matrix.h" />
+    <ClInclude Include="include\glm\simd\neon.h" />
+    <ClInclude Include="include\glm\simd\packing.h" />
+    <ClInclude Include="include\glm\simd\platform.h" />
+    <ClInclude Include="include\glm\simd\trigonometric.h" />
+    <ClInclude Include="include\glm\simd\vector_relational.h" />
+    <ClInclude Include="include\glm\trigonometric.hpp" />
+    <ClInclude Include="include\glm\vec2.hpp" />
+    <ClInclude Include="include\glm\vec3.hpp" />
+    <ClInclude Include="include\glm\vec4.hpp" />
+    <ClInclude Include="include\glm\vector_relational.hpp" />
+    <ClInclude Include="include\glxew.h" />
+    <ClInclude Include="include\openAL\al.h" />
+    <ClInclude Include="include\openAL\alc.h" />
+    <ClInclude Include="include\openAL\alext.h" />
+    <ClInclude Include="include\openAL\efx-creative.h" />
+    <ClInclude Include="include\openAL\efx-presets.h" />
+    <ClInclude Include="include\openAL\efx.h" />
+    <ClInclude Include="include\openvr.h" />
+    <ClInclude Include="include\openvr_capi.h" />
+    <ClInclude Include="include\openvr_driver.h" />
+    <ClInclude Include="include\SDL3\SDL.h" />
+    <ClInclude Include="include\SDL3\SDL_assert.h" />
+    <ClInclude Include="include\SDL3\SDL_atomic.h" />
+    <ClInclude Include="include\SDL3\SDL_audio.h" />
+    <ClInclude Include="include\SDL3\SDL_begin_code.h" />
+    <ClInclude Include="include\SDL3\SDL_bits.h" />
+    <ClInclude Include="include\SDL3\SDL_blendmode.h" />
+    <ClInclude Include="include\SDL3\SDL_clipboard.h" />
+    <ClInclude Include="include\SDL3\SDL_close_code.h" />
+    <ClInclude Include="include\SDL3\SDL_copying.h" />
+    <ClInclude Include="include\SDL3\SDL_cpuinfo.h" />
+    <ClInclude Include="include\SDL3\SDL_egl.h" />
+    <ClInclude Include="include\SDL3\SDL_endian.h" />
+    <ClInclude Include="include\SDL3\SDL_error.h" />
+    <ClInclude Include="include\SDL3\SDL_events.h" />
+    <ClInclude Include="include\SDL3\SDL_filesystem.h" />
+    <ClInclude Include="include\SDL3\SDL_gamepad.h" />
+    <ClInclude Include="include\SDL3\SDL_guid.h" />
+    <ClInclude Include="include\SDL3\SDL_haptic.h" />
+    <ClInclude Include="include\SDL3\SDL_hidapi.h" />
+    <ClInclude Include="include\SDL3\SDL_hints.h" />
+    <ClInclude Include="include\SDL3\SDL_init.h" />
+    <ClInclude Include="include\SDL3\SDL_intrin.h" />
+    <ClInclude Include="include\SDL3\SDL_joystick.h" />
+    <ClInclude Include="include\SDL3\SDL_keyboard.h" />
+    <ClInclude Include="include\SDL3\SDL_keycode.h" />
+    <ClInclude Include="include\SDL3\SDL_loadso.h" />
+    <ClInclude Include="include\SDL3\SDL_locale.h" />
+    <ClInclude Include="include\SDL3\SDL_log.h" />
+    <ClInclude Include="include\SDL3\SDL_main.h" />
+    <ClInclude Include="include\SDL3\SDL_main_impl.h" />
+    <ClInclude Include="include\SDL3\SDL_messagebox.h" />
+    <ClInclude Include="include\SDL3\SDL_metal.h" />
+    <ClInclude Include="include\SDL3\SDL_misc.h" />
+    <ClInclude Include="include\SDL3\SDL_mouse.h" />
+    <ClInclude Include="include\SDL3\SDL_mutex.h" />
+    <ClInclude Include="include\SDL3\SDL_oldnames.h" />
+    <ClInclude Include="include\SDL3\SDL_opengl.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles2.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles2_gl2.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles2_gl2ext.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles2_gl2platform.h" />
+    <ClInclude Include="include\SDL3\SDL_opengles2_khrplatform.h" />
+    <ClInclude Include="include\SDL3\SDL_opengl_glext.h" />
+    <ClInclude Include="include\SDL3\SDL_pixels.h" />
+    <ClInclude Include="include\SDL3\SDL_platform.h" />
+    <ClInclude Include="include\SDL3\SDL_platform_defines.h" />
+    <ClInclude Include="include\SDL3\SDL_power.h" />
+    <ClInclude Include="include\SDL3\SDL_properties.h" />
+    <ClInclude Include="include\SDL3\SDL_quit.h" />
+    <ClInclude Include="include\SDL3\SDL_rect.h" />
+    <ClInclude Include="include\SDL3\SDL_render.h" />
+    <ClInclude Include="include\SDL3\SDL_revision.h" />
+    <ClInclude Include="include\SDL3\SDL_rwops.h" />
+    <ClInclude Include="include\SDL3\SDL_scancode.h" />
+    <ClInclude Include="include\SDL3\SDL_sensor.h" />
+    <ClInclude Include="include\SDL3\SDL_shape.h" />
+    <ClInclude Include="include\SDL3\SDL_stdinc.h" />
+    <ClInclude Include="include\SDL3\SDL_surface.h" />
+    <ClInclude Include="include\SDL3\SDL_system.h" />
+    <ClInclude Include="include\SDL3\SDL_syswm.h" />
+    <ClInclude Include="include\SDL3\SDL_test.h" />
+    <ClInclude Include="include\SDL3\SDL_test_assert.h" />
+    <ClInclude Include="include\SDL3\SDL_test_common.h" />
+    <ClInclude Include="include\SDL3\SDL_test_compare.h" />
+    <ClInclude Include="include\SDL3\SDL_test_crc32.h" />
+    <ClInclude Include="include\SDL3\SDL_test_font.h" />
+    <ClInclude Include="include\SDL3\SDL_test_fuzzer.h" />
+    <ClInclude Include="include\SDL3\SDL_test_harness.h" />
+    <ClInclude Include="include\SDL3\SDL_test_log.h" />
+    <ClInclude Include="include\SDL3\SDL_test_md5.h" />
+    <ClInclude Include="include\SDL3\SDL_test_memory.h" />
+    <ClInclude Include="include\SDL3\SDL_test_random.h" />
+    <ClInclude Include="include\SDL3\SDL_thread.h" />
+    <ClInclude Include="include\SDL3\SDL_timer.h" />
+    <ClInclude Include="include\SDL3\SDL_touch.h" />
+    <ClInclude Include="include\SDL3\SDL_ttf.h" />
+    <ClInclude Include="include\SDL3\SDL_version.h" />
+    <ClInclude Include="include\SDL3\SDL_video.h" />
+    <ClInclude Include="include\SDL3\SDL_vulkan.h" />
+    <ClInclude Include="include\stb_image.h" />
+    <ClInclude Include="include\steamworks\isteamapps.h" />
+    <ClInclude Include="include\steamworks\isteamappticket.h" />
+    <ClInclude Include="include\steamworks\isteamclient.h" />
+    <ClInclude Include="include\steamworks\isteamcontroller.h" />
+    <ClInclude Include="include\steamworks\isteamdualsense.h" />
+    <ClInclude Include="include\steamworks\isteamfriends.h" />
+    <ClInclude Include="include\steamworks\isteamgamecoordinator.h" />
+    <ClInclude Include="include\steamworks\isteamgameserver.h" />
+    <ClInclude Include="include\steamworks\isteamgameserverstats.h" />
+    <ClInclude Include="include\steamworks\isteamhtmlsurface.h" />
+    <ClInclude Include="include\steamworks\isteamhttp.h" />
+    <ClInclude Include="include\steamworks\isteaminput.h" />
+    <ClInclude Include="include\steamworks\isteaminventory.h" />
+    <ClInclude Include="include\steamworks\isteammatchmaking.h" />
+    <ClInclude Include="include\steamworks\isteammusic.h" />
+    <ClInclude Include="include\steamworks\isteammusicremote.h" />
+    <ClInclude Include="include\steamworks\isteamnetworking.h" />
+    <ClInclude Include="include\steamworks\isteamnetworkingmessages.h" />
+    <ClInclude Include="include\steamworks\isteamnetworkingsockets.h" />
+    <ClInclude Include="include\steamworks\isteamnetworkingutils.h" />
+    <ClInclude Include="include\steamworks\isteamparentalsettings.h" />
+    <ClInclude Include="include\steamworks\isteamps3overlayrenderer.h" />
+    <ClInclude Include="include\steamworks\isteamremoteplay.h" />
+    <ClInclude Include="include\steamworks\isteamremotestorage.h" />
+    <ClInclude Include="include\steamworks\isteamscreenshots.h" />
+    <ClInclude Include="include\steamworks\isteamtimeline.h" />
+    <ClInclude Include="include\steamworks\isteamugc.h" />
+    <ClInclude Include="include\steamworks\isteamuser.h" />
+    <ClInclude Include="include\steamworks\isteamuserstats.h" />
+    <ClInclude Include="include\steamworks\isteamutils.h" />
+    <ClInclude Include="include\steamworks\isteamvideo.h" />
+    <ClInclude Include="include\steamworks\matchmakingtypes.h" />
+    <ClInclude Include="include\steamworks\steamclientpublic.h" />
+    <ClInclude Include="include\steamworks\steamencryptedappticket.h" />
+    <ClInclude Include="include\steamworks\steamhttpenums.h" />
+    <ClInclude Include="include\steamworks\steamnetworkingfakeip.h" />
+    <ClInclude Include="include\steamworks\steamnetworkingtypes.h" />
+    <ClInclude Include="include\steamworks\steamps3params.h" />
+    <ClInclude Include="include\steamworks\steamtypes.h" />
+    <ClInclude Include="include\steamworks\steamuniverse.h" />
+    <ClInclude Include="include\steamworks\steam_api.h" />
+    <ClInclude Include="include\steamworks\steam_api_common.h" />
+    <ClInclude Include="include\steamworks\steam_api_flat.h" />
+    <ClInclude Include="include\steamworks\steam_api_internal.h" />
+    <ClInclude Include="include\steamworks\steam_gameserver.h" />
+    <ClInclude Include="include\wglew.h" />
+    <ClInclude Include="Narball\header\NarballObjects.h" />
+    <ClInclude Include="Narball\header\NarballServer.h" />
+    <ClInclude Include="Narball\header\Narwhal.h" />
+    <ClInclude Include="engine\header\ViewPlugin.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="include\doxyfile" />
+    <None Include="include\glm\detail\func_common.inl" />
+    <None Include="include\glm\detail\func_common_simd.inl" />
+    <None Include="include\glm\detail\func_exponential.inl" />
+    <None Include="include\glm\detail\func_exponential_simd.inl" />
+    <None Include="include\glm\detail\func_geometric.inl" />
+    <None Include="include\glm\detail\func_geometric_simd.inl" />
+    <None Include="include\glm\detail\func_integer.inl" />
+    <None Include="include\glm\detail\func_integer_simd.inl" />
+    <None Include="include\glm\detail\func_matrix.inl" />
+    <None Include="include\glm\detail\func_matrix_simd.inl" />
+    <None Include="include\glm\detail\func_packing.inl" />
+    <None Include="include\glm\detail\func_packing_simd.inl" />
+    <None Include="include\glm\detail\func_trigonometric.inl" />
+    <None Include="include\glm\detail\func_trigonometric_simd.inl" />
+    <None Include="include\glm\detail\func_vector_relational.inl" />
+    <None Include="include\glm\detail\func_vector_relational_simd.inl" />
+    <None Include="include\glm\detail\type_half.inl" />
+    <None Include="include\glm\detail\type_mat2x2.inl" />
+    <None Include="include\glm\detail\type_mat2x3.inl" />
+    <None Include="include\glm\detail\type_mat2x4.inl" />
+    <None Include="include\glm\detail\type_mat3x2.inl" />
+    <None Include="include\glm\detail\type_mat3x3.inl" />
+    <None Include="include\glm\detail\type_mat3x4.inl" />
+    <None Include="include\glm\detail\type_mat4x2.inl" />
+    <None Include="include\glm\detail\type_mat4x3.inl" />
+    <None Include="include\glm\detail\type_mat4x4.inl" />
+    <None Include="include\glm\detail\type_mat4x4_simd.inl" />
+    <None Include="include\glm\detail\type_quat.inl" />
+    <None Include="include\glm\detail\type_quat_simd.inl" />
+    <None Include="include\glm\detail\type_vec1.inl" />
+    <None Include="include\glm\detail\type_vec2.inl" />
+    <None Include="include\glm\detail\type_vec3.inl" />
+    <None Include="include\glm\detail\type_vec4.inl" />
+    <None Include="include\glm\detail\type_vec4_simd.inl" />
+    <None Include="include\glm\ext\matrix_clip_space.inl" />
+    <None Include="include\glm\ext\matrix_common.inl" />
+    <None Include="include\glm\ext\matrix_integer.inl" />
+    <None Include="include\glm\ext\matrix_projection.inl" />
+    <None Include="include\glm\ext\matrix_relational.inl" />
+    <None Include="include\glm\ext\matrix_transform.inl" />
+    <None Include="include\glm\ext\quaternion_common.inl" />
+    <None Include="include\glm\ext\quaternion_common_simd.inl" />
+    <None Include="include\glm\ext\quaternion_exponential.inl" />
+    <None Include="include\glm\ext\quaternion_geometric.inl" />
+    <None Include="include\glm\ext\quaternion_relational.inl" />
+    <None Include="include\glm\ext\quaternion_transform.inl" />
+    <None Include="include\glm\ext\quaternion_trigonometric.inl" />
+    <None Include="include\glm\ext\scalar_common.inl" />
+    <None Include="include\glm\ext\scalar_constants.inl" />
+    <None Include="include\glm\ext\scalar_integer.inl" />
+    <None Include="include\glm\ext\scalar_packing.inl" />
+    <None Include="include\glm\ext\scalar_reciprocal.inl" />
+    <None Include="include\glm\ext\scalar_relational.inl" />
+    <None Include="include\glm\ext\scalar_ulp.inl" />
+    <None Include="include\glm\ext\vector_common.inl" />
+    <None Include="include\glm\ext\vector_integer.inl" />
+    <None Include="include\glm\ext\vector_packing.inl" />
+    <None Include="include\glm\ext\vector_reciprocal.inl" />
+    <None Include="include\glm\ext\vector_relational.inl" />
+    <None Include="include\glm\ext\vector_ulp.inl" />
+    <None Include="include\glm\gtc\bitfield.inl" />
+    <None Include="include\glm\gtc\color_space.inl" />
+    <None Include="include\glm\gtc\constants.inl" />
+    <None Include="include\glm\gtc\epsilon.inl" />
+    <None Include="include\glm\gtc\integer.inl" />
+    <None Include="include\glm\gtc\matrix_access.inl" />
+    <None Include="include\glm\gtc\matrix_inverse.inl" />
+    <None Include="include\glm\gtc\matrix_transform.inl" />
+    <None Include="include\glm\gtc\noise.inl" />
+    <None Include="include\glm\gtc\packing.inl" />
+    <None Include="include\glm\gtc\quaternion.inl" />
+    <None Include="include\glm\gtc\quaternion_simd.inl" />
+    <None Include="include\glm\gtc\random.inl" />
+    <None Include="include\glm\gtc\round.inl" />
+    <None Include="include\glm\gtc\type_precision.inl" />
+    <None Include="include\glm\gtc\type_ptr.inl" />
+    <None Include="include\glm\gtc\ulp.inl" />
+    <None Include="include\glm\gtx\associated_min_max.inl" />
+    <None Include="include\glm\gtx\bit.inl" />
+    <None Include="include\glm\gtx\closest_point.inl" />
+    <None Include="include\glm\gtx\color_encoding.inl" />
+    <None Include="include\glm\gtx\color_space.inl" />
+    <None Include="include\glm\gtx\color_space_YCoCg.inl" />
+    <None Include="include\glm\gtx\common.inl" />
+    <None Include="include\glm\gtx\compatibility.inl" />
+    <None Include="include\glm\gtx\component_wise.inl" />
+    <None Include="include\glm\gtx\dual_quaternion.inl" />
+    <None Include="include\glm\gtx\easing.inl" />
+    <None Include="include\glm\gtx\euler_angles.inl" />
+    <None Include="include\glm\gtx\extend.inl" />
+    <None Include="include\glm\gtx\extended_min_max.inl" />
+    <None Include="include\glm\gtx\exterior_product.inl" />
+    <None Include="include\glm\gtx\fast_exponential.inl" />
+    <None Include="include\glm\gtx\fast_square_root.inl" />
+    <None Include="include\glm\gtx\fast_trigonometry.inl" />
+    <None Include="include\glm\gtx\float_notmalize.inl" />
+    <None Include="include\glm\gtx\functions.inl" />
+    <None Include="include\glm\gtx\gradient_paint.inl" />
+    <None Include="include\glm\gtx\handed_coordinate_space.inl" />
+    <None Include="include\glm\gtx\hash.inl" />
+    <None Include="include\glm\gtx\integer.inl" />
+    <None Include="include\glm\gtx\intersect.inl" />
+    <None Include="include\glm\gtx\io.inl" />
+    <None Include="include\glm\gtx\log_base.inl" />
+    <None Include="include\glm\gtx\matrix_cross_product.inl" />
+    <None Include="include\glm\gtx\matrix_decompose.inl" />
+    <None Include="include\glm\gtx\matrix_factorisation.inl" />
+    <None Include="include\glm\gtx\matrix_interpolation.inl" />
+    <None Include="include\glm\gtx\matrix_major_storage.inl" />
+    <None Include="include\glm\gtx\matrix_operation.inl" />
+    <None Include="include\glm\gtx\matrix_query.inl" />
+    <None Include="include\glm\gtx\matrix_transform_2d.inl" />
+    <None Include="include\glm\gtx\mixed_product.inl" />
+    <None Include="include\glm\gtx\norm.inl" />
+    <None Include="include\glm\gtx\normal.inl" />
+    <None Include="include\glm\gtx\normalize_dot.inl" />
+    <None Include="include\glm\gtx\number_precision.inl" />
+    <None Include="include\glm\gtx\optimum_pow.inl" />
+    <None Include="include\glm\gtx\orthonormalize.inl" />
+    <None Include="include\glm\gtx\pca.inl" />
+    <None Include="include\glm\gtx\perpendicular.inl" />
+    <None Include="include\glm\gtx\polar_coordinates.inl" />
+    <None Include="include\glm\gtx\projection.inl" />
+    <None Include="include\glm\gtx\quaternion.inl" />
+    <None Include="include\glm\gtx\raw_data.inl" />
+    <None Include="include\glm\gtx\rotate_normalized_axis.inl" />
+    <None Include="include\glm\gtx\rotate_vector.inl" />
+    <None Include="include\glm\gtx\scalar_relational.inl" />
+    <None Include="include\glm\gtx\spline.inl" />
+    <None Include="include\glm\gtx\std_based_type.inl" />
+    <None Include="include\glm\gtx\string_cast.inl" />
+    <None Include="include\glm\gtx\texture.inl" />
+    <None Include="include\glm\gtx\transform.inl" />
+    <None Include="include\glm\gtx\transform2.inl" />
+    <None Include="include\glm\gtx\type_aligned.inl" />
+    <None Include="include\glm\gtx\type_trait.inl" />
+    <None Include="include\glm\gtx\vector_angle.inl" />
+    <None Include="include\glm\gtx\vector_query.inl" />
+    <None Include="include\glm\gtx\wrap.inl" />
+    <None Include="include\openvr_api.cs" />
+    <None Include="include\openvr_api.json" />
+    <None Include="shader\AmbientLightPost.comp" />
+    <None Include="shader\AmbientLightPost.comp.spv" />
+    <None Include="shader\compile_shaders.bat" />
+    <None Include="shader\GLTF.frag" />
+    <None Include="shader\GLTF1.vert" />
+    <None Include="shader\GLTF1Blend.vert" />
+    <None Include="shader\GLTF256.vert" />
+    <None Include="shader\GLTF64.vert" />
+    <None Include="shader\GLTFBlend.frag" />
+    <None Include="shader\GLTFShadow.frag" />
+    <None Include="shader\GLTFShadow1.vert" />
+    <None Include="shader\GLTFShadow256.vert" />
+    <None Include="shader\GLTFShadow64.vert" />
+    <None Include="shader\GLTFShadowBlend.frag" />
+    <None Include="shader\GLTFShadowBlend1.vert" />
+    <None Include="shader\LightMapPost.comp" />
+    <None Include="shader\LightMapPost.comp.spv" />
+    <None Include="shader\NarballLightMapPost.comp" />
+    <None Include="shader\Panel.frag" />
+    <None Include="shader\Panel.vert" />
+    <None Include="shader\PanelElement.frag" />
+    <None Include="shader\PanelElement.vert" />
+    <None Include="shader\PanelPost.comp" />
+    <None Include="shader\TranslucentOverlay.comp" />
+    <None Include="shader\VulkanParticle.frag" />
+    <None Include="shader\VulkanParticle.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\glew32.lib" />
+    <Library Include="lib\glew32s.lib" />
+    <Library Include="lib\OpenAL32.lib" />
+    <Library Include="lib\OpenGL32.Lib" />
+    <Library Include="lib\openvr_api.lib" />
+    <Library Include="lib\sdkencryptedappticket64.lib" />
+    <Library Include="lib\SDL3.lib" />
+    <Library Include="lib\SDL3_image.lib" />
+    <Library Include="lib\SDL3_mixer.lib" />
+    <Library Include="lib\SDL3_net.lib" />
+    <Library Include="lib\SDL3_rtf.lib" />
+    <Library Include="lib\SDL3_test.lib" />
+    <Library Include="lib\SDL3_ttf.lib" />
+    <Library Include="lib\steam_api64.lib" />
+    <Library Include="lib\vulkan-1.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="engine\source\AsyncPlugin.cpp" />
+    <ClCompile Include="engine\source\AudioPlugin.cpp" />
+    <ClCompile Include="engine\source\ConvexShape.cpp" />
+    <ClCompile Include="engine\source\ConvexSolid.cpp" />
+    <ClCompile Include="engine\source\GLTF.cpp" />
+    <ClCompile Include="engine\source\OpenXRPlugin.cpp" />
+    <ClCompile Include="engine\source\OptimizationProblem.cpp" />
+    <ClCompile Include="engine\source\PanelPlugin.cpp" />
+    <ClCompile Include="engine\source\ParticlePlugin.cpp" />
+    <ClCompile Include="engine\source\Polygon.cpp" />
+    <ClCompile Include="engine\source\RadialVolume.cpp" />
+    <ClCompile Include="engine\source\SavePlugin.cpp" />
+    <ClCompile Include="engine\source\ScenePlugin.cpp" />
+    <ClCompile Include="engine\source\Sockets.cpp" />
+    <ClCompile Include="engine\source\StateMachine.cpp" />
+    <ClCompile Include="engine\source\StatePlugin.cpp" />
+    <ClCompile Include="engine\source\SteamworksPlugin.cpp" />
+    <ClCompile Include="engine\source\TableInterface.cpp" />
+    <ClCompile Include="engine\source\Timeline.cpp" />
+    <ClCompile Include="engine\source\Variant.cpp" />
+    <ClCompile Include="engine\source\ViewPlugin.cpp" />
+    <ClCompile Include="engine\source\VkBootstrap.cpp" />
+    <ClCompile Include="engine\source\vk_initializers.cpp" />
+    <ClCompile Include="engine\source\VulkanPlugin.cpp" />
+    <ClCompile Include="engine\source\WorldPlugin.cpp" />
+    <ClCompile Include="include\glm\detail\glm.cpp" />
+    <ClCompile Include="include\stb_vorbis.c" />
+    <ClCompile Include="Narball\header\NarballMain.h">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll,.\Narball\header,.\Narball\source</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="Narball\source\Ball.cpp" />
+    <ClCompile Include="Narball\source\Nameplate.cpp" />
+    <ClCompile Include="Narball\source\NarballMenu.cpp" />
+    <ClCompile Include="Narball\source\NarballObjects.cpp" />
+    <ClCompile Include="Narball\source\NarballServer.cpp" />
+    <ClCompile Include="Narball\source\Narwhal.cpp" />
+    <ClCompile Include="source\BallTestApp.cpp" />
+    <ClCompile Include="source\BallThrowApp.cpp" />
+    <ClCompile Include="source\Main.cpp" />
+    <ClCompile Include="Narball\source\NarballGame.cpp" />
+    <ClCompile Include="source\MirrorApp.cpp" />
+    <ClCompile Include="source\PlaySong.cpp" />
+    <ClCompile Include="source\SceneDemoApp.cpp" />
+    <ClCompile Include="source\SceneDemoApp2.cpp" />
+    <ClCompile Include="source\SocketTest.cpp" />
+    <ClCompile Include="source\TraceApp.cpp" />
+    <ClCompile Include="source\VulkanDemoApp.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

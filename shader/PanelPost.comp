@@ -1,0 +1,56 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba8,set = 0, binding = 0) uniform image2D color;
+layout(rgba16f,set = 0, binding = 1) uniform image2D normal;
+layout(rgba16f,set = 0, binding = 2) uniform image2D position;
+layout(rgba8,set = 0, binding = 3) uniform image2D final_image;
+layout(rgba8,set = 0, binding = 4) uniform image2D panel_image;
+
+struct Component{
+	vec4 inner_color;
+	vec4 outer_color;
+	vec4 border_color;
+	float border_width;
+	float border_radius;
+};
+
+layout(buffer_reference, std430) readonly buffer ComponentBuffer{ 
+	Component components[];
+};
+
+//push constants block
+layout( push_constant ) uniform constants
+{	
+	mat4 render_matrix;
+	vec3 camera_position ;
+	ComponentBuffer component_buffer;
+} PushConstants;
+
+
+
+void main() {
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+	vec4 panel_color = imageLoad(panel_image, texelCoord) ;
+	float alpha = panel_color.a ;	
+
+	vec4 scene_color = vec4(0,0,0,0) ;
+	if(alpha > 0.01){
+
+	for(int dx = -3; dx <=3; dx++){
+		for(int dy = -3; dy <=3; dy++){
+			scene_color += imageLoad(final_image, texelCoord + ivec2(dx,dy)) ;
+		}
+	}
+	scene_color /=49 ;
+	}else{
+		scene_color = imageLoad(final_image, texelCoord) ;
+	}
+	
+	vec4 new_color = panel_color * panel_color.a + scene_color * (1.0 - panel_color.a) ;
+	new_color.a = 1.0 ;
+	imageStore(final_image, texelCoord, new_color); 
+}
