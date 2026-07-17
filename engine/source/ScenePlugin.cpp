@@ -254,6 +254,11 @@ std::shared_ptr<GLTF> ScenePlugin::getModelController(const std::string& model_n
 	return model_sets[name_to_model_set[model_name]].gltf_model;
 }
 
+
+std::shared_ptr<GLTF> ScenePlugin::getModelController(int instance_id, int model_index) {
+	return model_sets[instances[instance_id].models[model_index]].gltf_model;
+}
+
 std::shared_ptr<GLTF> ScenePlugin::getAnimationController(const std::string& animation_name) {
 	return animations[animation_name].first;
 }
@@ -301,6 +306,7 @@ int ScenePlugin::modelCount(const int instance_id) {
 	return (int)(instances[instance_id].models.size());
 }
 
+
 int ScenePlugin::size() {
 	int count = 0;
 	for (auto& [id, instance] : instances) {
@@ -308,6 +314,8 @@ int ScenePlugin::size() {
 	}
 	return count;
 }
+
+
 
 // Runs the plugin, which updates linked instances in Vulkan to match the scene
 void ScenePlugin::run() {
