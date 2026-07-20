@@ -149,10 +149,36 @@ public:
 		return nullptr;
 	}
 
-	//Calls methods on views for any object types with associated view classes (creating view instances as required)
-	void view(const std::string& local_world);
+	template<typename T>
+	std::shared_ptr<const T> observeNearest(const std::string& local_world) {
+		std::shared_ptr<const T> closest;
+		std::vector<std::shared_ptr<const WorldObject>> objects = observe(local_world);
+		if (objects.size() == 0) {
+			return closest;
+		}
+		float closest_distance = FLT_MAX;
+		glm::vec3 vantage = worlds[local_world].vantage_point;
+		for (std::shared_ptr<const WorldObject>& obj : objects) {
+			std::shared_ptr<const T> inst = dynamic_pointer_cast<const T>(obj);
+			if (inst) {
+				float distance = glm::distance2(inst->position, vantage);
+				if (distance < closest_distance) {
+					distance = closest_distance;
+					closest = inst;
+				}
+			}
+		}
+		return closest;
+	}
 
+	//Calls created, updated and destroyed on all views as required with the latest observations
 	void view();
+
+	//Calls update on any views currently active
+	void viewUpdate();
+
+	//Creates and destroys views and calls the appropriate functions on them to amke views match current observatrions
+	void viewCreateDestroy();
 
 	template<typename V> 
 	std::shared_ptr<V> getView(const std::string& local_world, int64_t id) {
@@ -160,6 +186,15 @@ public:
 			return nullptr ;
 		}else {
 			return dynamic_pointer_cast<V>(views[id]);
+		}
+	}
+
+	template<typename V>
+	std::shared_ptr<V> getView(const std::shared_ptr<const WorldObject>& observation) {
+		if (!observation) {
+			return nullptr;
+		} else {
+			return dynamic_pointer_cast<V>(views[observation->id]);
 		}
 	}
 
@@ -172,7 +207,7 @@ public:
 
 	bool amHosting(){
 		return hosting ;
-}
+	}
 
 	//Create a connection using a preexisting socket (like from Steam)
 	void connect(std::shared_ptr<Socket>& new_socket, const std::string& version);

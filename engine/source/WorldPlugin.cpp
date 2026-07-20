@@ -115,6 +115,7 @@ void WorldPlugin::run(){
 		world.timeline->run(world.vantage_point,world.current_time) ; // Note we are not locked when actually doing the running which is 95% of time
 		lock.lock();
 		observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); // buffer observations immediately after run so rollback can't be observed
+		viewCreateDestroy(); // Make sure views are always inline with observations TODO don't call for all worlds once per world
 		lock.unlock();
 		//printf("Runs: %d  Unruns: %d\n", Timeline::event_runs, Timeline::event_unruns) ;
 	}
@@ -346,37 +347,6 @@ std::vector<std::shared_ptr<const WorldObject>> WorldPlugin::observe(const std::
 	}
 }
 
-//Calls methods on any objects with associated view classes (crteating view instances as required)
-void WorldPlugin::view(const std::string& local_world){
-	std::vector<std::shared_ptr<const WorldObject>> observations = observe(local_world);
-	static std::unordered_set<int64_t> observed_ids ; // hold static to avoid reallocating every frame
-	observed_ids.clear();
-	for(std::shared_ptr<const WorldObject>& observation : observations){
-		if(views.find(observation->id) == views.end()){ // Observation has no view
-			std::shared_ptr<BaseObjectView> new_view = registry->createView(observation->getTypeId(registry.get())) ;
-			if(new_view){
-				views[observation->id] = new_view ;
-				new_view->createdBase(observation) ;
-			}
-		}else{
-			views[observation->id]->updatedBase(observation) ;
-		}
-		observed_ids.insert(observation->id);
-	}
-
-	//Call destroy and delete any views no longer present in the observation
-	std::vector<int64_t> to_delete ;
-	for(auto& [id, view] : views){
-		if(observed_ids.find(id) == observed_ids.end()){
-			to_delete.push_back(id);
-		}
-	}
-	for(auto& id : to_delete){
-		views[id]->destroyedBase();
-		views.erase(id);
-	}
-}
-
 
 void WorldPlugin::view(){
 	lock.lock();
@@ -412,6 +382,55 @@ void WorldPlugin::view(){
 	}
 
 	lock.unlock();
+}
+
+//Calls update on any views currently active
+void WorldPlugin::viewUpdate() {
+	lock.lock(); // TODO this lock is a bit aggressive and could cause world plugin to wait a lot when viewplugin is running
+	for (auto& [world_name, world] : worlds) {
+		std::vector<std::shared_ptr<const WorldObject>> observations = observe(world_name);
+		for (std::shared_ptr<const WorldObject>& observation : observations) {
+			auto iter = views.find(observation->id);
+			if (iter != views.end()) {
+				iter->second->updatedBase(observation);
+			}
+		}
+	}
+	lock.unlock();
+}
+
+//Creates and destroys views and calls the appropriate functions on them to amke views match current observatrions
+void WorldPlugin::viewCreateDestroy(){
+	lock.lock();
+	static std::unordered_set<int64_t> observed_ids; // hold static to avoid reallocating every frame
+	observed_ids.clear();
+	for (auto& [world_name, world] : worlds) {
+		std::vector<std::shared_ptr<const WorldObject>> observations = observe(world_name);
+		for (std::shared_ptr<const WorldObject>& observation : observations) {
+			if (views.find(observation->id) == views.end()) { // Observation has no view
+				std::shared_ptr<BaseObjectView> new_view = registry->createView(observation->getTypeId(registry.get()));
+				if (new_view) {
+					views[observation->id] = new_view;
+					new_view->createdBase(observation);
+				}
+			}
+			observed_ids.insert(observation->id);
+		}
+	}
+
+	//Call destroy and delete any views no longer present in the observation
+	std::vector<int64_t> to_delete;
+	for (auto& [id, view] : views) {
+		if (observed_ids.find(id) == observed_ids.end()) {
+			to_delete.push_back(id);
+		}
+	}
+	for (auto& id : to_delete) {
+		views[id]->destroyedBase();
+		views.erase(id);
+	}
+	lock.unlock();
+
 }
 
 // Start hosting your worlds on the given port
