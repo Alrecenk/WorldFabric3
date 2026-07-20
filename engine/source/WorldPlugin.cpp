@@ -613,8 +613,6 @@ void WorldPlugin::clearWorlds(){
 void WorldPlugin::actuallyClearWorlds() {
 	worlds.clear();
 	observation_buffer.clear();
-
-	printf("cleared worlds\n");
 	for (auto& [id, view] : views) {
 		view->destroyedBase();
 	}
