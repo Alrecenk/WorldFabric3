@@ -178,7 +178,7 @@ public:
 	void viewUpdate();
 
 	//Creates and destroys views and calls the appropriate functions on them to amke views match current observatrions
-	void viewCreateDestroy();
+	void viewCreateDestroy(const std::string& local_world);
 
 	template<typename V> 
 	std::shared_ptr<V> getView(const std::string& local_world, int64_t id) {

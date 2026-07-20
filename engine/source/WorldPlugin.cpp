@@ -115,7 +115,7 @@ void WorldPlugin::run(){
 		world.timeline->run(world.vantage_point,world.current_time) ; // Note we are not locked when actually doing the running which is 95% of time
 		lock.lock();
 		observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); // buffer observations immediately after run so rollback can't be observed
-		viewCreateDestroy(); // Make sure views are always inline with observations TODO don't call for all worlds once per world
+		viewCreateDestroy(name); // Make sure views are always inline with observations
 		lock.unlock();
 		//printf("Runs: %d  Unruns: %d\n", Timeline::event_runs, Timeline::event_unruns) ;
 	}
@@ -400,27 +400,34 @@ void WorldPlugin::viewUpdate() {
 }
 
 //Creates and destroys views and calls the appropriate functions on them to amke views match current observatrions
-void WorldPlugin::viewCreateDestroy(){
+void WorldPlugin::viewCreateDestroy(const std::string& local_world){
 	lock.lock();
+	auto iter = worlds.find(local_world);
+	if (iter == worlds.end() || clear_worlds) {
+		lock.unlock();
+		return;
+	}
+	const std::string& world_name = iter->first;
+	World& world = iter->second;
+	
 	static std::unordered_set<int64_t> observed_ids; // hold static to avoid reallocating every frame
 	observed_ids.clear();
-	for (auto& [world_name, world] : worlds) {
-		std::vector<std::shared_ptr<const WorldObject>> observations = observe(world_name);
-		for (std::shared_ptr<const WorldObject>& observation : observations) {
-			if (views.find(observation->id) == views.end()) { // Observation has no view
-				std::shared_ptr<BaseObjectView> new_view = registry->createView(observation->getTypeId(registry.get()));
-				if (new_view) {
-					views[observation->id] = new_view;
-					new_view->createdBase(observation);
-				}
+	
+	std::vector<std::shared_ptr<const WorldObject>> observations = observe(world_name);
+	for (std::shared_ptr<const WorldObject>& observation : observations) {
+		if (views.find(observation->id) == views.end()) { // Observation has no view
+			std::shared_ptr<BaseObjectView> new_view = registry->createView(observation->getTypeId(registry.get()));
+			if (new_view) {
+				views[observation->id] = new_view;
+				new_view->createdBase(observation);
 			}
-			observed_ids.insert(observation->id);
 		}
+		observed_ids.insert(observation->id);
 	}
-
+	
 	//Call destroy and delete any views no longer present in the observation
 	std::vector<int64_t> to_delete;
-	for (auto& [id, view] : views) {
+	for (auto& [id, view] : views) { // TODo views should be by world
 		if (observed_ids.find(id) == observed_ids.end()) {
 			to_delete.push_back(id);
 		}
