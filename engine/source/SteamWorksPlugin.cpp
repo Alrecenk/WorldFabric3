@@ -168,6 +168,14 @@ std::string SteamworksPlugin::getLocalName(){
 	return my_name ;
 }
 
+// Returns the current user's Steasm ID
+uint64 SteamworksPlugin::getLocalSteamID() {
+	if (!enabled) {
+		return -1;
+	}
+	return SteamUser()->GetSteamID().ConvertToUint64();
+}
+
 void SteamworksPlugin::setSteamEventReceiver(SteamEventReceiver* receiver){
 	event_receiver = receiver ;
 }

@@ -145,6 +145,9 @@ public:
 	//Returns the user's current steam display name to the local user
 	std::string getLocalName();
 
+	// Returns the current user's Steasm ID
+	uint64 getLocalSteamID();
+
 	//Sets the object to be notifie when external Steam events come in (like joining a match or opening the overlay)
 	void setSteamEventReceiver(SteamEventReceiver* receiver);
 
