@@ -94,17 +94,18 @@ void WorldPlugin::run(){
 
 	// Add events from local players
 	lock.lock();
-	for(auto& [world_name, events] : pending_local_events){
+	for(auto& [world_name, world] : worlds){
 		if(worlds.find(world_name) != worlds.end()){
 			World& world = worlds[world_name] ;
-			for(int k=0;k < events.size(); k ++){
-				world.timeline->queue(world.vantage_point,world.current_time,events[k]) ;
+			for(int k=0;k < world.pending_local_events.size(); k ++){
+				world.timeline->queue(world.vantage_point,world.current_time, world.pending_local_events[k]) ;
 			}
+			world.pending_local_events.clear();
 		}else{
 			printf("Got a local event for a world that doesn't exist?\n");
 		}
 	}
-	pending_local_events.clear();
+	
 	lock.unlock();
 
 	// Run all the active timelines

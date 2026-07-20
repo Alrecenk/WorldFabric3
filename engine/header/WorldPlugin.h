@@ -270,7 +270,7 @@ public:
 			int method_id = registry->getIdForMethod(method);
 			auto serial = serialize(args...);
 			std::shared_ptr<Timeline::VoidEvent> event = std::make_shared<Timeline::VoidEvent>(obj_id, method_id, target_time, serial);
-			pending_local_events[world_name].push_back(event);
+			world.pending_local_events.push_back(event);
 		}
 		lock.unlock();
 	}
@@ -285,7 +285,7 @@ public:
 			if(world.timeline == nullptr){
 				printf("queueing event on world which exists without a timeline : world = %s, object = %I64d? \n", world_name.c_str(), obj_id);
 			}else{
-				queue(world_name, obj_id, world.current_time + world.timeline->min_event_duration * (1.0+ pending_local_events[world_name].size()*0.01), method, args...);
+				queue(world_name, obj_id, world.current_time + world.timeline->min_event_duration * (1.0+ world.pending_local_events.size()*0.01), method, args...);
 			}
 		}
 	}
@@ -300,7 +300,7 @@ public:
 			auto d = registry->serializeObj(type_id, new_object.get());
 			int64_t reserved_id = hashBytes(d) ^ hashRaw(type_id ^ (*(int64_t*)&target_time));
 			std::shared_ptr<Timeline::CreateEvent> event = std::make_shared<Timeline::CreateEvent>(reserved_id, new_object, target_time);
-			pending_local_events[world_name].push_back(event);
+			world.pending_local_events.push_back(event);
 			lock.unlock();
 			return reserved_id;
 		}
@@ -314,7 +314,7 @@ public:
 		auto iter = worlds.find(world_name);
 		if (iter != worlds.end()) {
 			World& world = iter->second;
-			return create(world_name, new_object, world.current_time + world.timeline->min_event_duration * (1.0f + pending_local_events[world_name].size() * 0.01f)) ;
+			return create(world_name, new_object, world.current_time + world.timeline->min_event_duration * (1.0f + world.pending_local_events.size() * 0.01f)) ;
 		}
 		throw std::runtime_error("Attempting to create an object in a world that doesn't exist!");
 		return -1 ;
@@ -352,7 +352,6 @@ private:
 
 	
 	std::vector<std::shared_ptr<Timeline::CopyPacket>> copy_packets ; //if a world is being copied from another world, then that packet waits here until processed
-	std::map<std::string, std::vector<std::shared_ptr<Timeline::WorldEvent>>> pending_local_events; // maps world to all inserted events since last check
 	std::map <std::string, std::vector<std::shared_ptr<const WorldObject>>> observation_buffer ;
 
 	std::recursive_mutex packet_lock ; // lock specifically for processing packets since the main lock is used for cross plugin access
