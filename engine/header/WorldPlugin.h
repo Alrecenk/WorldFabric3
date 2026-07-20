@@ -227,6 +227,8 @@ public:
 	// World are auto-cleared when connecting but not when disconnecting or hosting
 	void clearWorlds();
 
+	void actuallyClearWorlds();
+
 	// For the client: check if requestConnect has succeeded, but also reports if the host has disconnected
 	bool connected();
 
