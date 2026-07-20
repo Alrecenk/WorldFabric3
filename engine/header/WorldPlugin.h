@@ -271,6 +271,8 @@ public:
 			auto serial = serialize(args...);
 			std::shared_ptr<Timeline::VoidEvent> event = std::make_shared<Timeline::VoidEvent>(obj_id, method_id, target_time, serial);
 			world.pending_local_events.push_back(event);
+		}else {
+			printf("Got an event queued for a world that wasn't found: %s\n", world_name.c_str());
 		}
 		lock.unlock();
 	}
@@ -287,6 +289,8 @@ public:
 			}else{
 				queue(world_name, obj_id, world.current_time + world.timeline->min_event_duration * (1.0+ world.pending_local_events.size()*0.01), method, args...);
 			}
+		}else {
+			printf("Got an event queued for a world that wasn't found: %s\n", world_name.c_str());
 		}
 	}
 
@@ -303,6 +307,8 @@ public:
 			world.pending_local_events.push_back(event);
 			lock.unlock();
 			return reserved_id;
+		}else {
+			printf("Got a creation queued for a world that wasn't found: %s\n", world_name.c_str());
 		}
 		lock.unlock();
 		return -1 ;
