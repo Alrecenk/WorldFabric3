@@ -20,29 +20,14 @@
 
 
 
-
-
-
 struct alignas(16) ParticleVertex{
 	alignas(16) glm::vec3 position ;
 };
-
 
 struct alignas(16) ParticleInstance{
 	alignas(16) glm::mat4 pose; // pose of the particle ellipse
 	alignas(16) glm::vec4 color;
 };
-
-/*
-class alignas(16) ParticleInstance : public PoseableInstance{
-public:
-	alignas(16) glm::mat4 pose; // pose of the particle ellipse
-	alignas(16) glm::vec4 color;
-	void setPose(const glm::mat4& root_pose, const std::vector<glm::mat4>& bones) override {
-		pose = root_pose;
-	}
-};
-*/
 
 struct alignas(16) ParticlePushConstants {
 	alignas(16) glm::mat4 world_matrix;
@@ -62,8 +47,11 @@ public:
 	ParticlePlugin(VulkanPlugin* renderer, int max_visible, Variant& vertex_shader_file_data, Variant& frag_shader_file_data, std::unordered_set<std::shared_ptr<RenderTarget>> render_targets);
 
 
-	//Create a a particle and return its id
+	//Create a hidden particle and return its id
 	int createParticle(int transform_group);
+
+	//Create a particle and return its id
+	int createParticle(int transform_group, const glm::mat4& pose, const glm::vec4& color);
 
 	// All particles are a unit sphere at the origin morphed by pose (and transform group)
 	void setPose(const int particle_id, const glm::mat4 pose);
@@ -71,7 +59,7 @@ public:
 	// A simplified setPose that makes the particle a sphere of the given size at the given position
 	void setPose(const int particle_id, glm::vec3 position, float size) ;
 
-	// Sets thecolor (with alpha) of a partoicle
+	// Sets the color (with alpha) of a particle
 	void setColor(const int particle_id, const glm::vec4& color);
 
 	//Sets the transform group of a particle
@@ -83,7 +71,7 @@ public:
 	//Set a grouptransform to be applied to all particles with that group set
 	void setGroupTransform(int id, glm::mat4 pose);
 
-	//Sets hthe position of the viewer, used for sorting for alpha blending
+	//Sets the position of the viewer, used for sorting for alpha blending
 	void setViewPosition(const glm::vec3& viewer);
 
 	// Called on every plug-in before any plug-ins are run

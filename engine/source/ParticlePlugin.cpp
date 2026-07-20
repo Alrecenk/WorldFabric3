@@ -46,24 +46,35 @@ ParticlePlugin::ParticlePlugin(VulkanPlugin* renderer, int max_visible, Variant&
 }
 
 
-//Create a a particle and return its id
+//Create a hidden particle and return its id
 int ParticlePlugin::createParticle(int transform_group) {
 	lock.lock();
 	int particle_id = max_id;
 	max_id++;
 	particles[particle_id].pose = glm::mat4(0) ;
-	//particles[particle_id].transform_group = transform_group;
 	particle_groups[particle_id] = transform_group ;
 	lock.unlock();
 	return particle_id;
 }
 
-// All particles are a unit sphere at rthe origin morphed by pose (and transform group)
+//Create a particle and return its id
+int ParticlePlugin::createParticle(int transform_group, const glm::mat4& pose, const glm::vec4& color) {
+	lock.lock();
+	int particle_id = max_id;
+	max_id++;
+	particles[particle_id].pose = pose;
+	particles[particle_id].color = color;
+	particle_groups[particle_id] = transform_group;
+	lock.unlock();
+	return particle_id;
+}
+
+// All particles are a unit sphere at the origin morphed by pose (and transform group)
 void ParticlePlugin::setPose(const int particle_id, const glm::mat4 pose) {
 	particles[particle_id].pose = pose;
 }
 
-// All particles are a unit sphere at rthe origin morphed by pose (and transform group)
+// All particles are a unit sphere at the origin morphed by pose (and transform group)
 void ParticlePlugin::setPose(const int particle_id, glm::vec3 position, float size) {
 	glm::mat4 pose(1.0f);
 	pose = glm::translate(pose, position);
@@ -71,7 +82,7 @@ void ParticlePlugin::setPose(const int particle_id, glm::vec3 position, float si
 	particles[particle_id].pose = pose;
 }
 
-// Sets thecolor (with alpha) of a partoicle
+// Sets the color (with alpha) of a partoicle
 void ParticlePlugin::setColor(const int particle_id, const glm::vec4& color) {
 	particles[particle_id].color = color;
 }
@@ -95,7 +106,7 @@ void ParticlePlugin::setGroupTransform(int id, glm::mat4 pose) {
 	group_transforms[id].first = pose;
 }
 
-//Sets hthe position of the viewer, used for sorting for alpha blending
+//Sets the position of the viewer, used for sorting for alpha blending
 void ParticlePlugin::setViewPosition(const glm::vec3& viewer){
 	this->viewer = viewer ;
 }
@@ -128,7 +139,6 @@ void ParticlePlugin::run() {
 	std::map<double, std::vector<int>> dist_to_id ; // map distance to id
 	
 	for (auto& [id, particle] : particles) {
-		
 		glm::mat4 pose = particle.pose;
 		if (group_transforms.find(particle_groups[id]) != group_transforms.end()) {
 			pose = group_transforms[particle_groups[id]].second * pose;
@@ -139,10 +149,8 @@ void ParticlePlugin::run() {
 		double distance = glm::dot(to_particle, to_particle);
 		dist_to_id[distance].push_back(id);
 			
-			
 	}
 	
-
 	int num_instances = std::min(max_visible, (int)particles.size());
 	std::vector<ParticleInstance> instances = std::vector<ParticleInstance>(num_instances);
 	int i = num_instances - 1;
@@ -174,6 +182,5 @@ void ParticlePlugin::run() {
 		double distance = glm::dot(to_particle, to_particle);
 		printf("p: %d dist: %f\n", k,distance);
 	}*/
-
 
 }

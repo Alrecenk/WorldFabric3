@@ -265,57 +265,54 @@ void NarballMenu::run() {
 	}
 
 	if (!leaving) {
-		std::vector<std::shared_ptr<const Timeline::WorldObject>> visible = worlds->observe(NARBALL);
-		for (int k = 0; k < visible.size(); k++) {
+		
+			//double observation_time = worlds->getWorldTime(NARBALL, visible[k]->position);
+			//float observation_age = (float)(observation_time - visible[k]->time);
 
-			double observation_time = worlds->getWorldTime(NARBALL, visible[k]->position);
-			float observation_age = (float)(observation_time - visible[k]->time);
+		std::shared_ptr<const Lobby> lobby = worlds->observeNearest<Lobby>(NARBALL);
+		if (lobby) {// if the lobby is available
+			lobby_id = lobby->id;
+			//printf("lobby_id set to %lld\n", lobby_id);
+			if (!has_player && lobby->state == Lobby::OPEN) { // we're a client connecting and receiving the lobby for the first time
+				has_player = true;
+				worlds->queue(NARBALL, lobby_id, &Lobby::addPlayer, local_player_id, player_name->getString()); // add self to the player list
+				last_keep_alive = now();
+			}
 
-			std::shared_ptr<const Lobby> lobby = dynamic_pointer_cast<const Lobby>(visible[k]);
-			if (lobby) {// if the lobby is available
-				lobby_id = lobby->id;
-				//printf("lobby_id set to %lld\n", lobby_id);
-				if (!has_player && lobby->state == Lobby::OPEN) { // we're a client connecting and receiving the lobby for the first time
-					has_player = true;
-					worlds->queue(NARBALL, lobby_id, &Lobby::addPlayer, local_player_id, player_name->getString()); // add self to the player list
-					last_keep_alive = now();
+			// Update the lobby menu with the synced lobby data
+			if (lobby->state != Lobby::CLOSED) {
+				updateLobbyMenu(lobby);
+			}
+
+			//Lobby has started the match
+			if (lobby->state == Lobby::STARTED && millisInState() > 100) { // small delay prevents bouncing between states if there's rollback
+				//Switch the main app state
+				StatePlugin* app = getTool<StatePlugin>();
+				lobby->print();
+				printf("Setting state to start match\n");
+				next_state = NarballGame::state_name;
+			}
+
+			//Send periodic keep alive packets so the server knows we're still in
+			if (millisBetween(last_keep_alive, now()) > keep_alive_interval) {
+				worlds->queue(NARBALL, lobby_id, &Lobby::keepAlive, local_player_id);
+				last_keep_alive = now();
+				if (hosting) {
+					worlds->queue(NARBALL, lobby_id, &Lobby::kickDisconnected);
 				}
+			}
 
-				// Update the lobby menu with the synced lobby data
-				if (lobby->state != Lobby::CLOSED) {
-					updateLobbyMenu(lobby);
-				}
-
-				//Lobby has started the match
-				if (lobby->state == Lobby::STARTED && millisInState() > 100) { // small delay prevents bouncing between states if there's rollback
-					//Switch the main app state
-					StatePlugin* app = getTool<StatePlugin>();
-					lobby->print();
-					printf("Setting state to start match\n");
-					next_state = NarballGame::state_name;
-				}
-
-				//Send periodic keep alive packets so the server knows we're still in
-				if (millisBetween(last_keep_alive, now()) > keep_alive_interval) {
-					worlds->queue(NARBALL, lobby_id, &Lobby::keepAlive, local_player_id);
-					last_keep_alive = now();
-					if (hosting) {
-						worlds->queue(NARBALL, lobby_id, &Lobby::kickDisconnected);
-					}
-				}
-
-				// Lobby says it's closed, so leave
-				if (has_player && joined && lobby->state == Lobby::CLOSED) {
-					printf("Leaving because lobby was closed.\n");
-					worlds->queue(NARBALL, lobby_id, &Lobby::removePlayer, local_player_id);
-					leaving = true;
-					leave_time = now();
-					has_player = false;
-					showLeft(main_menu);
-
-				}
+			// Lobby says it's closed, so leave
+			if (has_player && joined && lobby->state == Lobby::CLOSED) {
+				printf("Leaving because lobby was closed.\n");
+				worlds->queue(NARBALL, lobby_id, &Lobby::removePlayer, local_player_id);
+				leaving = true;
+				leave_time = now();
+				has_player = false;
+				showLeft(main_menu);
 
 			}
+
 		}
 
 	}
