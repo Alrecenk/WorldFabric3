@@ -226,9 +226,7 @@ void WorldPlugin::run(){
 
 	if(clear_worlds){
 
-		worlds.clear();
-		observation_buffer.clear();
-		clear_worlds = false;
+		actuallyClearWorlds();
 	}
 
 
@@ -508,7 +506,7 @@ void WorldPlugin::connect(std::shared_ptr<Socket>& new_socket, const std::string
 		std::this_thread::sleep_for(std::chrono::microseconds(simulated_lag_micros));
 	}
 	lock.lock();
-	worlds.clear();
+	actuallyClearWorlds();
 	std::shared_ptr<Timeline::CopyPacket> empty_copy = std::shared_ptr<Timeline::CopyPacket>(new Timeline::CopyPacket());
 	empty_copy->version = version ;
 	this->version = version ;
@@ -590,6 +588,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 
 
 // For the client: Disconnects from a remote host
+// For the server: Stops a server and kicks all clients
 // Worlds will continue to run, but will stop synchronizing
 void WorldPlugin::disconnect(){
 	lock.lock();
@@ -609,6 +608,18 @@ void WorldPlugin::disconnect(){
 
 void WorldPlugin::clearWorlds(){
 	clear_worlds = true ;
+}
+
+void WorldPlugin::actuallyClearWorlds() {
+	worlds.clear();
+	observation_buffer.clear();
+
+	printf("cleared worlds\n");
+	for (auto& [id, view] : views) {
+		view->destroyedBase();
+	}
+	views.clear();
+	clear_worlds = false;
 }
 
 // For the client: check if requestConnect has succeeded, but also reports if the host has disconnected
