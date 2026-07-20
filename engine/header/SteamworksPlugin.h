@@ -145,6 +145,13 @@ public:
 	//Returns the user's current steam display name to the local user
 	std::string getLocalName();
 
+	// Returns the current user's Steam ID
+	uint64 getLocalSteamID();
+
+	//For the host, returns the index of the connection of a given SteamID
+	//Returns -1 if the user is not connected or if you are not the host
+	int getClientConnectionIndex(uint64 remote_steam_id);
+
 	//Sets the object to be notifie when external Steam events come in (like joining a match or opening the overlay)
 	void setSteamEventReceiver(SteamEventReceiver* receiver);
 

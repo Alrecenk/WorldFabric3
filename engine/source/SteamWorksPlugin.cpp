@@ -168,6 +168,23 @@ std::string SteamworksPlugin::getLocalName(){
 	return my_name ;
 }
 
+// Returns the current user's Steam ID
+uint64 SteamworksPlugin::getLocalSteamID() {
+	if (!enabled) {
+		return 0;
+	}
+	return SteamUser()->GetSteamID().ConvertToUint64();
+}
+
+//For the host, returns the index of the connection of a given SteamID
+	//Returns -1 if the user is not connected or if you are not the host
+int SteamworksPlugin::getClientConnectionIndex(uint64 remote_steam_id) {
+	if (!enabled || !steam_socket || steam_socket->steamIDToPlayer.find(remote_steam_id) == steam_socket->steamIDToPlayer.end()) {
+		return -1;
+	}
+	return steam_socket->steamIDToPlayer[remote_steam_id];
+}
+
 void SteamworksPlugin::setSteamEventReceiver(SteamEventReceiver* receiver){
 	event_receiver = receiver ;
 }
@@ -182,6 +199,7 @@ std::shared_ptr<SteamworksPlugin::SteamSocket> SteamworksPlugin::hostPrivateLobb
 	lobby_info = info ;
 	
 	steam_socket = std::make_shared<SteamSocket>(); // Not ready yet, but go ahead and make it so it can be passed to what needs it
+	steam_socket->steamIDToPlayer[getLocalSteamID()] = 0; // On private matches we are player zero
 	return steam_socket;
 
 }
