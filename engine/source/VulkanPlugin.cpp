@@ -158,6 +158,11 @@ glm::vec2 VulkanPlugin::getMousePosition(){
 	return mouse_position;
 }
 
+// Returns the total net mouse wheel movement within the window
+glm::vec2 VulkanPlugin::getMouseWheelPosition(){
+	return mouse_wheel_position ;
+}
+
 // Returns the 3D direction of the mouse ray from the window_target's position
 glm::vec3 VulkanPlugin::getMouseRay(){
 	float x = (2.0f * mouse_position.x) / window_target->width - 1.0f;
@@ -625,6 +630,9 @@ void VulkanPlugin::processInput(){
 		}
 		else if (event.type == SDL_EVENT_MOUSE_MOTION) {
 			mouse_position = { event.motion.x,event.motion.y };
+		}
+		else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+			mouse_wheel_position += glm::vec2({ event.wheel.x, event.wheel.y });
 		}
 		else if (event.type == SDL_EVENT_QUIT) {
 			//TODO should probably provide a way for the app to do something when shutdown this way?
