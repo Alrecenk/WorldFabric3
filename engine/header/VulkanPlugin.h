@@ -301,7 +301,7 @@ public:
 	int window_width = 1280;
 	int window_height = 720;
 	bool vsync_enabled = true ;
-	int target_frame_micros = 1000000 / 120; //if vsync off, attempts to this this framerate
+	int target_frame_micros = 1000000 / 120; //if vsync off, attempts to hit this amount of time on each frame
 	int sleep_micros = 0;
 	std::chrono::high_resolution_clock::time_point last_sync_time = now();
 	
