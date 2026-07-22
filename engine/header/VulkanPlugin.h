@@ -298,8 +298,8 @@ public:
 	// SDL bookkeeping
 	SDL_Window* window = nullptr;
 	std::string title;
-	int window_width = 960;
-	int window_height = 540;
+	int window_width = 1280;
+	int window_height = 720;
 	bool vsync_enabled = true ;
 	int target_frame_micros = 1000000 / 120; //if vsync off, attempts to this this framerate
 	int sleep_micros = 0;
@@ -344,8 +344,11 @@ public:
 	// Returns whether a key is currently down
 	bool mouseDown(int button);
 
-	// Returns the currnet mouse position inte window
+	// Returns the currnet mouse position in the window
 	glm::vec2 getMousePosition();
+
+	// Returns the total net mouse wheel movement within the window
+	glm::vec2 getMouseWheelPosition();
 
 	// Returns the direction of the mouse ray from the window target position
 	glm::vec3 getMouseRay();
@@ -542,6 +545,7 @@ private:
 	int last_key = -1;
 	glm::vec2 mouse_position ;
 	glm::vec2 mouse_down_position;
+	glm::vec2 mouse_wheel_position;
 	std::map<int, bool> mouse_down ;
 	bool mouse_hidden = false;
 	bool last_mouse_hidden = false; 
