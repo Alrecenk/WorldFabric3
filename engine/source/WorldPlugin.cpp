@@ -568,7 +568,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 		return ;
 	}
 	lock.lock();
-	worlds.clear();
+	actuallyClearWorlds();
 	std::shared_ptr<Timeline::CopyPacket> empty_copy = std::shared_ptr<Timeline::CopyPacket>(new Timeline::CopyPacket());
 	empty_copy->version = version ;
 	this->version = version ;
@@ -611,6 +611,7 @@ void WorldPlugin::clearWorlds(){
 }
 
 void WorldPlugin::actuallyClearWorlds() {
+	lock.lock();
 	worlds.clear();
 	observation_buffer.clear();
 	for (auto& [id, view] : views) {
@@ -618,6 +619,7 @@ void WorldPlugin::actuallyClearWorlds() {
 	}
 	views.clear();
 	clear_worlds = false;
+	lock.unlock();
 }
 
 // For the client: check if requestConnect has succeeded, but also reports if the host has disconnected

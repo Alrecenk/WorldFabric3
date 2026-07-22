@@ -135,17 +135,18 @@ public:
 	// Observe a specific object whose type you know
 	template<typename T>
 	std::shared_ptr<const T> observe(const std::string& local_world, int64_t id){
+		lock.lock();
 		auto iter = worlds.find(local_world);
 		if (iter != worlds.end()) {
-			lock.lock();
 			for (auto& obj : observation_buffer[local_world]) {
 				if (obj->id == id) {
+					std::shared_ptr<const T> result = dynamic_pointer_cast<const T>(obj) ;
 					lock.unlock();
-					return dynamic_pointer_cast<const T>(obj) ;
+					return result ;
 				}
 			}
-			lock.unlock();
 		}
+		lock.unlock();
 		return nullptr;
 	}
 

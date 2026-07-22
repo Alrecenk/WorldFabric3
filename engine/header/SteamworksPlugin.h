@@ -77,6 +77,8 @@ public:
 
 		void removeServerClient(CSteamID user_id);
 
+		void removeServerClient(int player);
+
 		// Returns if connection was successful
 		bool connected();
 

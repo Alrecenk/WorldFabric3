@@ -808,6 +808,16 @@ void SteamworksPlugin::SteamSocket::removeServerClient(CSteamID user_id) {
 	//printf("Steam id %lld added as player %d\n", user_id.ConvertToUint64(), player_id);
 }
 
+void SteamworksPlugin::SteamSocket::removeServerClient(int player) {
+	for(auto& [user_id, pid] : steamIDToPlayer){
+		if(pid == player){
+			removeServerClient(user_id) ;
+			return ;
+		}
+	}
+	return ;
+}
+
 
 // Returns if connection was successful
 bool SteamworksPlugin::SteamSocket::connected(){
@@ -840,6 +850,7 @@ bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char
 			return false;
 		case k_EResultNoConnection:
 			printf("Failed sending data : Connection has ended\n");
+			removeServerClient(receiver_id) ;
 			return false;
 		case k_EResultLimitExceeded:
 			printf("Failed sending data : There was already too much data queued to be sent\n");

@@ -177,8 +177,11 @@ void NarballMenu::run() {
 		has_player = false;
 		showRight(lobby_menu);
 	}else if(waiting_on_join && millisBetween(join_start,now()) > 3000){// pending connection has timed out
+		printf("Timed out trying to join.\n");
 		waiting_on_join = false ;
 		worlds->disconnect(); // clean it up in case it's still trying
+		worlds->clearWorlds();
+		steam->disconnect();
 	}else if(waiting_on_join){ // join is pending
 	
 	}else if(trying_to_quickplay && steam->serverListReady()){
@@ -214,6 +217,7 @@ void NarballMenu::run() {
 			printf("Server selected. Score: %d  Attempting to join: %s\n", best_score, servers[best_index].name.c_str()) ;
 			printf("Connect: %s\n", servers[best_index].connect.c_str());
 			waiting_on_join = true;
+			join_start = now();
 			SteamNetworkingIPAddr addr ;
 			addr.ParseString(servers[best_index].connect.c_str()) ;
 			steam->joinAddress(addr) ;
@@ -1113,6 +1117,7 @@ void NarballMenu::onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::Stea
 	join_start = now();
 	lobby_id = -1;// we'll have to wait until we actually get the packet to find the lobby id and add ourselves
 	waiting_on_join = true;
+	join_start = now();
 	
 }
 

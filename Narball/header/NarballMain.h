@@ -345,7 +345,11 @@ inline void setupGameStates() {
 
 inline void registerWorldObjects(WorldPlugin* worlds){
 	//Register all of our timeline objects and their functions, so they can be auto-synced with the WorldPlugin
-	worlds->registerClass<Narwhal,NarwhalView>("Narwhal");
+	if(which_app == GAME){
+		worlds->registerClass<Narwhal,NarwhalView>("Narwhal");
+	}else{
+		worlds->registerClass<Narwhal>("Narwhal");
+	}
 	worlds->registerMethod(&Narwhal::setPosition, "setPosition");
 	worlds->registerMethod(&Narwhal::update, "update");
 	worlds->registerMethod(&Narwhal::setVelocity, "setVelocity");
@@ -353,7 +357,11 @@ inline void registerWorldObjects(WorldPlugin* worlds){
 	worlds->registerMethod(&Narwhal::setControls, "setControls");
 	worlds->registerMethod(&Narwhal::changeColor, "changeColor");
 
-	worlds->registerClass<Ball, BallView>("Ball");
+	if(which_app == GAME){
+		worlds->registerClass<Ball, BallView>("Ball");
+	}else{
+		worlds->registerClass<Ball>("Ball");
+	}
 	worlds->registerMethod(&Ball::setPosition, "setPosition");
 	worlds->registerMethod(&Ball::update, "update");
 	worlds->registerMethod(&Ball::setVelocity, "setVelocity");
@@ -486,7 +494,7 @@ inline int gameMain(int argc, char* argv[]) {
 	setupGameStates();
 
 	printf("Starting main loop...\n");
-	bool display_profile = true;
+	bool display_profile = false;
 
 	
 
