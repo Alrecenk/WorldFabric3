@@ -94,10 +94,11 @@ void NarballGame::enter(std::shared_ptr<MachineState> from) {
 		match_id = worlds->create(NARBALL, grid);
 		worlds->queue(NARBALL, match_id, &Match::createMatch);
 		double ball_spawn_start = 0.2 ; // wait a bit to start spawning balls, so grid can initialize
+		double ball_spawn_increment = 0.0015 ;
 		for (int k = 0; k < lobby->balls; k++) {
 			auto ball = std::make_shared<Ball>(glm::vec3(-7 + randomFloat() * 14, 0, -4 + randomFloat() * 8), match_id);
-			int64_t ball_id = worlds->create(NARBALL, ball, current_time+ball_spawn_start + 0.0005 * k); // create a bit in the future to give the grid a chance to initialize
-			worlds->queue(NARBALL, ball_id, current_time +ball_spawn_start+0.1 + 0.0005 * k, &Ball::update); // 0.1 seconds later start the ball moving
+			int64_t ball_id = worlds->create(NARBALL, ball, current_time+ball_spawn_start + ball_spawn_increment * k); // create a bit in the future to give the grid a chance to initialize
+			worlds->queue(NARBALL, ball_id, current_time +ball_spawn_start+0.1 + ball_spawn_increment * k, &Ball::update); // 0.1 seconds later start the ball moving
 		}
 
 	}
