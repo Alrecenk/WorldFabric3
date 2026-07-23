@@ -142,7 +142,7 @@ void NarballGame::run(){
 	last_frame_time = now();
 
 	if (millisBetween(last_keep_alive, now()) > keep_alive_interval && !leaving && lobby) {
-		worlds->queue(NARBALL, lobby->id, &Lobby::keepAlive, NarballMenu::local_player_id);
+		worlds->queue(NARBALL, lobby->id, &Lobby::keepAlive, local_player_id);
 		last_keep_alive = now();
 		if (worlds->amHosting()) {
 			worlds->queue(NARBALL, lobby->id, &Lobby::kickDisconnected);
@@ -190,35 +190,35 @@ void NarballGame::run(){
 	std::vector<std::shared_ptr<const WorldObject>> visible = worlds->observe(NARBALL);
 	bool have_narwhal = false;
 	bool have_player = false;
-	int64_t my_narwhal = -1 ;
 	// Find unique objects that the game logic needs to track
 	
 	for(int k=0;k<visible.size();k++){ //TODO stop looking for these items once they are found
 
 		std::shared_ptr<const Narwhal> observed_narwhal = dynamic_pointer_cast<const Narwhal>(visible[k]) ;
-		if(observed_narwhal && observed_narwhal->player_id == NarballMenu::local_player_id){
-			my_narwhal = observed_narwhal->id ;
+		if(observed_narwhal && observed_narwhal->player_id == local_player_id){
 			have_narwhal = true ;
 		}
 
-		std::shared_ptr<const Match> grid = dynamic_pointer_cast<const Match>(visible[k]);
-		if(grid){ // if it's a grid
-			match_id = grid->id ; // grab the grid id, which allows us to make stuff with collision detection
-			start_time = grid->start_time ;
-			updateScoreDisplay(grid);
-		}
-
-		std::shared_ptr<const Lobby> maybe_lobby = dynamic_pointer_cast<const Lobby>(visible[k]);
-		if (maybe_lobby) {
-			lobby = maybe_lobby;
-			if(lobby->state == Lobby::OPEN){
-				next_state = NarballMenu::state_name ;
-			}
-			have_player = lobby->players.find(NarballMenu::local_player_id) != lobby->players.end() ;
-		}
 	}
 
+	//TODO don't fetch these ever yframe if we already have them
+	std::shared_ptr<const Match> grid = worlds->observeNearest<Match>(NARBALL);
+	if (grid) { // if it's a grid
+		match_id = grid->id; // grab the grid id, which allows us to make stuff with collision detection
+		start_time = grid->start_time;
+		updateScoreDisplay(grid);
+	}
+
+	std::shared_ptr<const Lobby> maybe_lobby = worlds->observeNearest<Lobby>(NARBALL);
+	if (maybe_lobby) {
+		lobby = maybe_lobby;
+		if (lobby->state == Lobby::OPEN) {
+			next_state = NarballMenu::state_name;
+		}
+		have_player = lobby->players.find(local_player_id) != lobby->players.end();
+	}
 	
+/*
 	if(have_narwhal){
 		std::shared_ptr<NarwhalView> local_narwhal_view = worlds->getView<NarwhalView>(NARBALL, my_narwhal);
 		if(local_narwhal_view){
@@ -226,19 +226,20 @@ void NarballGame::run(){
 			worlds->setVantagePoint(NARBALL, local_narwhal_view->last_view.position); // updfate the local vantage point for time warp
 		}
 	}
+*/
 
 	// Check if we need to ask for a player slot or a narwhal
 	if((!have_player || !have_narwhal ) && millisBetween(last_create_request_time, now()) > keep_alive_interval){
 		if(!have_player){
 			printf("Adding player with name %s\n", NarballMenu::player_name->getString().c_str());
-			worlds->queue(NARBALL, lobby->id, &Lobby::addPlayer, NarballMenu::local_player_id, NarballMenu::player_name->getString()); // add self to the player list
+			worlds->queue(NARBALL, lobby->id, &Lobby::addPlayer, local_player_id, NarballMenu::player_name->getString()); // add self to the player list
 		}else if(!have_narwhal){
-			std::shared_ptr<Narwhal> me = std::shared_ptr<Narwhal>(new Narwhal(glm::vec3(0, 0, 0), match_id, NarballMenu::local_player_id));
+			std::shared_ptr<Narwhal> me = std::shared_ptr<Narwhal>(new Narwhal(glm::vec3(0, 0, 0), match_id, local_player_id));
 			if(!have_player){ // impossible if above is an else if after have player but in theory but you could join as neutral
 				me->color = 0 ;
 				me->position.x = (randomFloat() - 0.5f) * 2.0f;
 				me->position.z = (randomFloat() - 0.5f) * 2.0f;
-			}else if (lobby->players.at(NarballMenu::local_player_id).team) { // bool for if red team
+			}else if (lobby->players.at(local_player_id).team) { // bool for if red team
 				me->color = 1;
 				me->position.x = 3.0f;
 				me->facing_angle = 3.1415926f;
@@ -249,7 +250,7 @@ void NarballGame::run(){
 				me->position.z = (randomFloat() - 0.5f) * 6.0f;
 			}
 			
-			my_narwhal = worlds->create(NARBALL, me, worlds->getWorldTime(NARBALL) + 0.2); // create a bit in the future to give the grid a chance to initialize
+			int64_t my_narwhal = worlds->create(NARBALL, me, worlds->getWorldTime(NARBALL) + 0.2); // create a bit in the future to give the grid a chance to initialize
 			worlds->queue(NARBALL, my_narwhal, &Narwhal::update);//start the narwhal moving
 			
 			printf("Creating local narwhal %lf\n", worlds->getWorldTime(NARBALL));
@@ -281,8 +282,7 @@ void NarballGame::run(){
 			double command_time = worlds->getWorldTime(NARBALL) + control_delay ;
 			if(command_time != last_command_time){
 				//AsyncPlugin::inputDisplay(VulkanPlugin::last_sdl_input_num, 1, false);
-				//worlds->queue(NARBALL, my_narwhal, command_time, &Narwhal::setControls, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num);
-				auto control_action = std::shared_ptr<NarwhalControlAction>(new NarwhalControlAction( NarballMenu::local_player_id, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num )) ;
+				auto control_action = std::shared_ptr<NarwhalControlAction>(new NarwhalControlAction(local_player_id, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num )) ;
 				getTool<ActionMap>()->performAction(control_action);
 				last_command_time = command_time ;
 				last_controls = current_controls;

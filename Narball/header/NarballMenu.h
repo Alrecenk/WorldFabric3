@@ -27,7 +27,7 @@ class NarballMenu : public MachineState, public PanelPlugin::PanelListener, publ
 
 public:
 
-	static inline int local_player_id = -1; // randomly generated at load time
+	
 	static inline int64_t lobby_id = -1 ; // fetched on host or join
 	static inline bool has_player = false;
 	static inline std::shared_ptr<PanelPlugin::TextBox> player_name ; // if joining mid game, we may need to grab this text from narball game state

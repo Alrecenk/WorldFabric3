@@ -6,6 +6,7 @@
 #include "PanelPlugin.h"
 #include "AudioPlugin.h"
 #include "ParticlePlugin.h"
+#include "NarballMenu.h"
 #include "glm/glm.hpp"
 
 
@@ -527,6 +528,12 @@ void NarwhalView::updated(const Narwhal& observation) {
 	}
 
 	highlight_particles = continuing_particles;
+
+
+	if (last_view.player_id == local_player_id) {
+		num_highlight = local_narwhal_highlight_particles; //Put the highlight particles on the local narwhal's view
+		worlds->setVantagePoint(NARBALL, last_view.position); // updfate the local vantage point for time warp
+	}
 
 }
 

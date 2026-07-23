@@ -81,17 +81,22 @@ public:
 		lock.unlock();
 	}
 
+	//Immediately performs an action, sending it to tall reciever whose triggers are hit
+	// returns the number of triggers the actionwas sent to
 	template <typename T>
-	void performAction(std::shared_ptr<T> action) {
+	int performAction(std::shared_ptr<T>& action) {
 		lock.lock();
 		std::vector<std::shared_ptr<ActionTrigger>> triggers = action->findTriggers(this, action) ;
+		int performed = 0 ;
 		for(auto& trigger : triggers){
 			ActionReceiver<T>* receiver = dynamic_cast<ActionReceiver<T>*>(trigger->action_receiver);
 			if(receiver){
 				receiver->receiveAction(action,trigger) ;
+				performed++;
 			}
 		}
 		lock.unlock();
+		return performed ;
 	}
 };
 
