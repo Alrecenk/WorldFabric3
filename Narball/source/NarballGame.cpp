@@ -281,7 +281,9 @@ void NarballGame::run(){
 			double command_time = worlds->getWorldTime(NARBALL) + control_delay ;
 			if(command_time != last_command_time){
 				//AsyncPlugin::inputDisplay(VulkanPlugin::last_sdl_input_num, 1, false);
-				worlds->queue(NARBALL, my_narwhal, command_time, &Narwhal::setControls, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num);
+				//worlds->queue(NARBALL, my_narwhal, command_time, &Narwhal::setControls, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num);
+				auto control_action = std::shared_ptr<NarwhalControlAction>(new NarwhalControlAction( NarballMenu::local_player_id, glm::vec2(left_x, left_y), glm::vec2(right_x, right_y), VulkanPlugin::last_sdl_input_num )) ;
+				getTool<ActionMap>()->performAction(control_action);
 				last_command_time = command_time ;
 				last_controls = current_controls;
 				//printf("Control millis: %d\n", millisBetween(last_control_time, now())) ;

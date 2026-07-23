@@ -8,8 +8,29 @@
 #include <mutex>
 
 
-class BaseActionReceiver;
-class ActionTrigger;
+// Outer base class makes it possible to put templated subclasses into one map
+class BaseActionReceiver {
+public:
+	virtual ~BaseActionReceiver() = default;
+};
+
+//Action triggers have an axis aligned bounding box and a context that is used for their collision with action
+//You can override this to add metadata to a trigger that will be accessible in the reciever when actions are caught.
+class ActionTrigger {
+public:
+	int context = 0;
+	glm::vec3 min;
+	glm::vec3 max;
+	int id = -1;
+	BaseActionReceiver* action_receiver;
+
+	ActionTrigger() {}
+
+	ActionTrigger(int ctx, const glm::vec3& box_min, const glm::vec3& box_max, BaseActionReceiver* receiver) : context(ctx), min(box_min), max(box_max), action_receiver(receiver) {
+	}
+};
+
+class ActionMap;
 
 //This is the base action, you probably don't want to override it directly.
 //Your custom actions should probably override a subclass that defines the collision type
@@ -17,32 +38,10 @@ class ActionTrigger;
 class Action {
 public:
 	int context = 0 ;
-	virtual std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action>& action) ;
+	virtual std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action)  = 0;
+	virtual ~Action() = default;
 };
 
-//Action triggers have an axis aligned bounding box and a context that is used for their collision with action
-//You can override this to add metadata to a trigger that will be accessible in the reciever when actions are caught.
-class ActionTrigger{
-public:
-	int context = 0;
-	glm::vec3 min;
-	glm::vec3 max;
-	int id = -1;
-	std::shared_ptr<BaseActionReceiver> action_receiver;
-
-	ActionTrigger() ;
-	ActionTrigger(int ctx, const glm::vec3& box_min, const glm::vec3& box_max, std::shared_ptr<BaseActionReceiver>& receiver) : context(ctx),min(box_min),max(box_max), action_receiver(receiver){
-	}
-
-	
-};
-
-// Outer base class makes it possible to put templated subclasses into one map
-class BaseActionReceiver {
-public:
-	virtual ~BaseActionReceiver() = default;
-	//virtual void receiveActionBase(std::shared_ptr<Action>& action, std::shared_ptr<ActionTrigger>& trigger) = 0;
-};
 
 //This is the class you want to override for your recievers and the template is the action you want to be able to receive
 //You can override this multiple times with different templates to get multiple action types
@@ -68,7 +67,7 @@ public:
 	int next_trigger_id = 1 ;
 	std::mutex lock ;
 
-	int addtrigger(std::shared_ptr<ActionTrigger> trigger){
+	int addTrigger(std::shared_ptr<ActionTrigger> trigger){
 		lock.lock();
 		int id = next_trigger_id ;
 		next_trigger_id++;
@@ -83,13 +82,13 @@ public:
 	}
 
 	template <typename T>
-	void performAction(std::shared_ptr<T>& action) {
+	void performAction(std::shared_ptr<T> action) {
 		lock.lock();
-		std::vector<std::shared_ptr<ActionTrigger>> triggers = action->findTriggers(this) ;
+		std::vector<std::shared_ptr<ActionTrigger>> triggers = action->findTriggers(this, action) ;
 		for(auto& trigger : triggers){
-			std::shared_ptr<ActionReceiver<T>> receiver = dynamic_pointer_cast<ActionReceiver<T>>(trigger->receiver);
+			ActionReceiver<T>* receiver = dynamic_cast<ActionReceiver<T>*>(trigger->action_receiver);
 			if(receiver){
-				receiver->receieveAction(action,trigger) ;
+				receiver->receiveAction(action,trigger) ;
 			}
 		}
 		lock.unlock();
@@ -99,8 +98,9 @@ public:
 //Universal actions have no geometry and will hit all triggers capable of recieving the action type
 //You can override this to add more meta-data to be passed along or to gate who recieves the object by type
 //Useful for things like character controllers where the id of the controlled object is known
-class UniversalAction : Action {
-	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action>& action) override {
+class UniversalAction : public Action {
+public:
+	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
 		std::vector<std::shared_ptr<ActionTrigger>> hits ;
 		for(auto& [id, trigger] : action_map->triggers){
 			if(trigger->context == action->context){
@@ -109,6 +109,8 @@ class UniversalAction : Action {
 		}
 		return hits ;
 	}
-}
+
+	virtual ~UniversalAction() = default;
+};
 
 #endif // #ifndef _ACTION_MAP_H_

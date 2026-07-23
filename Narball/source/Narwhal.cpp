@@ -372,6 +372,8 @@ glm::mat4 NarwhalView::computePose(const Narwhal& narwhal) {
 void NarwhalView::created(const Narwhal& observation) {
 	id = observation.id;
 	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
+
 	Narwhal narwhal = getView(observation);
 	std::string model = narwhal_model[narwhal.color];
 	glm::mat4 narwhal_pose = computePose(observation);
@@ -390,6 +392,11 @@ void NarwhalView::created(const Narwhal& observation) {
 	}
 	butt_base_rotation = scene->createPin(scene_id, butt_bone, butt_bone_id, glm::vec3(0, 0, 0), 0.0f, 1.0f); // create a rotation IK pin on the butt
 	scene->enableIK(scene_id, true);
+
+	
+	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger());
+	trigger->action_receiver = this ; // Since we only catch a universal action,the trigger geometry doesn't matter
+	action_trigger_id = action_map->addTrigger(trigger) ;
 }
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
@@ -528,8 +535,10 @@ void NarwhalView::updated(const Narwhal& observation) {
 void NarwhalView::destroyed() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
-	scene->deleteInstance(scene_id) ;
+	ActionMap* action_map = getTool<ActionMap>();
 
+	scene->deleteInstance(scene_id) ;
+	action_map->removeTrigger(action_trigger_id) ;
 	while (!highlight_particles.empty()) {
 		HighlightParticle p = highlight_particles.front();
 		highlight_particles.pop();
@@ -537,5 +546,11 @@ void NarwhalView::destroyed() {
 	}
 }
 
+void NarwhalView::receiveAction(std::shared_ptr<NarwhalControlAction>& control, std::shared_ptr<ActionTrigger>& trigger){
+	if(control->player_id == last_view.player_id){ // if I am owned by the player submitting the action
+		WorldPlugin* worlds = getTool<WorldPlugin>();
+		worlds->queue(NARBALL,id,&Narwhal::setControls,control->left_stick, control->right_stick,control->input_num) ;
+	}
+}
 
 }

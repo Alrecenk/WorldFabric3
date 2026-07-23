@@ -444,6 +444,9 @@ int exampleMain(int argc, char* argv[]) {
 	std::shared_ptr<ThreadSignals> thread_signals = std::shared_ptr<ThreadSignals>(new ThreadSignals());
 	addTool(thread_signals);
 
+	std::shared_ptr<ActionMap> action_map = std::shared_ptr<ActionMap>(new ActionMap());
+	addTool(action_map);
+
 	printf("Starting plugin construction...\n");
 	std::vector<std::shared_ptr<AsyncPlugin>> plugins;
 	setupPlugins(plugins, "Demo App", command_line);
