@@ -166,6 +166,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="engine\header\ActionMap.h" />
     <ClInclude Include="engine\header\AsyncPlugin.h" />
     <ClInclude Include="engine\header\AudioPlugin.h" />
     <ClInclude Include="engine\header\ConvexShape.h" />
