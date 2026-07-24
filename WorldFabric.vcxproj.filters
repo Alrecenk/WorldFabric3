@@ -1533,6 +1533,9 @@
     <ClInclude Include="header\TraceApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="engine\header\ActionMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />

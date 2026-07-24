@@ -77,6 +77,8 @@ inline float ball_radius = 0.2f;
 inline glm::vec4 water_flow ;// current flow velocity of the water wave, shuld be set to match what is passed to the shader
 inline glm::quat butt_base_rotation; // default butt pose on the narwhal model (set when generating butt IK pins)
 
+inline int local_player_id = -1; // randomly generated at load time
+
 //This water height function is to bob objects up and down with the water flow
 //It needs to matcthe correspond water height in the water post processing shader
 inline float waterHeight(float x, float z, float time, const glm::vec4& flow) {

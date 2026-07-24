@@ -5,10 +5,12 @@
 #include "WorldPlugin.h"
 #include "ScenePlugin.h"
 #include "PanelPlugin.h"
+#include "ActionMap.h"
 #include "HighlightParticle.h"
 #include "Nameplate.h"
 #include "NarballObjects.h"
 #include "glm/glm.hpp"
+
 #include <stdio.h>
 #include <cstdlib>
 
@@ -81,13 +83,31 @@ public:
 
 };
 
-class NarwhalView : public ObjectView<Narwhal> {
+
+auto static getStructure(Narball::Narwhal& obj) {
+	return std::tie(obj.position, obj.velocity, obj.facing_angle, obj.angular_velocity, obj.match_id, obj.player_id, obj.cells,
+		obj.left_stick, obj.right_stick, obj.last_control_time, obj.color, obj.sound, obj.sound_num, obj.input_num);
+}
+
+class NarwhalControlAction : public UniversalAction{
+public:
+	int player_id = -1 ; // player issuing the action
+	glm::vec2 left_stick ;
+	glm::vec2 right_stick ;
+	int input_num ; // used for tracking input latency through the whole system
+
+
+	NarwhalControlAction(int pid, glm::vec2 l, glm::vec2 r, int n) : player_id(pid),left_stick(l), right_stick(r), input_num(n){};
+};
+
+class NarwhalView : public ObjectView<Narwhal>, public virtual ActionReceiver<NarwhalControlAction> {
 public:
 
 	int64_t id;
 	int scene_id = -1;
 	int last_sound = -1;
 	int last_sound_number = -1;
+	int action_trigger_id = -1 ;
 	float butt_angle = 0; // tails drag behind when rotating
 	std::chrono::high_resolution_clock::time_point last_sound_time = now();
 	std::chrono::high_resolution_clock::time_point last_view_time = now();
@@ -126,12 +146,10 @@ public:
 
 	//Computes the scene pose of a ball
 	glm::mat4 computePose(const Narwhal& nawhal);
-};
 
-auto static getStructure(Narball::Narwhal& obj) {
-	return std::tie(obj.position, obj.velocity, obj.facing_angle, obj.angular_velocity, obj.match_id, obj.player_id, obj.cells, 
-		obj.left_stick, obj.right_stick, obj.last_control_time, obj.color, obj.sound, obj.sound_num, obj.input_num);
-}
+	void receiveAction(std::shared_ptr<NarwhalControlAction>& control, std::shared_ptr<ActionTrigger>& trigger) override;
+	
+};
 
 } // end Narball name space
 

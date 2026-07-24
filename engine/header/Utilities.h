@@ -439,4 +439,69 @@ public:
 
 
 
+// Given a ray in model space (p + v*t) return the t value of the nearest collision with the bounding box defined by min and max
+// return negative if no collision
+inline float rayTraceBoundingBox(const glm::vec3& p, const glm::vec3& v, const glm::vec3& min, const glm::vec3& max){
+
+	float enter_t = -std::numeric_limits<float>::max();
+	float exit_t = std::numeric_limits<float>::max();
+
+	if (fabs(v.x) > 0.0001f) {
+		float t1 = (min.x - p.x) / v.x;
+		float t2 = (max.x - p.x) / v.x;
+		if (t2 < t1) {
+			float temp = t1;
+			t1 = t2;
+			t2 = temp;
+		}
+		enter_t = fmax(t1, enter_t);
+		exit_t = fmin(t2, exit_t);
+	}
+	else if (p.x < min.x || p.x > max.x) { // np change in axis means either always in or always out
+		return -1.0f;
+	}
+
+	if (fabs(v.y) > 0.0001f) {
+		float t1 = (min.y - p.y) / v.y;
+		float t2 = (max.y - p.y) / v.y;
+		if (t2 < t1) {
+			float temp = t1;
+			t1 = t2;
+			t2 = temp;
+		}
+		enter_t = fmax(t1, enter_t);
+		exit_t = fmin(t2, exit_t);
+	}
+	else if (p.y < min.y || p.y > max.y) { // np change in axis means either always in or always out
+		return -1.0f;
+	}
+
+	if (fabs(v.z) > 0.0001f) {
+		float t1 = (min.z - p.z) / v.z;
+		float t2 = (max.z - p.z) / v.z;
+		if (t2 < t1) {
+			float temp = t1;
+			t1 = t2;
+			t2 = temp;
+		}
+		enter_t = fmax(t1, enter_t);
+		exit_t = fmin(t2, exit_t);
+	}
+	else if (p.z < min.z || p.z > max.z) { // np change in axis means either always in or always out
+		return -1.0f;
+	}
+
+	if (exit_t < 0 || exit_t < enter_t) {
+		return -1.0f;
+	}
+	else {
+		return enter_t;
+	}
+
+}
+
+inline bool boundingBoxCollision(const glm::vec3& min_1, const glm::vec3& max_1, const glm::vec3& min_2, const glm::vec3& max_2){
+	return min_1.x <= max_2.x && min_1.y <= max_2.y && min_1.z <= max_2.z && min_2.x <= max_1.x && min_2.y <= max_1.y && min_2.z <= max_2.z  ;
+}
+
 #endif // #ifndef _UTILITIES_H_

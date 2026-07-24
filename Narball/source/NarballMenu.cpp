@@ -602,11 +602,11 @@ void NarballMenu::createLobbyMenu(){
 	lobby_back = std::shared_ptr<PanelPlugin::MenuButton>(new PanelPlugin::MenuButton(lobby_menu, "Leave" , "Leave", menu_width*0.25f, 1150, true, "arial100"));
 	buttons[std::pair<int, int>(lobby_menu, lobby_back->element)] = lobby_back;
 
-	game_start = std::shared_ptr<PanelPlugin::MenuButton>(new PanelPlugin::MenuButton(lobby_menu, "Start", "start_game", menu_width * 0.75f, 1150, true, "arial100"));
-	buttons[std::pair<int, int>(lobby_menu, game_start->element)] = game_start;
-
 	lobby_countdown = std::shared_ptr<PanelPlugin::Label>(new PanelPlugin::Label(lobby_menu, "", menu_width * 0.75f, 1150, false, "arial100"));
 	lobby_countdown->setColors(glm::vec4(.0, .0, .0, 0.0), glm::vec4(.0, 0, .0, 0.0), glm::vec4(.0, 0.0, 0.0, .0), glm::vec4(0, 0, 0, 0));
+
+	game_start = std::shared_ptr<PanelPlugin::MenuButton>(new PanelPlugin::MenuButton(lobby_menu, "Start", "start_game", menu_width * 0.75f, 1150, true, "arial100"));
+	buttons[std::pair<int, int>(lobby_menu, game_start->element)] = game_start;
 
 	game_start_hidden = false; 
 
@@ -662,7 +662,7 @@ void NarballMenu::updateLobbyMenu(std::shared_ptr<const Lobby> lobby){
 		lobby_countdown->setText(concat(" ", (int)countdown_time) + " ");
 	}
 	else {
-		lobby_countdown->setText(" ");
+		lobby_countdown->setText("");
 	}
 
 	if(hosting){
