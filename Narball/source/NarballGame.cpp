@@ -201,7 +201,7 @@ void NarballGame::run(){
 
 	}
 
-	//TODO don't fetch these ever yframe if we already have them
+	//TODO don't fetch these every frame if we already have them
 	std::shared_ptr<const Match> grid = worlds->observeNearest<Match>(NARBALL);
 	if (grid) { // if it's a grid
 		match_id = grid->id; // grab the grid id, which allows us to make stuff with collision detection
@@ -217,16 +217,6 @@ void NarballGame::run(){
 		}
 		have_player = lobby->players.find(local_player_id) != lobby->players.end();
 	}
-	
-/*
-	if(have_narwhal){
-		std::shared_ptr<NarwhalView> local_narwhal_view = worlds->getView<NarwhalView>(NARBALL, my_narwhal);
-		if(local_narwhal_view){
-			local_narwhal_view->num_highlight = local_narwhal_highlight_particles ; //Put the highlight particles on the local narwhal's view
-			worlds->setVantagePoint(NARBALL, local_narwhal_view->last_view.position); // updfate the local vantage point for time warp
-		}
-	}
-*/
 
 	// Check if we need to ask for a player slot or a narwhal
 	if((!have_player || !have_narwhal ) && millisBetween(last_create_request_time, now()) > keep_alive_interval){
@@ -234,26 +224,28 @@ void NarballGame::run(){
 			printf("Adding player with name %s\n", NarballMenu::player_name->getString().c_str());
 			worlds->queue(NARBALL, lobby->id, &Lobby::addPlayer, local_player_id, NarballMenu::player_name->getString()); // add self to the player list
 		}else if(!have_narwhal){
-			std::shared_ptr<Narwhal> me = std::shared_ptr<Narwhal>(new Narwhal(glm::vec3(0, 0, 0), match_id, local_player_id));
-			if(!have_player){ // impossible if above is an else if after have player but in theory but you could join as neutral
-				me->color = 0 ;
-				me->position.x = (randomFloat() - 0.5f) * 2.0f;
-				me->position.z = (randomFloat() - 0.5f) * 2.0f;
-			}else if (lobby->players.at(local_player_id).team) { // bool for if red team
-				me->color = 1;
-				me->position.x = 3.0f;
-				me->facing_angle = 3.1415926f;
-				me->position.z = (randomFloat() - 0.5f) * 6.0f;
-			}else {
-				me->color = 2;
-				me->position.x = -3.0f;
-				me->position.z = (randomFloat() - 0.5f) * 6.0f;
-			}
+			//for(int j=0;j<25;j++){
+				std::shared_ptr<Narwhal> me = std::shared_ptr<Narwhal>(new Narwhal(glm::vec3(0, 0, 0), match_id, local_player_id));
+				if(!have_player){ // impossible if above is an else if after have player but in theory but you could join as neutral
+					me->color = 0 ;
+					me->position.x = (randomFloat() - 0.5f) * 2.0f;
+					me->position.z = (randomFloat() - 0.5f) * 2.0f;
+				}else if (lobby->players.at(local_player_id).team) { // bool for if red team
+					me->color = 1;
+					me->position.x = 3.0f;
+					me->facing_angle = 3.1415926f;
+					me->position.z = (randomFloat() - 0.5f) * 6.0f;
+				}else {
+					me->color = 2;
+					me->position.x = -3.0f;
+					me->position.z = (randomFloat() - 0.5f) * 6.0f;
+				}
 			
-			int64_t my_narwhal = worlds->create(NARBALL, me, worlds->getWorldTime(NARBALL) + 0.2); // create a bit in the future to give the grid a chance to initialize
-			worlds->queue(NARBALL, my_narwhal, &Narwhal::update);//start the narwhal moving
+				int64_t my_narwhal = worlds->create(NARBALL, me, worlds->getWorldTime(NARBALL) + 0.2); // create a bit in the future to give the grid a chance to initialize
+				worlds->queue(NARBALL, my_narwhal, &Narwhal::update);//start the narwhal moving
 			
-			printf("Creating local narwhal %lf\n", worlds->getWorldTime(NARBALL));
+				printf("Creating local narwhal %lf\n", worlds->getWorldTime(NARBALL));
+			//}
 		}
 		last_create_request_time = now();
 	}

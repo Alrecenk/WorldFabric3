@@ -118,4 +118,23 @@ public:
 	virtual ~UniversalAction() = default;
 };
 
+//Ray actions perform a ray-trace against triggers to determine what is intersecting
+//You can override this to add more meta-data to be passed along or to gate who recieves the object by type
+//Useful primarily for mouse clicks and hovers, but could be useful for hit-scan weapons or other types of pointers
+class RayAction : public Action {
+public:
+	glm::vec3 origin;
+	glm::vec3 direction;
+	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
+		std::vector<std::shared_ptr<ActionTrigger>> hits;
+		for (auto& [id, trigger] : action_map->triggers) {
+			if (trigger->context == action->context && rayTraceBoundingBox(origin, direction, trigger->min, trigger->max) >= 0.0f) {
+				hits.push_back(trigger);
+			}
+		}
+		return hits;
+	}
+	virtual ~RayAction() = default;
+};
+
 #endif // #ifndef _ACTION_MAP_H_
