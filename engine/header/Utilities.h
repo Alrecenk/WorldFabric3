@@ -500,4 +500,8 @@ inline float rayTraceBoundingBox(const glm::vec3& p, const glm::vec3& v, const g
 
 }
 
+inline bool boundingBoxCollision(const glm::vec3& min_1, const glm::vec3& max_1, const glm::vec3& min_2, const glm::vec3& max_2){
+	return min_1.x <= max_2.x && min_1.y <= max_2.y && min_1.z <= max_2.z && min_2.x <= max_1.x && min_2.y <= max_1.y && min_2.z <= max_2.z  ;
+}
+
 #endif // #ifndef _UTILITIES_H_

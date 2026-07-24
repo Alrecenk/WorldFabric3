@@ -137,4 +137,23 @@ public:
 	virtual ~RayAction() = default;
 };
 
+//Box action perform an AABB
+//You can override this to add more meta-data to be passed along or to gate who recieves the object by type
+//Useful primarily for mouse clicks and hovers, but could be useful for hit-scan weapons or other types of pointers
+class BoxAction : public Action {
+public:
+	glm::vec3 min;
+	glm::vec3 max;
+	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
+		std::vector<std::shared_ptr<ActionTrigger>> hits;
+		for (auto& [id, trigger] : action_map->triggers) {
+			if (trigger->context == action->context && boundingBoxCollision(min,max, trigger->min,trigger->max)) {
+				hits.push_back(trigger);
+			}
+		}
+		return hits;
+	}
+	virtual ~BoxAction() = default;
+};
+
 #endif // #ifndef _ACTION_MAP_H_
