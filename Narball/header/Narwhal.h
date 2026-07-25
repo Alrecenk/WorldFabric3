@@ -132,20 +132,20 @@ public:
 
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
-	void created(const Narwhal& observation) override;
+	void created(std::shared_ptr<const Narwhal>& observation) override;
 
 	//Update is called when an observation is made of an object that was also observed last frame on this same view
-	void updated(const Narwhal& observation) override;
+	void updated(std::shared_ptr<const Narwhal>& observation) override;
 
 	//Destroyed is called when an observation that was present in the last observation is no longer observed
 	//This view will be deleted immediately after this call (it's destructor will be called after this)
 	void destroyed() override;
 
 	//HAndles interpolation and extrapolation from the last position to get the ball state "now"
-	Narwhal getView(const Narwhal& observed);
+	Narwhal getView(std::shared_ptr<const Narwhal>& observed);
 
 	//Computes the scene pose of a ball
-	glm::mat4 computePose(const Narwhal& nawhal);
+	glm::mat4 computePose(std::shared_ptr<const Narwhal>& nawhal);
 
 	void receiveAction(std::shared_ptr<NarwhalControlAction>& control, std::shared_ptr<ActionTrigger>& trigger) override;
 	

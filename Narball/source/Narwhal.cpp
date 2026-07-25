@@ -281,28 +281,28 @@ void Narwhal::print() const {
 
 
 // Gets a ball view that enforces maximum speeds after roll back
-Narwhal NarwhalView::getView(const Narwhal& observed) {
+Narwhal NarwhalView::getView(std::shared_ptr<const Narwhal>& observed) {
 
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	double observation_time = worlds->getWorldTime(NARBALL, observed.position);
-	float observation_age = (float)(observation_time - observed.time);// time difference between what we're supposed to see and what we observed
-	float observed_facing_angle = observed.facing_angle + observed.angular_velocity * observation_age;// extrapolate based on age
-	glm::vec3 observed_position = observed.position + observed.velocity * observation_age;
+	double observation_time = worlds->getWorldTime(NARBALL, observed->position);
+	float observation_age = (float)(observation_time - observed->time);// time difference between what we're supposed to see and what we observed
+	float observed_facing_angle = observed->facing_angle + observed->angular_velocity * observation_age;// extrapolate based on age
+	glm::vec3 observed_position = observed->position + observed->velocity * observation_age;
 
 
 	if (!fancy_interpolation) {
-		last_view = observed;
-		Narwhal view = observed;
+		last_view = *observed;
+		Narwhal view = *observed;
 		view.position = observed_position;
 		view.facing_angle = observed_facing_angle;
 		view.time = observation_time;
 		return view;
 	} else {
-		double dt = observed.time - last_view.time;
+		double dt = observed->time - last_view.time;
 
 		if (dt <= 0) { // sometimes the clock moves to stay in sync with the server and this can happen
-			last_view = observed;
-			Narwhal view = observed;
+			last_view = *observed;
+			Narwhal view = *observed;
 			view.position = observed_position;
 			view.facing_angle = observed_facing_angle;
 			view.time = observation_time;
@@ -311,8 +311,8 @@ Narwhal NarwhalView::getView(const Narwhal& observed) {
 
 		glm::vec3 view_position;
 		float view_facing_angle = 0;
-		glm::vec3 last_position = last_view.position + observed.velocity * last_age;
-		float last_facing_angle = (float)(last_view.facing_angle + observed.angular_velocity * last_age);
+		glm::vec3 last_position = last_view.position + observed->velocity * last_age;
+		float last_facing_angle = (float)(last_view.facing_angle + observed->angular_velocity * last_age);
 
 		float delta_angle = observed_facing_angle - last_facing_angle;
 		if (delta_angle > 3.141f) {
@@ -343,9 +343,9 @@ Narwhal NarwhalView::getView(const Narwhal& observed) {
 			view_position = last_position + to_move * max_distance_move / move_amount;
 		}
 
-		last_view = observed;
+		last_view = *observed;
 		last_age= observation_age;
-		Narwhal view = observed;
+		Narwhal view = *observed;
 		view.position = view_position;
 		view.facing_angle = view_facing_angle;
 		view.time = observation_time;
@@ -355,23 +355,23 @@ Narwhal NarwhalView::getView(const Narwhal& observed) {
 }
 
 
-glm::mat4 NarwhalView::computePose(const Narwhal& narwhal) {
+glm::mat4 NarwhalView::computePose(std::shared_ptr<const Narwhal>& narwhal) {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	double vantage_time = worlds->getWorldTime(NARBALL);
 	glm::mat4 narwhal_pose = glm::mat4(1.0f);
 
-	glm::vec3 position = narwhal.position;
-	position.y = waterHeight(position.x, position.z, (float)vantage_time, water_flow) + (float)(bob_magnitude * sin(narwhal.id % 1000 + vantage_time * bob_rate) + narwhal_lift); // move up and down with the water
+	glm::vec3 position = narwhal->position;
+	position.y = waterHeight(position.x, position.z, (float)vantage_time, water_flow) + (float)(bob_magnitude * sin(narwhal->id % 1000 + vantage_time * bob_rate) + narwhal_lift); // move up and down with the water
 
 	narwhal_pose = glm::translate(narwhal_pose, position);//interpolate between moves
-	narwhal_pose = glm::rotate(narwhal_pose, narwhal.facing_angle, glm::vec3(0, -1, 0));
+	narwhal_pose = glm::rotate(narwhal_pose, narwhal->facing_angle, glm::vec3(0, -1, 0));
 	narwhal_pose = glm::rotate(narwhal_pose, narwhal_tilt, glm::vec3(0, 0, 1)); // tilt the narwhal so it's facing up out of the water a bit
 	return narwhal_pose ;
 }
 
 
-void NarwhalView::created(const Narwhal& observation) {
-	id = observation.id;
+void NarwhalView::created(std::shared_ptr<const Narwhal>& observation) {
+	id = observation->id;
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 
@@ -401,7 +401,7 @@ void NarwhalView::created(const Narwhal& observation) {
 }
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
-void NarwhalView::updated(const Narwhal& observation) {
+void NarwhalView::updated(std::shared_ptr<const Narwhal>& observation) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	AudioPlugin* sound = getTool<AudioPlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
@@ -446,7 +446,7 @@ void NarwhalView::updated(const Narwhal& observation) {
 	scene->setAnimationSpeed(scene_id, 2, right_fin_speed);
 	
 	if(num_highlight > 0){ // only measure input delay of the local narwhal and ignore others
-		scene->setInputNum(scene_id, observation.input_num);
+		scene->setInputNum(scene_id, observation->input_num);
 		//AsyncPlugin::inputDisplay(narwhal.input_num, 3, false);
 	}
 

@@ -590,16 +590,16 @@ class ObjectView : public BaseObjectView {
 public:
 	//Created is called when an observation is made of an object that was not present in the previous observation
 	//The view will be newly created with an empty constructor whnthis is called
-	virtual void created(const T& observation) = 0;
+	virtual void created(std::shared_ptr<const T>& observation) = 0;
 	void createdBase(std::shared_ptr<const void> obj) override {
-		const T& observation = *static_pointer_cast<const T>(obj);
+		std::shared_ptr<const T> observation = static_pointer_cast<const T>(obj);
 		created(observation);
 	}
 
 	//Update is called when an observation is made of an object that was also observed last frame on this same view
-	virtual void updated(const T& observation) = 0;
+	virtual void updated(std::shared_ptr<const T>& observation) = 0;
 	void updatedBase(std::shared_ptr<const void> obj) override {
-		const T& observation = *static_pointer_cast<const T>(obj);
+		std::shared_ptr<const T> observation = static_pointer_cast<const T>(obj) ;
 		updated(observation);
 	}
 
