@@ -6,6 +6,7 @@
 #include <memory>
 #include <map>
 #include <mutex>
+#include <queue>
 
 
 // Outer base class makes it possible to put templated subclasses into one map
@@ -38,7 +39,13 @@ class ActionMap;
 class Action {
 public:
 	int context = 0 ;
-	virtual std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action)  = 0;
+
+	virtual std::priority_queue<
+		std::pair<float, std::shared_ptr<ActionTrigger>>,
+		std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+		std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+	> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action)  = 0;
+
 	virtual ~Action() = default;
 };
 
@@ -81,17 +88,27 @@ public:
 		lock.unlock();
 	}
 
+	void moveTrigger(int id,const glm::vec3& new_min, const glm::vec3& new_max){
+		auto iter = triggers.find(id);
+		if(iter!= triggers.end()){
+			iter->second->min = new_min ;
+			iter->second->max = new_max ;
+		}
+	}
+
 	//Immediately performs an action, sending it to tall reciever whose triggers are hit
 	// returns the number of triggers the actionwas sent to
 	template <typename T>
 	int performAction(std::shared_ptr<T>& action) {
 		lock.lock();
-		std::vector<std::shared_ptr<ActionTrigger>> triggers = action->findTriggers(this, action) ;
+		auto triggers = action->findTriggers(this, action) ;
 		int performed = 0 ;
-		for(auto& trigger : triggers){
-			ActionReceiver<T>* receiver = dynamic_cast<ActionReceiver<T>*>(trigger->action_receiver);
+		while(!triggers.empty()){
+			auto trigger = triggers.top();
+			triggers.pop();
+			ActionReceiver<T>* receiver = dynamic_cast<ActionReceiver<T>*>(trigger.second->action_receiver);
 			if(receiver){
-				receiver->receiveAction(action,trigger) ;
+				receiver->receiveAction(action,trigger.second) ;
 				performed++;
 			}
 		}
@@ -105,11 +122,19 @@ public:
 //Useful for things like character controllers where the id of the controlled object is known
 class UniversalAction : public Action {
 public:
-	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
-		std::vector<std::shared_ptr<ActionTrigger>> hits ;
+	std::priority_queue<
+		std::pair<float, std::shared_ptr<ActionTrigger>>,
+		std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+		std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+	> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
+		std::priority_queue<
+			std::pair<float, std::shared_ptr<ActionTrigger>>,
+			std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+			std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+		> hits ;
 		for(auto& [id, trigger] : action_map->triggers){
 			if(trigger->context == action->context){
-				hits.push_back(trigger) ;
+				hits.push({0.0f,trigger}) ;
 			}
 		}
 		return hits ;
@@ -125,11 +150,22 @@ class RayAction : public Action {
 public:
 	glm::vec3 origin;
 	glm::vec3 direction;
-	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
-		std::vector<std::shared_ptr<ActionTrigger>> hits;
+	std::priority_queue<
+		std::pair<float, std::shared_ptr<ActionTrigger>>,
+		std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+		std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+	> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
+		std::priority_queue<
+			std::pair<float, std::shared_ptr<ActionTrigger>>,
+			std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+			std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+		> hits;
 		for (auto& [id, trigger] : action_map->triggers) {
-			if (trigger->context == action->context && rayTraceBoundingBox(origin, direction, trigger->min, trigger->max) >= 0.0f) {
-				hits.push_back(trigger);
+			if (trigger->context == action->context){
+				float t = rayTraceBoundingBox(origin, direction, trigger->min, trigger->max) ;
+				if(t >= 0){
+					hits.push({t, trigger});
+				}
 			}
 		}
 		return hits;
@@ -144,11 +180,21 @@ class BoxAction : public Action {
 public:
 	glm::vec3 min;
 	glm::vec3 max;
-	std::vector<std::shared_ptr<ActionTrigger>> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
-		std::vector<std::shared_ptr<ActionTrigger>> hits;
+	std::priority_queue<
+		std::pair<float, std::shared_ptr<ActionTrigger>>,
+		std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+		std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+	> findTriggers(ActionMap* action_map, std::shared_ptr<Action> action) override {
+		std::priority_queue<
+			std::pair<float, std::shared_ptr<ActionTrigger>>,
+			std::vector<std::pair<float, std::shared_ptr<ActionTrigger>>>,
+			std::greater<std::pair<float, std::shared_ptr<ActionTrigger>>>
+		> hits;
+		glm::vec3 action_pos = (min+max)*0.5f ;
 		for (auto& [id, trigger] : action_map->triggers) {
 			if (trigger->context == action->context && boundingBoxCollision(min,max, trigger->min,trigger->max)) {
-				hits.push_back(trigger);
+				
+				hits.push({glm::distance(action_pos,(trigger->min + trigger->max)*0.5f),trigger});// TODO remove sqrt
 			}
 		}
 		return hits;
