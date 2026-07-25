@@ -78,10 +78,10 @@ public:
 	double last_age;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
-	void created(const Ball& observation) override;
+	void created(std::shared_ptr<const Ball>& observation) override;
 
 	//Update is called when an observation is made of an object that was also observed last frame on this same view
-	void updated(const Ball& observation) override;
+	void updated(std::shared_ptr<const Ball>& observation) override;
 
 	//Destroyed is called when an observation that was present in the last observation is no longer observed
 	//This view will be deleted immediately after this call (it's destructor will be called after this)
@@ -89,7 +89,7 @@ public:
 
 
 	//HAndles interpolation and extrapolation from the last position to get the ball state "now"
-	Ball getView(const Ball& observed);
+	Ball getView(std::shared_ptr<const Ball>& observed);
 
 	//Computes the scene pose of a ball
 	glm::mat4 computePose(const Ball& ball);

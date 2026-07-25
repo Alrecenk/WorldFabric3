@@ -238,31 +238,31 @@ void Ball::print() const {
 
 
 // Gets a ball view that enforces maximum speeds after roll back
-Ball BallView::getView(const Ball& observed) {
+Ball BallView::getView(std::shared_ptr<const Ball>& observed) {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	double observation_time = worlds->getWorldTime(NARBALL, observed.position);
-	float observation_age = (float)(observation_time - observed.time);// time difference between what we're supposed to see and what we observed
+	double observation_time = worlds->getWorldTime(NARBALL, observed->position);
+	float observation_age = (float)(observation_time - observed->time);// time difference between what we're supposed to see and what we observed
 
 	if (!fancy_interpolation) {
-		last_view = observed;
-		Ball view = observed;
-		view.position = observed.position + observed.velocity * observation_age;
+		last_view = *observed;
+		Ball view = *observed;
+		view.position = observed->position + observed->velocity * observation_age;
 		view.time = observation_time;
 		return view;
 	}
 	else {
-		double dt = observed.time - last_view.time;
+		double dt = observed->time - last_view.time;
 		if (dt <= 0) { // sometimes the clock moves to stay in sync with the server and this can happen
-			last_view = observed;
-			Ball view = observed;
-			view.position = observed.position + observed.velocity * observation_age;
+			last_view = *observed;
+			Ball view = *observed;
+			view.position = observed->position + observed->velocity * observation_age;
 			view.time = observation_time;
 			return view;
 		}
 
 		glm::vec3 view_position;
-		glm::vec3 last_position = last_view.position + observed.velocity * last_age;
-		glm::vec3 observed_position = observed.position + observed.velocity * observation_age;
+		glm::vec3 last_position = last_view.position + observed->velocity * last_age;
+		glm::vec3 observed_position = observed->position + observed->velocity * observation_age;
 
 		float max_distance_move = (float)(dt * Ball::max_speed * view_fudge_factor);
 		glm::vec3 to_move = observed_position - last_position;
@@ -273,9 +273,9 @@ Ball BallView::getView(const Ball& observed) {
 		else {
 			view_position = last_position + to_move * max_distance_move / move_amount;
 		}
-		last_view = observed;
+		last_view = *observed;
 		last_age = observation_age;
-		Ball view = observed;
+		Ball view = *observed;
 		view.position = view_position;
 		view.time = observation_time;
 		return view;
@@ -302,16 +302,16 @@ glm::mat4 BallView::computePose(const Ball& ball) {
 }
 
 
-void BallView::created(const Ball& observation) {
-	id = observation.id;
-	glm::mat4 ball_pose = computePose(observation);
+void BallView::created(std::shared_ptr<const Ball>& observation) {
+	id = observation->id;
+	glm::mat4 ball_pose = computePose(*observation);
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene_id = scene->createInstance(ball_model, ball_pose);
 	last_sound_time = now();
 }
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
-void BallView::updated(const Ball& observation) {
+void BallView::updated(std::shared_ptr<const Ball>& observation) {
 	Ball ball = getView(observation);
 	glm::mat4 ball_pose = computePose(ball);
 	ScenePlugin* scene = getTool<ScenePlugin>();
