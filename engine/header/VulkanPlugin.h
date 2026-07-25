@@ -285,7 +285,7 @@ public:
 
 	static inline std::string tag = "VulkanLink";
 
-	static inline constexpr bool USE_VALIDATION_LAYERS = true;
+	static inline constexpr bool USE_VALIDATION_LAYERS = false;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
 	static inline int millis_to_hold_buffer = 35; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
 
@@ -929,15 +929,12 @@ public:
 
 	void beginGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override{
 		lock.lock();
-		//program->beginRendering(cmd, renderer, target->images, target->depth);
 		target->beginRendering(cmd, renderer);
 		program->bindProgram(cmd);
 		lock.unlock();
 	}
 
 	void endGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
-		//vkCmdEndRendering(cmd);
-		//target->endRendering(cmd, renderer);
 	}
 
 	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
