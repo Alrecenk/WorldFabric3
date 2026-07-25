@@ -26,7 +26,7 @@ const inline std::string ball_model = "beach_ball";
 const inline std::string pool_model = "pool";
 const inline std::string beach_model = "beach";
 
-const inline std::string NARBALL_VERSION = "v0.098" ;
+const inline std::string NARBALL_VERSION = "v0.099" ;
 const inline std::string NARBALL_DEDICATED_VERSION = "1.0.0.0"; // Needs to match the Steamworks setting to make servers visible
 
 
