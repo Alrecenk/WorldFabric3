@@ -363,9 +363,9 @@ void VulkanPlugin::initVulkan(){
 	VkCommandBufferAllocateInfo command_alloc_info_2 = vkinit::command_buffer_allocate_info(command_pool, 1);
 	VK_CHECK(vkAllocateCommandBuffers(device, &command_alloc_info_2, &command_buffer));
 
-	//create syncronization structures
+	//create synchronization structures
 	//one fence to control when the gpu has finished rendering the frame,
-	//and 2 semaphores to syncronize rendering with swapchain
+	//and 2 semaphores to synchronize rendering with swapchain
 	//we want the fence to start signalled so we can wait on it on the first frame
 	VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 	VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
@@ -914,7 +914,7 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 		lock.unlock();
 		for(auto& target : active_render_targets){ // for each render target
 			target->setViewport(cmd, this);
-			target->beginRendering(cmd, this);
+			
 			for(auto& [group, group_list] : group_map){ // for each group
 				for (int k = 0; k < group_list.size(); k++) {
 					group_list[k]->requireTextureLayouts(cmd,this); // make sure all textures to be used for the next render call are in the right layout
@@ -934,7 +934,7 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 					group_list[first]->endGroup(cmd,this, target);
 				}
 			}
-			target->endRendering(cmd, this);
+			
 		}
 		std::string stamp_tag = concat("phase end ", phase) ;
 		stampTime(cmd, stamp_tag);

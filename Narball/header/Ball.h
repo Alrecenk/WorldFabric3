@@ -76,7 +76,6 @@ public:
 	std::chrono::high_resolution_clock::time_point last_sound_time = now();
 	Ball last_view;
 	double last_age;
-	bool cleaned = false ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(const Ball& observation) override;
@@ -95,11 +94,7 @@ public:
 	//Computes the scene pose of a ball
 	glm::mat4 computePose(const Ball& ball);
 
-	~BallView(){
-		if(!cleaned){
-			printf("Ball view has been orphaned!\n");
-		}
-	}
+	~BallView() = default ;
 };
 
 auto static getStructure(Narball::Ball& obj) {
