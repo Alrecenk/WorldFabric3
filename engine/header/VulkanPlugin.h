@@ -637,6 +637,7 @@ public:
 	std::shared_ptr<WFImage> final_image; // The image that will ultimately be put on screen (should be in images as this is not passed to shaders)
 	bool screen_resize = false;
 	bool needs_clear = false;
+	bool is_rendering = false ;
 
 	int num_fragments = 0;// render tagrets may optionally have extended fragments to support order independent transparency
 	int frag_size = 0 ;
@@ -645,6 +646,7 @@ public:
 
 	static inline float default_near_plane = 0.1f;
 	static inline float default_far_plane = 1000.0f;
+
 	void setImages(const std::vector<std::shared_ptr<WFImage>>& i, const std::vector<VkClearColorValue>& c, const std::shared_ptr<WFImage> d, const std::shared_ptr<WFImage> f) {
 
 		images = i;
@@ -935,7 +937,7 @@ public:
 
 	void endGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
 		//vkCmdEndRendering(cmd);
-		target->endRendering(cmd, renderer);
+		//target->endRendering(cmd, renderer);
 	}
 
 	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
@@ -1184,6 +1186,7 @@ public:
 
 	void beginGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
 		lock.lock();
+		target->endRendering(cmd, renderer); // make sure we're not in an active render
 		program->bindProgram(cmd); // bind the program
 
 		std::vector<std::shared_ptr<WFImage>> program_images;

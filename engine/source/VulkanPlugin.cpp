@@ -914,11 +914,12 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 		lock.unlock();
 		for(auto& target : active_render_targets){ // for each render target
 			target->setViewport(cmd, this);
-			
-			for(auto& [group, group_list] : group_map){ // for each group
+			for (auto& [group, group_list] : group_map) { // for each group
 				for (int k = 0; k < group_list.size(); k++) {
-					group_list[k]->requireTextureLayouts(cmd,this); // make sure all textures to be used for the next render call are in the right layout
+					group_list[k]->requireTextureLayouts(cmd, this); // make sure all textures to be used for the next render call are in the right layout
 				}
+			}
+			for(auto& [group, group_list] : group_map){ // for each group
 				int first= -1;
 				for (int k = 0; k < group_list.size(); k++) { // for each renderable
 					if(group_list[k]->hasTarget(target) && !group_list[k]->hidden){ // only draw if on active target
@@ -933,8 +934,10 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 				if(first >= 0){
 					group_list[first]->endGroup(cmd,this, target);
 				}
+				
 			}
-			
+			// groups make sure they are rendering or not at start but not at end so the render cmd can be carried over for efficiency
+			target->endRendering(cmd, this);
 		}
 		std::string stamp_tag = concat("phase end ", phase) ;
 		stampTime(cmd, stamp_tag);
@@ -1610,6 +1613,10 @@ VkImageUsageFlags WFImage::getUsages(){
 
 
 void RenderTarget::beginRendering(VkCommandBuffer cmd, VulkanPlugin* renderer) {
+	if(is_rendering){
+		return ;
+	}
+	is_rendering = true ;
 	std::vector<VkRenderingAttachmentInfo> output_info;
 	for (int k = 0;k < images.size();k++) {
 		renderer->requireLayout(cmd, images[k]->getVulkanImage(renderer), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL); // make sure the images we're drawing to are in th drawing to layout
@@ -1655,5 +1662,10 @@ void RenderTarget::beginRendering(VkCommandBuffer cmd, VulkanPlugin* renderer) {
 }
 
 void RenderTarget::endRendering(VkCommandBuffer cmd, VulkanPlugin* renderer) {
+	if(!is_rendering){
+		return ;
+	}
+	is_rendering = false ;
 	vkCmdEndRendering(cmd);
+	
 }
