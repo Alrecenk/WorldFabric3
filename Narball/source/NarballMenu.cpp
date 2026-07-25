@@ -289,7 +289,7 @@ void NarballMenu::run() {
 			}
 
 			//Lobby has started the match
-			if (lobby->state == Lobby::STARTED && millisInState() > 100) { // small delay prevents bouncing between states if there's rollback
+			if (lobby->state == Lobby::STARTED && millisInState() > 300) { // small delay prevents bouncing between states if there's rollback
 				//Switch the main app state
 				StatePlugin* app = getTool<StatePlugin>();
 				lobby->print();
