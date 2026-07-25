@@ -336,7 +336,6 @@ void BallView::destroyed() {
 	//printf("Ball view destroyed: %ld\n", (long)id);
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene->deleteInstance(scene_id);
-	cleaned = true ;
 }
 
 }
