@@ -591,7 +591,7 @@ public:
 
 		~Label();
 
-		void setText(const std::string& text);
+		void setText(std::string text);
 
 		// interpolate to the given position over an amount of time
 		void moveTo(float x, float y, bool centered, double time_to_move);

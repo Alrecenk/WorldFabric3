@@ -416,14 +416,13 @@ PanelPlugin::Label::~Label() {
 	}
 }
 
-void PanelPlugin::Label::setText(const std::string& new_text) {
+void PanelPlugin::Label::setText(std::string new_text) {
+	if (new_text.length() == 0) {
+		new_text = " "; // make a blank texture instead of no texture
+	}
 	if (text != new_text) {
-		if (new_text.length() == 0) {
-			text = " "; // make a blank texture instead of no texture
-		}
-		else {
-			text = new_text;
-		}
+		text = new_text;
+		
 		PanelPlugin* panels = getTool<PanelPlugin>();
 		std::shared_ptr<WFImage> element_image = panels->createTextImage(text, font, text_color, 9999);
 		panels->setElementTexture(panel, element, element_image);
