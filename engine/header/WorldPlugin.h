@@ -29,7 +29,7 @@ public:
 	static inline float clock_adjust_rate = 0.05f ;
 	static inline float client_vantage_warp_fraction = 0.9f;
 	static inline float server_vantage_warp_fraction = 0.0f;
-	static inline float extra_sync_depth = 0.25f ;
+	static inline float extra_sync_depth = 0.5f ;
 
 	//Observations look ahead by a tiny amount in seconds so player actions are visible the frame they are on
 	static inline double observation_look_ahead = 1.0/240.0 ;
