@@ -30,4 +30,4 @@ private:
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 };
-#endif // #ifndef _SCENE_DEMO_APP_H_
+#endif // #ifndef _TRACE_APP_H_
