@@ -21,7 +21,7 @@ public:
 
 		// used for rendering
 		int instance_id = -1 ;
-		static inline const std::string baLL_model = "./assets/Ball.glb" ;
+		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb" ;
 
 		Ball(int64_t my_id, const glm::vec3& pos , const glm::vec3& vel, const glm::vec3& acc);
 
@@ -92,7 +92,7 @@ public:
 		std::map<int64_t, std::shared_ptr<Ball>> balls ;
 		std::map<int64_t, std::shared_ptr<Constraint>> constraints;
 		
-		int nexs_ball_id = 1 ;
+		int next_ball_id = 1 ;
 
 		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
 
@@ -119,6 +119,9 @@ public:
 		//Creates or destroys constraints so the contents of constraints matches the current collisions
 		void updateCollisions();
 
+		//Run physics forward one frame
+		void runPhysicsFrame(float dt, int constraints_iter);
+
 		//Calls update graphics on all the balls
 		//Also renders the box
 		void updateGraphics();
@@ -139,6 +142,8 @@ public:
 	// Called when switching out of this state after the last time run is called
 	void exit(std::shared_ptr<MachineState> to) override;
 
+	void updateCamera();
+
 private:
 
 	std::shared_ptr<PhysicsCell> cell ;
@@ -146,5 +151,26 @@ private:
 	int mouse_particle_id = -1;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
+
+
+	// Csmera control stuff
+	glm::vec3 look_at = glm::vec3(0, -3, 0);
+	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
+	float fov = 1.0f;
+	float camera_theta = 0.5f;
+	float camera_thi = 0.8f;
+	bool mouse_down_left = false;
+	glm::vec2 mouse_down_position_left;
+	bool mouse_down_right = false;
+	glm::vec2 mouse_down_position_right;
+	float camera_down_theta = 0.0f;
+	float camera_down_thi = 0.0f;
+	float camera_x_speed = 0.002f;
+	float camera_y_speed = 0.002f;
+	float zoom = 11.0f;
+	float light_zoom = 12.0f;
+	float light_fov = 1.5f;
+	float light_theta_off = 0.4f;
+	float mouse_wheel_y_previous = 0.0f;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_
