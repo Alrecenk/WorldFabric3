@@ -93,6 +93,8 @@ public:
 		std::map<int64_t, std::shared_ptr<Constraint>> constraints;
 		
 		int next_ball_id = 1 ;
+		int instance_id = -1; // for scene
+		static inline const std::string BOX_MODEL = "box" ;
 
 		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
 
@@ -168,9 +170,10 @@ private:
 	float camera_x_speed = 0.002f;
 	float camera_y_speed = 0.002f;
 	float zoom = 11.0f;
-	float light_zoom = 12.0f;
-	float light_fov = 1.5f;
-	float light_theta_off = 0.4f;
+	float light_zoom = 20.0f;
+	float light_fov = 1.0f;
+	float light_theta = 0.4f;
+	float light_thi = 1.2f ;
 	float mouse_wheel_y_previous = 0.0f;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_

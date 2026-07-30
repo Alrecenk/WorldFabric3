@@ -83,7 +83,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		triangleFragShader,
 		sizeof(ScenePlugin::DefaultPushConstants),
 		num_textures,
-		VK_CULL_MODE_NONE, // TODO switch back to front bit for performance
+		VK_CULL_MODE_FRONT_BIT, // TODO switch back to front bit for performance
 		window->window_target,
 		OVERWRITE
 	));

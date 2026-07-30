@@ -113,6 +113,14 @@ void ConstraintTestApp::PhysicsCell::updateGraphics(){
 		ball->updateGraphics();
 	}
 	//TODO render container
+	if(instance_id == -1){
+		ScenePlugin* scene = getTool<ScenePlugin>();
+		std::shared_ptr<GLTF> box = std::shared_ptr<GLTF>(new GLTF()) ;
+		box->setBoundingBoxModel(min,max, glm::vec4(1,1,1,1));
+		box = box->createMirrorImage() ; // Flips winding order inside out
+		scene->createModelSet(BOX_MODEL,box) ;
+		instance_id = scene->createInstance(BOX_MODEL,glm::mat4(1.0f) );
+	}
 }
 
 ConstraintTestApp::ConstraintTestApp() {}
@@ -136,12 +144,12 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin::LightComponent lc;
 	glm::vec3 light_position = glm::vec3(15, 15, -5);
 	glm::vec3 look_at = glm::vec3(0, 0, 0);
-	lc.light_color = glm::vec4(1, 1, 1, 1);
-	light_id = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_position, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc);
+	lc.light_color = glm::vec4(0.5, 0.5, 0.5, 1);
+	light_id = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_position, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 2048, 0, lc);
 
 	// Place the camera
-	glm::vec3 camera_position = { 0,20,-30 };
-	float fov = 1.0f;
+	glm::vec3 camera_position = { 0,20,-3 };
+	float fov = 0.7f;
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
@@ -248,7 +256,7 @@ void ConstraintTestApp::updateCamera() {
 	glm::vec3 camera_position = glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi)) * zoom;
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
-	glm::vec3 light_position = glm::vec3(cosf(camera_theta + light_theta_off) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta + light_theta_off) * cosf(camera_thi)) * light_zoom;
+	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
 
 	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 30);
 }
