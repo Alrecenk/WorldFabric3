@@ -160,6 +160,14 @@ private:
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
+	std::chrono::high_resolution_clock::time_point last_ball_time = now();
+
+
+
+	glm::vec3 min = { -3,-4,-3 };
+	glm::vec3 max = { 3,4,3 };
+	float gravity = 4.0f ;
+	int millis_between_balls = 600;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -3, 0);

@@ -78,7 +78,7 @@ void ConstraintTestApp::BallCollision::updateConstraintTarget(PhysicsCell* cell)
 	auto ball_1 = cell->getBall(id1);
 	auto ball_2 = cell->getBall(id2);
 
-	float velocity_against_normal = -1.0f * glm::dot(ball_1->velocity - ball_2->velocity, normal);
+	float velocity_against_normal = glm::dot(ball_1->velocity - ball_2->velocity, normal);
 
 	float restitution_bias = 0.0f; // inelastic
 	if (velocity_against_normal > min_velocity_for_elastic) {
@@ -105,7 +105,7 @@ void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell){
 
 	float velocity_against_normal = glm::dot(b1->velocity - b2->velocity, normal);
 	float effective_mass = b1->inv_mass + b2->inv_mass;
-	float impulse_mag = (velocity_against_normal - target) / effective_mass;
+	float impulse_mag = (velocity_against_normal + target) / effective_mass;
 
 	// Clamp to only push
 	float old_accumulated = glm::dot(warm_impulse, normal);
@@ -333,19 +333,19 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	glm::vec3 min = {-3,-3,-3} ;
-	glm::vec3 max = {4,4,4};
 	cell = std::make_shared<PhysicsCell>(min,max) ;
 
 
+	/*
 	float start_speed = 0.02f ;
 	float gravity = 2.0f ;
-	for(int k=0;k<200;k++){
+	for(int k=0;k<20;k++){
 		glm::vec3 pos = {min.x + (0.2f + randomFloat()*0.6f) * (max.x-min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y),min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) } ;
 		glm::vec3 vel = { (randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed };
 		glm::vec3 acc = {0,-gravity,0} ;
 		cell->addBall(pos,vel,acc);
 	}
+*/
 }
 
 //Called every frame while the state is active
@@ -385,9 +385,18 @@ void ConstraintTestApp::run() {
 
 
 	updateCamera();
-
 	cell->runPhysicsFrame(dt, 10);
 	cell->updateGraphics();
+
+
+	if(millisBetween(last_ball_time,current_time) > millis_between_balls){
+		last_ball_time = current_time ;
+		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),max.y-1.0f,min.z + 0.5f };
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,randomFloat() * 5.0f};
+		glm::vec3 acc = { 0,-gravity,0 };
+		cell->addBall(pos, vel, acc);
+	}
+
 
 	// Check if escape pressed to exit
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
