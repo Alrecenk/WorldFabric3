@@ -18,7 +18,7 @@ Ball::Ball(const glm::vec3& p, int64_t g) {
 
 void Ball::update() {
 
-	std::shared_ptr<const Match> grid = dynamic_pointer_cast<const Match>(read(match_id));
+	std::shared_ptr<const Match> grid = read<Match>(match_id);
 	if (grid == nullptr) { //if there is no field, then the match is over or an error occured
 		destroyed = true; // delete this object
 		return;

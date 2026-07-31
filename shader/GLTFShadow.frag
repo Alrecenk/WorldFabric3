@@ -49,5 +49,5 @@ void main() {
 	}
 	
 	vec4 clip= PushConstants.camera_matrix*vec4(in_position - in_normal*0.02f,1.0f) ;
-	out_frag_depth = clip.z/clip.w ;
+	out_frag_depth = clip.z/clip.w + 0.0002 ;
 }

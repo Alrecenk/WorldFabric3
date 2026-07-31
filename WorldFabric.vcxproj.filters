@@ -1536,6 +1536,9 @@
     <ClInclude Include="engine\header\ActionMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="header\ConstraintTestApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2138,6 +2141,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\TraceApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ConstraintTestApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

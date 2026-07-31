@@ -19,6 +19,7 @@
 #include "BallThrowApp.h"
 #include "MirrorApp.h"
 #include "TraceApp.h"
+#include "ConstraintTestApp.h"
 
 #include "Timeline.h"
 #include "VulkanPlugin.h"
@@ -41,7 +42,7 @@ using std::string;
 
 std::shared_ptr<RenderTarget> createRenderTarget(int width, int height, VulkanPlugin* window) {
 
-	VkClearColorValue background_color = { 0.0f,1.0f,0.0f,1.0f };
+	VkClearColorValue background_color = { 0.7f,0.7f,0.9f,1.0f };
 	VkClearColorValue background_normal = { 0.0f,0.0f,0.0f,0.0f };
 	VkClearColorValue background_point = { 0.0f,0.0f,0.0f,0.0f };
 	VkClearColorValue start_light = { 0.0f,0.0f,0.0f,0.0f };
@@ -82,7 +83,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		triangleFragShader,
 		sizeof(ScenePlugin::DefaultPushConstants),
 		num_textures,
-		VK_CULL_MODE_NONE, // TODO switch back to front bit for performance
+		VK_CULL_MODE_FRONT_BIT, // TODO switch back to front bit for performance
 		window->window_target,
 		OVERWRITE
 	));
@@ -414,8 +415,11 @@ void setupGameStates() {
 	//app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
 	//app->setState(MirrorApp::state_name);
 
-	app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
-	app->setState(TraceApp::state_name);
+	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
+	//app->setState(TraceApp::state_name);
+
+	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	app->setState(ConstraintTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -544,6 +548,6 @@ int exampleMain(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	//Narball::main(argc, argv);
+	exampleMain(argc, argv);
 }

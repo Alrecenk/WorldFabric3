@@ -1628,6 +1628,56 @@ void GLTF::setTetraModel(glm::vec3 center, float size){
     setModel(v, t);
 }
 
+
+// Sets the model to a single axis aligned bounding box (can be used as a placeholder or for debugging without a model)
+void GLTF::setBoundingBoxModel(const glm::vec3& min, const glm::vec3& max, const glm::vec4 color ){
+	vector<vec3> vertices;
+	vertices.emplace_back(min.x, min.y, min.z); // 0
+	vertices.emplace_back(max.x, min.y, min.z); // 1
+	vertices.emplace_back(min.x, max.y, min.z); // 2
+	vertices.emplace_back(max.x, max.y, min.z); // 3
+	vertices.emplace_back(min.x, min.y, max.z); // 4
+	vertices.emplace_back(max.x, min.y, max.z); // 5
+	vertices.emplace_back(min.x, max.y, max.z); // 6
+	vertices.emplace_back(max.x, max.y, max.z); // 7
+
+	vector<vector<int>> faces;
+	faces.push_back(vector<int>({ 0, 4, 6, 2 })); // min x
+	faces.push_back(vector<int>({ 1, 3, 7, 5 })); // max x
+	faces.push_back(vector<int>({ 0, 1, 5, 4 })); // min y
+	faces.push_back(vector<int>({ 2, 6, 7, 3 })); // max y
+	faces.push_back(vector<int>({ 0, 2, 3, 1 })); // min z
+	faces.push_back(vector<int>({ 4, 5, 7, 6 })); // max z
+
+	vector<Vertex> v;
+	vector<Triangle> t;
+
+	for(auto& p : vertices){
+		Vertex A ;
+		A.position = p ;
+		A.weights = vec4(1, 0, 0, 0);
+		A.color_mult = color ;
+		v.push_back(A);
+	}
+
+	for(auto& f : faces){
+		t.push_back({f[0],f[1],f[2],0}) ;
+		t.push_back({f[2],f[3],f[0],0 });
+	}
+
+	Material m;
+	materials[0] = m;
+	transform = mat4(1);
+	nodes = vector<Node>();
+	Node n;
+	n.transform = mat4(1);
+	nodes.push_back(n);
+	root_nodes = vector<int>();
+	root_nodes.push_back(0);
+
+	setModel(v, t);
+}
+
 // Sets the model to a polyhedron of the given color (Can be used to generate visuals for ConvexShape objects)
 void GLTF::setPolyhedronModel(std::vector<glm::vec3>& vertices, std::vector<std::vector<int>>& faces, glm::vec3 color){
     vector<Vertex> v ;
