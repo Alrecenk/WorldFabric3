@@ -16,6 +16,7 @@ void ConstraintTestApp::Ball::updateGraphics(){
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	glm::mat4 pose = glm::mat4(1.0f);
 	pose = glm::translate(pose,position) ;
+	pose = glm::scale(pose, glm::vec3(radius,radius,radius));
 	if(instance_id == -1){
 		instance_id = scene->createInstance(BALL_MODEL,pose);
 	}else{
@@ -73,24 +74,88 @@ std::shared_ptr<ConstraintTestApp::Constraint> ConstraintTestApp::PhysicsCell::g
 }
 
 
-void ConstraintTestApp::BallCollision::updateConstraintTarget(){
-	//TODO
+void ConstraintTestApp::BallCollision::updateConstraintTarget(PhysicsCell* cell){
+	auto ball_1 = cell->getBall(id1);
+	auto ball_2 = cell->getBall(id2);
+
+	float velocity_against_normal = -1.0f * glm::dot(ball_1->velocity - ball_2->velocity, normal);
+
+	float restitution_bias = 0.0f; // inelastic
+	if (velocity_against_normal > min_velocity_for_elastic) {
+		float e = (ball_1->elasticity + ball_2->elasticity) * 0.5f;
+		restitution_bias = e * velocity_against_normal; // elastic
+	}
+
+	//Bias against penetration with spring force
+	float penetration = (ball_1->radius + ball_2->radius) - glm::distance(ball_1->position, ball_2->position);
+	float penetration_bias = 0 ; // penetration_spring_coefficient * std::max(0.0f, penetration - allowed_collision_depth);
+
+	target = restitution_bias + penetration_bias;
 }
-void ConstraintTestApp::BallCollision::applyWarmingImpulse(){
-	//TODO
+void ConstraintTestApp::BallCollision::applyWarmingImpulse(PhysicsCell* cell){
+	auto b1 = cell->getBall(id1);
+	auto b2 = cell->getBall(id2);
+
+	b1->velocity -= warm_impulse * b1->inv_mass;
+	b2->velocity += warm_impulse * b2->inv_mass;
 }
-void ConstraintTestApp::BallCollision::applyConstraint(){
-	//TODO
+void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell){
+	auto b1 = cell->getBall(id1);
+	auto b2 = cell->getBall(id2);
+
+	float velocity_against_normal = glm::dot(b1->velocity - b2->velocity, normal);
+	float effective_mass = b1->inv_mass + b2->inv_mass;
+	float impulse_mag = (velocity_against_normal - target) / effective_mass;
+
+	// Clamp to only push
+	float old_accumulated = glm::dot(warm_impulse, normal);
+	float new_accumulated = std::max(0.0f, old_accumulated + impulse_mag);
+	float actual_impulse = new_accumulated - old_accumulated;
+
+	// Apply impulse
+	glm::vec3 impulse_vec = normal * actual_impulse;
+	b1->velocity -= impulse_vec * b1->inv_mass;
+	b2->velocity += impulse_vec * b2->inv_mass;
+
+	// Store for warm starting next frame
+	warm_impulse += impulse_vec;
 }
 
-void ConstraintTestApp::BallWallCollision::updateConstraintTarget() {
-	//TODO
+void ConstraintTestApp::BallWallCollision::updateConstraintTarget(PhysicsCell* cell) {
+	auto b = cell->getBall(id);
+
+	float velocity_against_normal = -1.0f * glm::dot(b->velocity, normal);
+
+	float e = b->elasticity;
+	float restitution_bias = 0.0f; // inelastic
+	if (velocity_against_normal > min_velocity_for_elastic) {
+		restitution_bias = e * velocity_against_normal; // elastic
+	}
+
+	//Resolve penetration with spring force
+	float dist = glm::dot(b->position - point, normal);
+	float penetration = b->radius - dist;
+	float penetration_bias =  penetration_spring_coefficient * std::max(0.0f, penetration - allowed_collision_depth);
+
+	target = restitution_bias + penetration_bias;
 }
-void ConstraintTestApp::BallWallCollision::applyWarmingImpulse() {
-	//TODO
+void ConstraintTestApp::BallWallCollision::applyWarmingImpulse(PhysicsCell* cell) {
+	auto b = cell->getBall(id);
+	b->velocity += warm_impulse * b->inv_mass;
 }
-void ConstraintTestApp::BallWallCollision::applyConstraint() {
-	//TODO
+void ConstraintTestApp::BallWallCollision::applyConstraint(PhysicsCell* cell) {
+	auto b = cell->getBall(id);
+
+	float velocity_against_normal = -1.0f * glm::dot(b->velocity, normal);
+	float impulse_mag = (velocity_against_normal + target) / b->inv_mass;
+	float old_accumulated = glm::dot(warm_impulse, normal);
+	float new_accumulated = std::max(0.0f, old_accumulated + impulse_mag);
+	float actual_impulse = new_accumulated - old_accumulated;
+
+	glm::vec3 impulse_vec = normal * actual_impulse;
+	b->velocity += impulse_vec * b->inv_mass;
+
+	warm_impulse += impulse_vec;
 }
 
 void ConstraintTestApp::PhysicsCell::updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints){
@@ -206,14 +271,14 @@ void ConstraintTestApp::PhysicsCell::runPhysicsFrame(float dt, int constraints_i
 		ball->integrateAcceleration(dt);
 	}
 	for (auto& [id, constraint] : constraints) {
-		constraint->updateConstraintTarget();
+		constraint->updateConstraintTarget(this);
 	}
 	for (auto& [id, constraint] : constraints) {
-		constraint->applyWarmingImpulse();
+		constraint->applyWarmingImpulse(this);
 	}
 	for(int i = 0 ; i < constraints_iter; i++){
 		for (auto& [id, constraint] : constraints) {
-			constraint->applyConstraint();
+			constraint->applyConstraint(this);
 		}
 	}
 	for (auto& [id, ball] : balls) {
@@ -268,15 +333,15 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	glm::vec3 min = {-5,-5,-5} ;
-	glm::vec3 max = {5,5,5};
+	glm::vec3 min = {-3,-3,-3} ;
+	glm::vec3 max = {4,4,4};
 	cell = std::make_shared<PhysicsCell>(min,max) ;
 
 
-	float start_speed = 1.0f ;
-	float gravity = 0.3f ;
-	for(int k=0;k<20;k++){
-		glm::vec3 pos = {(randomFloat()-0.5f)*8.0f,(randomFloat() - 0.5f) * 8.0f,(randomFloat() - 0.5f) * 8.0f} ;
+	float start_speed = 0.02f ;
+	float gravity = 2.0f ;
+	for(int k=0;k<200;k++){
+		glm::vec3 pos = {min.x + (0.2f + randomFloat()*0.6f) * (max.x-min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y),min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) } ;
 		glm::vec3 vel = { (randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed };
 		glm::vec3 acc = {0,-gravity,0} ;
 		cell->addBall(pos,vel,acc);

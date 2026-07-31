@@ -9,6 +9,8 @@ class ConstraintTestApp : public MachineState {
 
 public:
 
+	class PhysicsCell ;
+
 	class Ball {
 	public:
 		int64_t id = -1 ;
@@ -39,13 +41,13 @@ public:
 	class Constraint {
 	public:
 		//Update the constraint terget based on velocity at the start of the rame
-		virtual void updateConstraintTarget() = 0;
+		virtual void updateConstraintTarget(PhysicsCell* cell) = 0;
 
 		//Apply a starting impulse carried over if this constraint has existed ofr mutliple frames in a row
-		virtual void applyWarmingImpulse() = 0;
+		virtual void applyWarmingImpulse(PhysicsCell* cell) = 0;
 
 		//Applies impulse to velocity of involved bodies to satisfy this constraint
-		virtual void applyConstraint() = 0;
+		virtual void applyConstraint(PhysicsCell* cell) = 0;
 	};
 
 	class BallCollision : public Constraint {
@@ -57,13 +59,14 @@ public:
 		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
 		float target = 0 ;
 
-		static inline float collision_bias = 0.01f;
+		static inline float penetration_spring_coefficient = 30.0f;
+		static inline float allowed_collision_depth = 0.1f;
 		static inline float min_velocity_for_elastic = 0.01f;
 		static inline const int CONSTRAINT_TYPE = 1 ;
 
-		void updateConstraintTarget() override;
-		void applyWarmingImpulse() override;
-		void applyConstraint() override;
+		void updateConstraintTarget(PhysicsCell* cell) override;
+		void applyWarmingImpulse(PhysicsCell* cell) override;
+		void applyConstraint(PhysicsCell* cell) override;
 	};
 
 	class BallWallCollision : public Constraint {
@@ -74,13 +77,14 @@ public:
 		glm::vec3 normal ; // normal of wall
 		float target = 0 ;
 
-		static inline float collision_bias = 0.01f;
+		static inline float penetration_spring_coefficient = 30.0f;
 		static inline float min_velocity_for_elastic = 0.01f ;
+		static inline float allowed_collision_depth = 0.1f;
 		static inline const int CONSTRAINT_TYPE = 2;
 
-		void updateConstraintTarget() override;
-		void applyWarmingImpulse() override;
-		void applyConstraint() override;
+		void updateConstraintTarget(PhysicsCell* cell) override;
+		void applyWarmingImpulse(PhysicsCell* cell) override;
+		void applyConstraint(PhysicsCell* cell) override;
 	};
 		
 
