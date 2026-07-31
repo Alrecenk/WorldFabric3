@@ -82,6 +82,12 @@ public:
 		std::shared_ptr<const WorldObject> read(int64_t read_id) const;
 
 
+		template<typename T>
+		std::shared_ptr<const T> read(int64_t read_id) const {
+			std::shared_ptr<const T> result = dynamic_pointer_cast<const T>(read(read_id));
+			return result;
+		}
+
 		//Queue an event to run a function, speed of info will be enforced
 		template<typename... Args>
 		void inline queue(int64_t obj_id, double target_time, int func_id, const Args&... args) {

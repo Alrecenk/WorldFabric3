@@ -102,6 +102,7 @@ public:
 	int performAction(std::shared_ptr<T>& action) {
 		lock.lock();
 		auto triggers = action->findTriggers(this, action) ;
+		lock.unlock();
 		int performed = 0 ;
 		while(!triggers.empty()){
 			auto trigger = triggers.top();
@@ -112,7 +113,6 @@ public:
 				performed++;
 			}
 		}
-		lock.unlock();
 		return performed ;
 	}
 };
