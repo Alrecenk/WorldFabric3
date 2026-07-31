@@ -42,12 +42,12 @@ ConstraintTestApp::PhysicsCell::PhysicsCell(const glm::vec3& box_min, const glm:
 
 //Custom destructor cleans up scene instance
 ConstraintTestApp::PhysicsCell::~PhysicsCell(){
-
+	getTool<ScenePlugin>()->deleteInstance(instance_id);
 }
 
 int64_t ConstraintTestApp::PhysicsCell::addBall(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& acc){
 	int64_t id = next_ball_id++;
-	balls[id] = std::shared_ptr<Ball>(new Ball(id, pos,vel,acc));
+	balls[id] = std::make_shared<Ball>(id, pos,vel,acc);
 	return id ;
 }
 
@@ -93,17 +93,133 @@ void ConstraintTestApp::BallWallCollision::applyConstraint() {
 	//TODO
 }
 
+void ConstraintTestApp::PhysicsCell::updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints){
+	int64_t constraint_id = getConstraintID(ball_id, wall_id, BallWallCollision::CONSTRAINT_TYPE);
+	found_constraints.insert(constraint_id); // track found so we can remove not found
+	auto iter = constraints.find(constraint_id);
+	std::shared_ptr< BallWallCollision> constraint;
+	//Add constraint if it doesn't exist already
+	if (iter == constraints.end()) {
+		constraint = std::make_shared<BallWallCollision>();
+		constraints[constraint_id] = constraint;
+	}
+	else {
+		constraint = static_pointer_cast<BallWallCollision>(iter->second);
+	}
+	//update constraint data
+	constraint->id = ball_id;
+	constraint->point = point;
+	constraint->normal = normal;
+
+}
 
 //Finds all collisions of the balls with each other and the walls of the cell
-		//Creates or destroys constraints so the contents of constraints matches the current collisions
+//Creates or destroys constraints so the contents of constraints matches the current collisions
+//Also sets points and normal for collisions
 void ConstraintTestApp::PhysicsCell::updateCollisions(){
-	//TODO
+	std::unordered_set<int64_t> found_constraints ;
+	for(auto& [id1,ball_1] : balls){
+		//Ball to ball collisions
+		for (auto& [id2, ball_2] : balls) {
+			if(id1 < id2){ // only check each once
+				float d2 = glm::distance2(ball_1->position, ball_2->position) ;
+				float rl = (ball_1->radius + ball_2->radius) ;
+				if(d2 < rl*rl){ // squared distance check avoids sqrt
+					glm::vec3 point = (ball_1->radius * ball_2->position + ball_2->radius * ball_1->position) /rl;
+					glm::vec3 normal = ball_2->position - ball_1->position;
+					normal = glm::normalize(normal) ;
+					int64_t constraint_id = getConstraintID(id1,id2,BallCollision::CONSTRAINT_TYPE) ;
+					found_constraints.insert(constraint_id); // track found so we can remove not found
+					auto iter = constraints.find(constraint_id) ;
+					std::shared_ptr< BallCollision> constraint ;
+					//Add constraint if it doesn't exist already
+					if(iter == constraints.end()){
+						constraint = std::make_shared<BallCollision>();
+						constraints[constraint_id] = constraint ;
+					}else{
+						constraint = static_pointer_cast<BallCollision>(iter->second) ;
+					}
+					//update constraint data
+					constraint->id1= id1 ;
+					constraint->id2 = id2 ;
+					constraint->point = point;
+					constraint->normal = normal;
+				}
+			}
+		}
+
+		//Ball to wall collisons
+		if(ball_1->position.x + ball_1->radius > max.x){
+			glm::vec3 point = ball_1->position ;
+			point.x = max.x ;
+			glm::vec3 normal(-1, 0 , 0) ;
+			updateWallCollision(id1,1,point,normal,found_constraints) ;
+		}
+		if (ball_1->position.x - ball_1->radius < min.x) {
+			glm::vec3 point = ball_1->position;
+			point.x = min.x;
+			glm::vec3 normal(1, 0, 0);
+			updateWallCollision(id1, 2, point, normal, found_constraints);
+		}
+		if (ball_1->position.y + ball_1->radius > max.y) {
+			glm::vec3 point = ball_1->position;
+			point.y = max.y;
+			glm::vec3 normal(0, -1, 0);
+			updateWallCollision(id1, 3, point, normal, found_constraints);
+		}
+		if (ball_1->position.y - ball_1->radius < min.y) {
+			glm::vec3 point = ball_1->position;
+			point.y = min.y;
+			glm::vec3 normal(0, 1, 0);
+			updateWallCollision(id1, 4, point, normal, found_constraints);
+		}
+		if (ball_1->position.z + ball_1->radius > max.z) {
+			glm::vec3 point = ball_1->position;
+			point.z = max.z;
+			glm::vec3 normal(0, 0, -1);
+			updateWallCollision(id1, 5, point, normal, found_constraints);
+		}
+		if (ball_1->position.z - ball_1->radius < min.z) {
+			glm::vec3 point = ball_1->position;
+			point.z = min.z;
+			glm::vec3 normal(0, 0, 1);
+			updateWallCollision(id1, 6, point, normal, found_constraints);
+		}
+			
+	}
+
+	//Delete existing constraints not found now
+	std::vector<int64_t> to_delete ;
+	for(auto& [id, constraint] : constraints){
+		if(found_constraints.find(id) == found_constraints.end()){
+			to_delete.push_back(id) ;
+		}
+	}
+	for(auto& id : to_delete){
+		constraints.erase(id) ;
+	}
 }
 
 //Run physics forward one frame
 void ConstraintTestApp::PhysicsCell::runPhysicsFrame(float dt, int constraints_iter){
-	//TODO
-
+	for(auto& [id,ball] : balls){
+		ball->integrateAcceleration(dt);
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->updateConstraintTarget();
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->applyWarmingImpulse();
+	}
+	for(int i = 0 ; i < constraints_iter; i++){
+		for (auto& [id, constraint] : constraints) {
+			constraint->applyConstraint();
+		}
+	}
+	for (auto& [id, ball] : balls) {
+		ball->integrateVelocity(dt);
+	}
+	updateCollisions();
 }
 
 //Calls update graphics on all the balls
@@ -112,10 +228,9 @@ void ConstraintTestApp::PhysicsCell::updateGraphics(){
 	for(auto& [id,ball] : balls){
 		ball->updateGraphics();
 	}
-	//TODO render container
 	if(instance_id == -1){
 		ScenePlugin* scene = getTool<ScenePlugin>();
-		std::shared_ptr<GLTF> box = std::shared_ptr<GLTF>(new GLTF()) ;
+		std::shared_ptr<GLTF> box = std::make_shared<GLTF>() ;
 		box->setBoundingBoxModel(min,max, glm::vec4(1,1,1,1));
 		box = box->createMirrorImage() ; // Flips winding order inside out
 		scene->createModelSet(BOX_MODEL,box) ;
@@ -155,11 +270,11 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 
 	glm::vec3 min = {-5,-5,-5} ;
 	glm::vec3 max = {5,5,5};
-	cell = std::shared_ptr<PhysicsCell>(new PhysicsCell(min,max)) ;
+	cell = std::make_shared<PhysicsCell>(min,max) ;
 
 
 	float start_speed = 1.0f ;
-	float gravity = 1.0f ;
+	float gravity = 0.3f ;
 	for(int k=0;k<20;k++){
 		glm::vec3 pos = {(randomFloat()-0.5f)*8.0f,(randomFloat() - 0.5f) * 8.0f,(randomFloat() - 0.5f) * 8.0f} ;
 		glm::vec3 vel = { (randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed };
@@ -177,6 +292,10 @@ void ConstraintTestApp::run() {
 	// Get the current time and time slice of the frame
 	current_time = now();
 	float dt = microsBetween(last_run_time, current_time) / 1000000.0f;
+	if(dt < 0 || dt > 0.5f){ 
+		dt = 0 ; // don't move on frames where something is amiss with the clock
+	}
+	
 	last_run_time = current_time;
 
 	// get the 3D ray from the mouse position on the screen

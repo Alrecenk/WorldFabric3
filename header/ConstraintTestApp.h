@@ -16,7 +16,7 @@ public:
 		glm::vec3 velocity;
 		glm::vec3 acceleration ;
 		float radius = 0.5f;
-		float mass = 1.0f;
+		float inv_mass = 1.0f;
 		float elasticity = 0.5f ; // 0 = inelastic, 1 = full elastic
 
 		// used for rendering
@@ -53,12 +53,13 @@ public:
 		int64_t id1 = -1;
 		int64_t id2 = -1;
 		glm::vec3 warm_impulse;
-		glm::vec3 point ;
-		glm::vec3 normal ;
+		glm::vec3 point ; // middle point of collision
+		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
 		float target = 0 ;
 
 		static inline float collision_bias = 0.01f;
 		static inline float min_velocity_for_elastic = 0.01f;
+		static inline const int CONSTRAINT_TYPE = 1 ;
 
 		void updateConstraintTarget() override;
 		void applyWarmingImpulse() override;
@@ -67,14 +68,15 @@ public:
 
 	class BallWallCollision : public Constraint {
 	public:
-		int64_t id ;
+		int64_t id ; // id of ball
 		glm::vec3 warm_impulse;
-		glm::vec3 point ;
-		glm::vec3 normal ;
+		glm::vec3 point ; // point on wall ball is touching
+		glm::vec3 normal ; // normal of wall
 		float target = 0 ;
 
 		static inline float collision_bias = 0.01f;
 		static inline float min_velocity_for_elastic = 0.01f ;
+		static inline const int CONSTRAINT_TYPE = 2;
 
 		void updateConstraintTarget() override;
 		void applyWarmingImpulse() override;
@@ -89,8 +91,8 @@ public:
 		glm::vec3 max;
 
 		//Contents of cell
-		std::map<int64_t, std::shared_ptr<Ball>> balls ;
-		std::map<int64_t, std::shared_ptr<Constraint>> constraints;
+		std::unordered_map<int64_t, std::shared_ptr<Ball>> balls ;
+		std::unordered_map<int64_t, std::shared_ptr<Constraint>> constraints;
 		
 		int next_ball_id = 1 ;
 		int instance_id = -1; // for scene
@@ -109,17 +111,17 @@ public:
 		//Constraint id is a hash generated with getConstraintID
 		std::shared_ptr<Constraint> getConstraint(int64_t id);
 
-		int64_t getConstraintID(int id1, int id2, int constraint_type){
+		int64_t getConstraintID(int64_t id1, int64_t id2, int constraint_type){
 			return hashBytes(serialize(id1, id2, constraint_type)) ;
-		}
-
-		int64_t getConstraintID(int id1, int constraint_type) {
-			return hashBytes(serialize(id1, constraint_type));
 		}
 
 		//Finds all collisions of the balls with each other and the walls of the cell
 		//Creates or destroys constraints so the contents of constraints matches the current collisions
+		//Also sets points and normal for collisions
 		void updateCollisions();
+
+		//Convenience method to avoid repeatign code on all walls of the box
+		void updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints);
 
 		//Run physics forward one frame
 		void runPhysicsFrame(float dt, int constraints_iter);
