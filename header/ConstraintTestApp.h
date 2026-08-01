@@ -19,7 +19,11 @@ public:
 		glm::vec3 acceleration ;
 		float radius = 0.5f;
 		float inv_mass = 1.0f;
-		float elasticity = 0.5f ; // 0 = inelastic, 1 = full elastic
+		float elasticity = 0.6f ; // 0 = inelastic, 1 = full elastic
+
+		glm::quat orientation ;
+		glm::vec3 angularVelocity ;
+		float invInertiaLocal = 10.0f ;
 
 		// used for rendering
 		int instance_id = -1 ;
@@ -55,14 +59,17 @@ public:
 		int64_t id1 = -1;
 		int64_t id2 = -1;
 		glm::vec3 warm_impulse;
+		glm::vec3 warm_tangent_impulse ;
+
 		glm::vec3 point ; // middle point of collision
 		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
 		float target = 0 ;
 
 		static inline float penetration_spring_coefficient = 30.0f;
-		static inline float allowed_collision_depth = 0.1f;
-		static inline float min_velocity_for_elastic = 0.01f;
+		static inline float allowed_collision_depth = 0.15f;
+		static inline float min_velocity_for_elastic = 0.05f;
 		static inline const int CONSTRAINT_TYPE = 1 ;
+		static inline const float friction_coefficient = 0.5f ;
 
 		void updateConstraintTarget(PhysicsCell* cell) override;
 		void applyWarmingImpulse(PhysicsCell* cell) override;
@@ -73,14 +80,16 @@ public:
 	public:
 		int64_t id ; // id of ball
 		glm::vec3 warm_impulse;
+		glm::vec3 warm_tangent_impulse;
 		glm::vec3 point ; // point on wall ball is touching
 		glm::vec3 normal ; // normal of wall
 		float target = 0 ;
 
 		static inline float penetration_spring_coefficient = 30.0f;
-		static inline float min_velocity_for_elastic = 0.01f ;
-		static inline float allowed_collision_depth = 0.1f;
+		static inline float min_velocity_for_elastic = 0.05f ;
+		static inline float allowed_collision_depth = 0.15f;
 		static inline const int CONSTRAINT_TYPE = 2;
+		static inline const float friction_coefficient = 0.5f;
 
 		void updateConstraintTarget(PhysicsCell* cell) override;
 		void applyWarmingImpulse(PhysicsCell* cell) override;
@@ -152,6 +161,7 @@ public:
 
 	void updateCamera();
 
+
 private:
 
 	std::shared_ptr<PhysicsCell> cell ;
@@ -168,6 +178,7 @@ private:
 	glm::vec3 max = { 3,4,3 };
 	float gravity = 4.0f ;
 	int millis_between_balls = 600;
+	int max_balls = 250 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -3, 0);
