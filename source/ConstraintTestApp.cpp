@@ -95,7 +95,7 @@ void ConstraintTestApp::BallCollision::updateConstraintTarget(PhysicsCell* cell)
 
 	//Bias against penetration with spring force
 	float penetration = (ball_1->radius + ball_2->radius) - glm::distance(ball_1->position, ball_2->position);
-	float penetration_bias = 0 ; // penetration_spring_coefficient * std::max(0.0f, penetration - allowed_collision_depth);
+	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
 }
@@ -236,7 +236,7 @@ void ConstraintTestApp::BallWallCollision::applyConstraint(PhysicsCell* cell) {
 	glm::vec3 tangent = contact_velocity - (glm::dot(contact_velocity, normal) * normal);
 	float velocity_along_tangent = glm::length(tangent);
 
-	if (velocity_along_tangent > 0.000001f) {
+	if (velocity_along_tangent > 0.0001f) {
 		tangent *= 1.0f/ velocity_along_tangent ; // normalize
 		// Effective mass for the tangent direction
 		float effective_mass_t = b->inv_mass + glm::dot(glm::cross(b->inv_inertia * glm::cross(r, tangent), r), tangent);

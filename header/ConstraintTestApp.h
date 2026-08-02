@@ -65,11 +65,11 @@ public:
 		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
 		float target = 0 ;
 
-		static inline float penetration_spring_coefficient = 30.0f;
+		static inline float penetration_spring_coefficient = 10.0f;
 		static inline float allowed_collision_depth = 0.15f;
 		static inline float min_velocity_for_elastic = 0.05f;
 		static inline const int CONSTRAINT_TYPE = 1 ;
-		static inline const float friction_coefficient = 0.5f ;
+		static inline const float friction_coefficient = 0.6f ;
 
 		void updateConstraintTarget(PhysicsCell* cell) override;
 		void applyWarmingImpulse(PhysicsCell* cell) override;
@@ -85,11 +85,11 @@ public:
 		glm::vec3 normal ; // normal of wall
 		float target = 0 ;
 
-		static inline float penetration_spring_coefficient = 30.0f;
+		static inline float penetration_spring_coefficient = 10.0f;
 		static inline float min_velocity_for_elastic = 0.05f ;
 		static inline float allowed_collision_depth = 0.15f;
 		static inline const int CONSTRAINT_TYPE = 2;
-		static inline const float friction_coefficient = 0.5f;
+		static inline const float friction_coefficient = 0.6f;
 
 		void updateConstraintTarget(PhysicsCell* cell) override;
 		void applyWarmingImpulse(PhysicsCell* cell) override;
