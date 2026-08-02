@@ -107,59 +107,52 @@ void ConstraintTestApp::BallCollision::applyWarmingImpulse(PhysicsCell* cell){
 	b2->velocity += warm_impulse * b2->inv_mass;
 }
 void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell) {
-	//TODO AI code, needs cleanup and simplication but is verified to work !
 	auto b1 = cell->getBall(id1);
 	auto b2 = cell->getBall(id2);
 
-	// 1. Lever arms (Center of mass -> Contact point)
+	//lever arms for torque
 	glm::vec3 r1 = point - b1->position;
 	glm::vec3 r2 = point - b2->position;
 
-	// 2. Calculate Velocity at the exact point of contact
-	// Vp = V_linear + (AngularVel x r)
-	glm::vec3 v1_at_p = b1->velocity + glm::cross(b1->angular_velocity, r1);
-	glm::vec3 v2_at_p = b2->velocity + glm::cross(b2->angular_velocity, r2);
-	glm::vec3 rel_vel = v2_at_p - v1_at_p;
+	
+	glm::vec3 contact_velocity_1 = b1->velocity + glm::cross(b1->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = b2->velocity + glm::cross(b2->angular_velocity, r2);
+	glm::vec3 relative_velocity = contact_velocity_2 - contact_velocity_1 ;
+	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
-	float vel_along_normal = glm::dot(rel_vel, normal);
-
-	// 3. Calculate Effective Mass (K)
-	// For spheres, the inverse inertia tensor is just a scalar.
-	// For polyhedrons, you'd do: glm::vec3 rot_term = glm::cross(invInertiaWorld * glm::cross(r, normal), r);
+	//calculate effective mass
 	float rot_term1 = glm::dot(glm::cross(b1->inv_inertia * glm::cross(r1, normal), r1), normal);
 	float rot_term2 = glm::dot(glm::cross(b2->inv_inertia * glm::cross(r2, normal), r2), normal);
+	float effective_mass_n = b1->inv_mass + b2->inv_mass + rot_term1 + rot_term2;
+	if (effective_mass_n == 0.0f){
+		return;
+	}
 
-	float effective_mass = b1->inv_mass + b2->inv_mass + rot_term1 + rot_term2;
-	if (effective_mass == 0.0f) return;
-
-	// 4. Normal Impulse (Same clamping logic as before)
-	float impulse_mag_n = -(vel_along_normal - target) / effective_mass;
+	//Calculate current change needed based on already applied
+	float impulse_mag_n = (target - velocity_along_normal) / effective_mass_n;
 	float old_accumulated_n = glm::dot(warm_impulse, normal);
 	float new_accumulated_n = std::max(0.0f, old_accumulated_n + impulse_mag_n);
-	float actual_impulse_n = new_accumulated_n - old_accumulated_n;
+	float current_impulse_n = new_accumulated_n - old_accumulated_n;
+	glm::vec3 impulse_vec_n = normal * current_impulse_n;
 
-	glm::vec3 impulse_vec_n = normal * actual_impulse_n;
-
-	// --- APPLY NORMAL IMPULSE ---
-	// Linear
+	//Apply normal impulse
 	b1->velocity -= impulse_vec_n * b1->inv_mass;
 	b2->velocity += impulse_vec_n * b2->inv_mass;
-	// Angular: Delta Omega = I^-1 * (r x Impulse)
 	b1->angular_velocity -= b1->inv_inertia * glm::cross(r1, impulse_vec_n);
 	b2->angular_velocity += b2->inv_inertia * glm::cross(r2, impulse_vec_n);
 
+	//update warm impulse
 	warm_impulse += impulse_vec_n;
 
-	// --- PART 2: FRICTION (TANGENT) ---
 	// Recalculate velocities at point after normal impulse
-	v1_at_p = b1->velocity + glm::cross(b1->angular_velocity, r1);
-	v2_at_p = b2->velocity + glm::cross(b2->angular_velocity, r2);
-	rel_vel = v2_at_p - v1_at_p;
+	contact_velocity_1 = b1->velocity + glm::cross(b1->angular_velocity, r1);
+	contact_velocity_2 = b2->velocity + glm::cross(b2->angular_velocity, r2);
+	relative_velocity = contact_velocity_2 - contact_velocity_1;
 
-	glm::vec3 tangent = rel_vel - (glm::dot(rel_vel, normal) * normal);
-	float tangent_len = glm::length(tangent);
+	glm::vec3 tangent = relative_velocity - (glm::dot(relative_velocity, normal) * normal);
+	float tangent_len2 = glm::length2(tangent);
 
-	if (tangent_len > 0.0001f) {
+	if (tangent_len2 > 0.0001f) {
 		tangent = glm::normalize(tangent);
 
 		// Effective mass for tangent direction
@@ -167,14 +160,14 @@ void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell) {
 		float rot_term2_t = glm::dot(glm::cross(b2->inv_inertia * glm::cross(r2, tangent), r2), tangent);
 		float effective_mass_t = b1->inv_mass + b2->inv_mass + rot_term1_t + rot_term2_t;
 
-		float vel_along_tangent = glm::dot(rel_vel, tangent);
-		float impulse_mag_t = -vel_along_tangent / effective_mass_t;
+		float velocity_along_tangent = glm::dot(relative_velocity, tangent);
+		float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
 
+		//Calculate current change needed based on already applied
 		float max_friction = friction_coefficient * new_accumulated_n;
 		float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
 		float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
 		float actual_impulse_t = new_accumulated_t - old_accumulated_t;
-
 		glm::vec3 impulse_vec_t = tangent * actual_impulse_t;
 
 		// Apply Tangent Impulse
@@ -183,6 +176,7 @@ void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell) {
 		b1->angular_velocity -= b1->inv_inertia * glm::cross(r1, impulse_vec_t);
 		b2->angular_velocity += b2->inv_inertia * glm::cross(r2, impulse_vec_t);
 
+		//update warm impulse
 		warm_tangent_impulse += impulse_vec_t;
 	}
 }
