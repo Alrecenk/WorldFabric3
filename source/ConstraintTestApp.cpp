@@ -150,25 +150,25 @@ void ConstraintTestApp::BallCollision::applyConstraint(PhysicsCell* cell) {
 	relative_velocity = contact_velocity_2 - contact_velocity_1;
 
 	glm::vec3 tangent = relative_velocity - (glm::dot(relative_velocity, normal) * normal);
-	float tangent_len2 = glm::length2(tangent);
+	float velocity_along_tangent = glm::length(tangent);
 
-	if (tangent_len2 > 0.0001f) {
-		tangent = glm::normalize(tangent);
+	if (velocity_along_tangent > 0.0001f) {
+		tangent *= 1.0f/velocity_along_tangent ; // normalize
 
 		// Effective mass for tangent direction
 		float rot_term1_t = glm::dot(glm::cross(b1->inv_inertia * glm::cross(r1, tangent), r1), tangent);
 		float rot_term2_t = glm::dot(glm::cross(b2->inv_inertia * glm::cross(r2, tangent), r2), tangent);
 		float effective_mass_t = b1->inv_mass + b2->inv_mass + rot_term1_t + rot_term2_t;
 
-		float velocity_along_tangent = glm::dot(relative_velocity, tangent);
+		//Compute maximum tangent velocity ot be lost
 		float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
 
-		//Calculate current change needed based on already applied
+		//Calculate current change needed based on already applied and clamp to fricton coefficient
 		float max_friction = friction_coefficient * new_accumulated_n;
 		float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
 		float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
-		float actual_impulse_t = new_accumulated_t - old_accumulated_t;
-		glm::vec3 impulse_vec_t = tangent * actual_impulse_t;
+		float current_impulse_t = new_accumulated_t - old_accumulated_t;
+		glm::vec3 impulse_vec_t = tangent * current_impulse_t;
 
 		// Apply Tangent Impulse
 		b1->velocity -= impulse_vec_t * b1->inv_mass;
@@ -234,18 +234,15 @@ void ConstraintTestApp::BallWallCollision::applyConstraint(PhysicsCell* cell) {
 
 	// Find the tangent vector
 	glm::vec3 tangent = contact_velocity - (glm::dot(contact_velocity, normal) * normal);
-	float tangent_len2 = glm::length2(tangent);
+	float velocity_along_tangent = glm::length(tangent);
 
-	if (tangent_len2 > 0.000001f) {
-		tangent = glm::normalize(tangent);
-		
+	if (velocity_along_tangent > 0.000001f) {
+		tangent *= 1.0f/ velocity_along_tangent ; // normalize
 		// Effective mass for the tangent direction
 		float effective_mass_t = b->inv_mass + glm::dot(glm::cross(b->inv_inertia * glm::cross(r, tangent), r), tangent);
-
-		float velocity_along_tangent = glm::dot(contact_velocity, tangent);
+		//Maximum velocity to be lost
 		float impulse_mag_t =  -1.0f *  velocity_along_tangent / effective_mass_t;
-
-		// Clamps to friction coeffciient and consider arm tangent impulse
+		// Clamps to friction coefficient and consider warm tangent impulse
 		float max_friction = friction_coefficient * new_accumulated_n;
 		float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
 		float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
@@ -259,8 +256,6 @@ void ConstraintTestApp::BallWallCollision::applyConstraint(PhysicsCell* cell) {
 		//update warm tangent impulse
 		warm_tangent_impulse += impulse_vec_t;
 	}
-
-
 }
 
 void ConstraintTestApp::PhysicsCell::updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints){
