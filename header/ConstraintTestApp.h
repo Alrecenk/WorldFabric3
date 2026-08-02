@@ -18,12 +18,12 @@ public:
 		glm::vec3 velocity;
 		glm::vec3 acceleration ;
 		float radius = 0.5f;
-		float inv_mass = 1.0f;
+		float inv_mass = 1.0f; // inverse mass
 		float elasticity = 0.6f ; // 0 = inelastic, 1 = full elastic
 
 		glm::quat orientation ;
-		glm::vec3 angularVelocity ;
-		float invInertiaLocal = 10.0f ;
+		glm::vec3 angular_velocity ;
+		glm::mat3 inv_inertia = glm::mat3(10.0f) ; // inverse moment of inertia
 
 		// used for rendering
 		int instance_id = -1 ;
