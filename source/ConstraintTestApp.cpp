@@ -211,84 +211,59 @@ void ConstraintTestApp::BallWallCollision::applyWarmingImpulse(PhysicsCell* cell
 }
 void ConstraintTestApp::BallWallCollision::applyConstraint(PhysicsCell* cell) {
 	auto b = cell->getBall(id);
-	if (!b) return;
 
-	//TODO AI code, needs cleanup and simplication but is verified to work !
-	// 1. Lever arm: Center of mass -> Contact point
-	glm::vec3 r = point - b->position;
-	//printArgs("R:",r) ;
+	glm::vec3 r = point - b->position;//lever arm for torque
+	glm::vec3 contact_velocity = b->velocity + glm::cross(b->angular_velocity, r);
+	float velocity_along_normal = glm::dot(contact_velocity, normal);
+	float effective_mass_n = b->inv_mass + glm::dot(glm::cross(b->inv_inertia * glm::cross(r, normal), r), normal);
 
-	// 2. Calculate Relative Velocity at the contact point
-	// Since wall velocity is 0: RelVel = V_wall - V_ball_at_p
-	// V_ball_at_p = LinearVel + (AngularVel x r)
-	glm::vec3 v_ball_at_p = b->velocity + glm::cross(b->angular_velocity, r);
-	//printArgs("v_ball_at_p:", v_ball_at_p);
-	glm::vec3 rel_vel = -v_ball_at_p; // Wall is static (0), so 0 - v_ball_at_p
-	//printArgs("rel_vel:", rel_vel);
-	float vel_along_normal = glm::dot(rel_vel, normal);
+	if (effective_mass_n == 0.0f){
+		return; 
+	}
 
-	// 3. Calculate Effective Mass (K) for the normal direction
-	// Only the ball contributes to the resistance
-	float rot_term = glm::dot(glm::cross(b->inv_inertia * glm::cross(r, normal), r), normal);
-	//printf("rot term: %f\n", rot_term);
-	float effective_mass_n = b->inv_mass + rot_term;
+	float impulse_magnitude = (target - velocity_along_normal) / effective_mass_n;
 
-	//printf("effective mass: %f\n", effective_mass_n) ;
-	if (effective_mass_n == 0.0f) return;
-
-	// 4. Normal Impulse Calculation
-	float impulse_mag_n = (vel_along_normal + target) / effective_mass_n;
-
-	// Clamp to only push (cannot pull ball into wall)
+	//Adjust considering existing warm impulse
 	float old_accumulated_n = glm::dot(warm_impulse, normal);
-	float new_accumulated_n = std::max(0.0f, old_accumulated_n + impulse_mag_n);
-	float actual_impulse_n = new_accumulated_n - old_accumulated_n;
+	float new_accumulated_n = std::max(0.0f, old_accumulated_n + impulse_magnitude); // can only push
+	float current_impulse_n = new_accumulated_n - old_accumulated_n;
 
-	glm::vec3 impulse_vec_n = normal * actual_impulse_n;
-
-	// Apply Normal Impulse to Ball
+	//apply impulse along normal
+	glm::vec3 impulse_vec_n = normal * current_impulse_n;
 	b->velocity += impulse_vec_n * b->inv_mass;
 	b->angular_velocity += b->inv_inertia * glm::cross(r, impulse_vec_n);
-
+	//update warm impulse
 	warm_impulse += impulse_vec_n;
-	//printf("Final wall to ball impulse: %f, %f, %f\n", warm_impulse.x, warm_impulse.y, warm_impulse.z) ;
-
-	// --- PART 2: FRICTION (TANGENT) ---
 
 	// Recalculate velocity at point after normal impulse is applied
-	v_ball_at_p = b->velocity + glm::cross(b->angular_velocity, r);
-	rel_vel = -v_ball_at_p;
+	contact_velocity = b->velocity + glm::cross(b->angular_velocity, r);
 
-	// Find the tangent vector (direction of sliding)
-	glm::vec3 tangent = rel_vel - (glm::dot(rel_vel, normal) * normal);
-	float tangent_len = glm::length(tangent);
+	// Find the tangent vector
+	glm::vec3 tangent = contact_velocity - (glm::dot(contact_velocity, normal) * normal);
+	float tangent_len2 = glm::length2(tangent);
 
-	if (tangent_len > 0.0001f) {
+	if (tangent_len2 > 0.000001f) {
 		tangent = glm::normalize(tangent);
 		
-
 		// Effective mass for the tangent direction
-		float rot_term_t = glm::dot(glm::cross(b->inv_inertia * glm::cross(r, tangent), r), tangent);
-		float effective_mass_t = b->inv_mass + rot_term_t;
+		float effective_mass_t = b->inv_mass + glm::dot(glm::cross(b->inv_inertia * glm::cross(r, tangent), r), tangent);
 
-		float vel_along_tangent = glm::dot(rel_vel, tangent);
-		float impulse_mag_t = vel_along_tangent / effective_mass_t;
+		float velocity_along_tangent = glm::dot(contact_velocity, tangent);
+		float impulse_mag_t =  -1.0f *  velocity_along_tangent / effective_mass_t;
 
-		// Coulomb Clamp: Friction cannot exceed (mu * total_normal_impulse)
+		// Clamps to friction coeffciient and consider arm tangent impulse
 		float max_friction = friction_coefficient * new_accumulated_n;
-
 		float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
 		float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
-		float actual_impulse_t = new_accumulated_t - old_accumulated_t;
+		float current_impulse_t = new_accumulated_t - old_accumulated_t;
 
-		glm::vec3 impulse_vec_t = tangent * actual_impulse_t;
-
-		// Apply Tangent Impulse to Ball
+		//Apply tangent impulse
+		glm::vec3 impulse_vec_t = tangent * current_impulse_t;
 		b->velocity += impulse_vec_t * b->inv_mass;
 		b->angular_velocity += b->inv_inertia * glm::cross(r, impulse_vec_t);
 
+		//update warm tangent impulse
 		warm_tangent_impulse += impulse_vec_t;
-		//printf("Final wall to ball tangent impulse: %f, %f, %f\n", warm_tangent_impulse.x, warm_tangent_impulse.y, warm_tangent_impulse.z);
 	}
 
 
