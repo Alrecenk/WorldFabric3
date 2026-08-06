@@ -846,7 +846,8 @@ std::vector<ScenePlugin::Capsule> ScenePlugin::getSpringBoneColliders(int instan
 // The instance should already have had all other posing performed on its skeleton before this is called
 void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pose, float dt, float prev_dt){
 	instance.skeleton->computeNodeMatrices();
-	
+	dt = 1.0f/60.0f ;
+	prev_dt = 1.0f/60.0f ;
 	//Update colliders on model
 	for(Capsule& collider : instance.colliders){
 		GLTF::Node& node = instance.skeleton->nodes[collider.node];
@@ -867,7 +868,7 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			float stiffness_factor = 1.0f -expf(-logf(2) * dt/ spring.half_return_time);
 			float drag_factor = expf(-logf(2) * dt / spring.half_velocity_time);
 			glm::vec3 velocity_step = (spring.world_point - spring.prev_world_point) * drag_factor * time_ratio;
-			glm::vec3 spring_offset = (target - spring.world_point) * stiffness_factor;
+			glm::vec3 spring_offset =  (target - spring.world_point) * stiffness_factor;
 			glm::vec3 external_accel = spring.acceleration * (dt * dt);
 			glm::vec3 next_world_point = spring.world_point + velocity_step + spring_offset + external_accel;
 
@@ -885,7 +886,7 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			
 			spring.prev_world_point = spring.world_point;
 			spring.world_point = next_world_point;
-
+			
 			//Align bone to face the spring point
 			glm::dvec3 to_target = glm::normalize(glm::dvec3(target) - glm::dvec3(bone_zero)) ;
 			glm::dvec3 to_point = glm::normalize(glm::dvec3(spring.world_point) - glm::dvec3(bone_zero)) ;
@@ -901,10 +902,12 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 				// make the bone rotation what is needed to get the world rotation after the parent's
 				node.rotation = glm::inverse(parent_world_rot) * world_rot_new ;
 				node.rotation = glm::normalize(node.rotation) ;
-				//Recmpute matrices for this node and its children
+				//Recompute matrices for this node and its children
 				instance.skeleton->computeNodeMatrices(spring.node,instance.skeleton->nodes[node.parent].bone_to_model) ;
+			
+				
 			}
-
+			
 	}
 	instance.bone_data = instance.skeleton->getBoneVector();
 }

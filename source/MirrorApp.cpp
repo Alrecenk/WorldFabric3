@@ -415,7 +415,7 @@ void MirrorApp::run() {
 	updateBlink(morph_weights);
 	//morph_weights[blink_morph] = randomFloat();
 	scene->setMorphWeights(avatar_model, morph_weights);
-	scene->setMorphWeights(mirror_model, morph_weights);
+	//scene->setMorphWeights(mirror_model, morph_weights); // disable to improve performance for recording
 	
 	pose_history.emplace_back(time, final_avatar_pose, last_bone_data);
 	while(pose_history.front().time < time - pose_delay){
@@ -491,7 +491,7 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	
 
 	scene->clearSpringBones(my_instance) ;
-	scene->enableVRMSpringBones(my_instance, 10.0f);
+	//scene->enableVRMSpringBones(my_instance, 10.0f);
 
 
 

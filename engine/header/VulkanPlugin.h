@@ -285,7 +285,7 @@ public:
 
 	static inline std::string tag = "VulkanLink";
 
-	static inline constexpr bool USE_VALIDATION_LAYERS = true;
+	static inline constexpr bool USE_VALIDATION_LAYERS = false;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
 	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
 

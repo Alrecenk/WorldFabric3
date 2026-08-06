@@ -469,7 +469,8 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 	std::vector<std::shared_ptr<RenderModel>> models;
 	for (auto const& [material_id, mat] : materials) {
 		std::shared_ptr<RenderModel> render_model = std::shared_ptr<RenderModel>(new RenderModel());
-		std::unordered_map<int, int> old_to_new_index;
+		static std::unordered_map<int, int> old_to_new_index;
+		old_to_new_index.clear();
 		int num_vertices = 0;
 		int num_triangles = 0;
 		for(int k : morph_triangles){

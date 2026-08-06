@@ -466,7 +466,7 @@ int exampleMain(int argc, char* argv[]) {
 	setupGameStates();
 
 	printf("Starting main loop...\n");
-	bool display_profile = false;
+	bool display_profile = true;
 
 
 
@@ -506,9 +506,10 @@ int exampleMain(int argc, char* argv[]) {
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
 		int stagger_step = (int)(sync_time / (3 * plugins.size()));
-		if(stagger_step > 1000){ // don't stagger too much if framerate is dropping
-			stagger_step = 1000 ;
+		if(stagger_step > 500){ // don't stagger too much if framerate is dropping
+			stagger_step = 500 ;
 		}
+		stagger_step  = 0 ;
 		int stagger = 0;
 		for (auto& p : plugins) {
 			

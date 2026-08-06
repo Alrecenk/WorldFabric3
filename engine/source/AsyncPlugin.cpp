@@ -3,10 +3,10 @@
 
 // wraps the run function on the thread to time it
 void AsyncPlugin::runTimed() {
-	auto start_time = now();
-	if(stagger_micros > 0){
+	if(async_enabled && stagger_micros > 0){
 		std::this_thread::sleep_for(std::chrono::microseconds(stagger_micros));
 	}
+	auto start_time = now();
 	running = true;
 	run();
 	running = false;
