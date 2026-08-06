@@ -72,6 +72,7 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 		mirror_instance = scene->createInstance(mirror_model, avatar_pose);
 		scene_instance = scene->createInstance(scene_model,scene_pose) ;
 		camera_avatar_instance = scene->createInstance(avatar_model, avatar_pose);
+		camera_avatar_instance_2 = scene->createInstance(mirror_model, avatar_pose);
 		camera_scene_instance = scene->createInstance(scene_model, scene_pose);
 
 		scene->createPin(my_instance, hips, avatar->human_bone[hips], glm::vec3(0, 0, 0), 2.0f, 2.0f);
@@ -413,9 +414,9 @@ void MirrorApp::run() {
 
 	updateBlink(morph_weights);
 	//morph_weights[blink_morph] = randomFloat();
+	
 	scene->setMorphWeights(avatar_model, morph_weights);
 	scene->setMorphWeights(mirror_model, morph_weights);
-
 	
 	pose_history.emplace_back(time, final_avatar_pose, last_bone_data);
 	while(pose_history.front().time < time - pose_delay){
@@ -426,6 +427,7 @@ void MirrorApp::run() {
 	glm::mat4 shift_pose = glm::mat4(1.0f);
 	shift_pose = glm::translate(shift_pose, recording_offset);
 	scene->setPose(camera_avatar_instance, shift_pose * h.pose * coord_fix, h.bone_data);
+	scene->setPose(camera_avatar_instance_2, shift_pose * h.pose * coord_fix, h.bone_data);
 	scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
 	
 }
@@ -490,7 +492,7 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	
 
 	scene->clearSpringBones(my_instance) ;
-	scene->enableVRMSpringBones(my_instance, 10.0f);
+	//scene->enableVRMSpringBones(my_instance, 10.0f);
 
 
 

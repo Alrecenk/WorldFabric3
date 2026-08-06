@@ -2651,6 +2651,9 @@ std::shared_ptr<GLTF> GLTF::createMirrorImage(){
 	std::shared_ptr<GLTF> mirrored = std::make_shared<GLTF>(*this) ;
 	for(Vertex& v : mirrored->vertices){
 		v.normal*= -1.0f ;
+		for(int k=0;k<v.morph_normal.size();k++){
+			v.morph_normal[k] *= -1.0f ;
+		}
 	}
 
 	for (Triangle& t : mirrored->triangles) {

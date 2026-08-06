@@ -38,7 +38,7 @@ class GLTF : public OptimizationProblem, public TableInterface {
             glm::vec3 transformed_position = { 0,0,0 }; // position in linear skin local space
             glm::vec3 transformed_normal = { 0,0,0 }; //notmal in linjear skin local space
             
-			std::vector<glm::vec3> morph_position ; // inex here aligns with morph names on the GLTF
+			std::vector<glm::vec3> morph_position ; // index here aligns with morph names on the GLTF
 			std::vector<glm::vec3> morph_normal ;
         };
 

@@ -55,6 +55,7 @@ public:
 	double pose_delay = 1.3 ; // amount of time to delay poses to sync up with audio and morph data (this is needed when using a slow voice changer so movement matches audio)
 	int camera_scene_instance;
 	int camera_avatar_instance ;
+	int camera_avatar_instance_2 ; // a mirroed version in case it isn't built for backface culling
 
 	struct HistoryPose{
 		double time  = - 1; 
@@ -232,7 +233,7 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
-	bool wiggle_enabled = true;
+	bool wiggle_enabled = false;
 
 
 	std::chrono::high_resolution_clock::time_point start_time ;

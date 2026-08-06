@@ -127,7 +127,7 @@ public:
 	template <typename PushConstants, typename VulkanInstance>
 	class GLTFShaderSet : public AbstractShaderSet{
 	public:
-		std::vector<std::shared_ptr<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>> morph_meshes ;
+		std::map<std::shared_ptr<GLTF>,std::vector<std::shared_ptr<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>>> morph_meshes ;
 		
 		GLTFShaderSet(int bones, std::shared_ptr<TriangleShaderProgram> main,std::shared_ptr<TriangleShaderProgram> shadow){
 			max_bones = bones;
@@ -190,7 +190,7 @@ public:
 			}
 
 			for(int k : morph_indices){ // keep references to the morphable part so we can quickly access it to morph later
-				morph_meshes.push_back(dynamic_pointer_cast<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>(gltf_meshes[k])) ;
+				morph_meshes[gltf_model].push_back(dynamic_pointer_cast<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>(gltf_meshes[k])) ;
 			}
 
 			return gltf_meshes;
@@ -202,7 +202,7 @@ public:
 			int j = 0 ;
 			//Shader set has renderables for each shader, so we need to push the morphs to all of them ever loaded
 			//each one should have a number of morphs equal to the size of the morphs array
-			for(auto& mesh : morph_meshes){
+			for(auto& mesh : morph_meshes[gltf_model]){
 				mesh->setModel(morphs[j%morphs.size()]->vertices, morphs[j%morphs.size()]->indices);
 				j++;
 			}
