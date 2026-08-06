@@ -79,6 +79,7 @@ public:
 	bool space_held = false;
 	bool left_held = false;
 	bool right_held = false;
+	bool down_held = false ;
 	bool recording = false;
 	float sample_duration = 0.04f ;
 	int audio_samples_per_pose = (int)(48000*sample_duration) ;
@@ -233,7 +234,7 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
-	bool wiggle_enabled = true;
+	bool wiggle_enabled = false;
 
 
 	std::chrono::high_resolution_clock::time_point start_time ;

@@ -207,7 +207,10 @@ void ScenePlugin::setPose(const int  instance_id, const glm::mat4& pose, const s
 
 // Returns the bone data of the given instance on the last frame
 std::vector<glm::mat4> ScenePlugin::getBoneData(const int instance_id) {
-	return instances[instance_id].bone_data;
+	lock.lock();
+	auto bd = instances[instance_id].bone_data;
+	lock.unlock();
+	return bd ;
 }
 
 // Overrides the orientation of a specific bone on a specific instance
@@ -724,6 +727,10 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 	}
 	Instance& instance = instances[instance_id];
 	instance.skeleton->computeNodeMatrices() ;
+	glm::mat4 instance_pose = instance.pose;
+	if (group_transforms.find(instance.transform_group) != group_transforms.end()) {
+		instance_pose = group_transforms[instance.transform_group].second * instance_pose;
+	}
 	for(GLTF::SpringChain& chain : instance.skeleton->spring_chains){
 		//printf("Chain: %s\n", chain.name.c_str()) ;
 		for(int k=0;k<chain.joints.size() - 1;k++){ // we use the position o the next node as local point, so we get one less spring than the chain length
@@ -746,8 +753,8 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 
 			spring.acceleration = glm::vec3(0, -gravity_strength, 0);
 			spring.local_point = instance.skeleton->nodes[chain.joints[k+1].node].base_translation ;
-			spring.world_point = instance.pose * (instance.skeleton->nodes[spring.node].bone_to_model * glm::vec4(spring.local_point, 1.0f));
-			spring.prev_world_point = spring.world_point ;
+			//spring.world_point = instance_pose * (instance.skeleton->nodes[spring.node].bone_to_model * glm::vec4(spring.local_point, 1.0f));
+			spring.reset = true ;
 
 			spring.collision_radius = chain.joints[k].radius * collider_scale ;
 			if(spring.collision_radius < min_spring_collision_radius){
@@ -846,8 +853,8 @@ std::vector<ScenePlugin::Capsule> ScenePlugin::getSpringBoneColliders(int instan
 // The instance should already have had all other posing performed on its skeleton before this is called
 void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pose, float dt, float prev_dt){
 	instance.skeleton->computeNodeMatrices();
-	dt = 1.0f/60.0f ;
-	prev_dt = 1.0f/60.0f ;
+	//dt = 1.0f/60.0f ;
+	//prev_dt = 1.0f/60.0f ;
 	//Update colliders on model
 	for(Capsule& collider : instance.colliders){
 		GLTF::Node& node = instance.skeleton->nodes[collider.node];
@@ -865,6 +872,11 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			glm::vec3 bone_zero = bone_to_world * glm::vec4(0,0,0, 1.0f);
 			glm::vec3 target = bone_to_world * glm::vec4(spring.local_point, 1.0f);
 			spring.last_target = target ;
+			if (spring.reset) {
+				spring.world_point = target ;
+				spring.prev_world_point = target;
+				spring.reset = false;
+			}
 			float stiffness_factor = 1.0f -expf(-logf(2) * dt/ spring.half_return_time);
 			float drag_factor = expf(-logf(2) * dt / spring.half_velocity_time);
 			glm::vec3 velocity_step = (spring.world_point - spring.prev_world_point) * drag_factor * time_ratio;

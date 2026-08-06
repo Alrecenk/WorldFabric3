@@ -253,6 +253,7 @@ public:
 		glm::vec3 world_point; // The physically simulated point in World Space
 		glm::vec3 prev_world_point ; // We use verlet integration for stability so this implicitly holds the current velocity
 		glm::vec3 last_target ;
+		bool reset = true ;
 		float half_return_time = 0.25f ; // the amoutn of time it takes a spring bone to return halfway to it's model position
 		float half_velocity_time = 0.03f ; // the amount fo time it takes aspring bone point to lsoe half of its velocity
 		glm::vec3 acceleration; //external force being applied

@@ -39,7 +39,6 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 		avatar->colliders[13].offset *= 2.5f;
 		avatar->nodes[avatar->human_bone["rightShoulder"]].stiffness = 3.0f;
 		avatar->nodes[avatar->human_bone["leftShoulder"]].stiffness = 3.0f;
-		recenter(scene, current_head_pose);
 
 		std::shared_ptr<GLTF> mirror_image = avatar->createMirrorImage();
 		scene->createModelSet(mirror_model, mirror_image, false);
@@ -143,7 +142,6 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 			scene->enableIK(my_instance, true);
 		}
 
-		
 
 	}
 
@@ -281,8 +279,13 @@ void MirrorApp::run() {
 		morph_weights = std::vector<float>(avatar->morph_names.size(), 0);
 	}
 
-	if (controls->getBoolean("/actions/general/in/press_y")) {
-		recenter(scene, current_head_pose);
+	if (controls->getBoolean("/actions/general/in/press_y") || window->keyDown(SDLK_DOWN)) {
+		if(!down_held){
+			recenter(scene, current_head_pose);
+		}
+		down_held = true ;
+	}else{
+		down_held = false ;
 	}
 
 	// Check if escape pressed to exit
@@ -336,6 +339,7 @@ void MirrorApp::run() {
 		printf("Morph Selected: %d -> %s\n", selected_morph, avatar->morph_names[selected_morph].c_str());
 	}
 	right_held = window->keyDown(SDLK_RIGHT);
+
 
 
 	if(recording){
@@ -488,10 +492,10 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	camera_position += recording_offset ;
 
 	window->window_target->setCamera(look_at*0.7f + camera_position*0.3f, camera_position, fov, glm::vec3(0, 1, 0)); //from behind
-	
-
+	avatar->setToOriginalPose();
+	scene->setPose(my_instance, avatar_pose,avatar->getBoneVector());
 	scene->clearSpringBones(my_instance) ;
-	//scene->enableVRMSpringBones(my_instance, 10.0f);
+	scene->enableVRMSpringBones(my_instance, 5.0f);
 
 
 
