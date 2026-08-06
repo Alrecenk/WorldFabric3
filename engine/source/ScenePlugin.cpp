@@ -846,7 +846,7 @@ std::vector<ScenePlugin::Capsule> ScenePlugin::getSpringBoneColliders(int instan
 // The instance should already have had all other posing performed on its skeleton before this is called
 void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pose, float dt, float prev_dt){
 	instance.skeleton->computeNodeMatrices();
-
+	
 	//Update colliders on model
 	for(Capsule& collider : instance.colliders){
 		GLTF::Node& node = instance.skeleton->nodes[collider.node];
@@ -882,7 +882,7 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			for(int c : spring.colliders){
 				next_world_point += resolveCollision(next_world_point, spring_world_radius, instance.colliders[c]);
 			}
-
+			
 			spring.prev_world_point = spring.world_point;
 			spring.world_point = next_world_point;
 

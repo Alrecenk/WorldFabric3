@@ -506,8 +506,8 @@ int exampleMain(int argc, char* argv[]) {
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
 		int stagger_step = (int)(sync_time / (3 * plugins.size()));
-		if(stagger_step > 1000){ // prevent death spiral from a single slow frame
-			stagger_step = 0 ;
+		if(stagger_step > 1000){ // don't stagger too much if framerate is dropping
+			stagger_step = 1000 ;
 		}
 		int stagger = 0;
 		for (auto& p : plugins) {

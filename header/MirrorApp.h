@@ -233,7 +233,7 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
-	bool wiggle_enabled = false;
+	bool wiggle_enabled = true;
 
 
 	std::chrono::high_resolution_clock::time_point start_time ;
