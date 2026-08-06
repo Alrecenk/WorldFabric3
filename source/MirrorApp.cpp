@@ -416,7 +416,7 @@ void MirrorApp::run() {
 	scene->setMorphWeights(avatar_model, morph_weights);
 	scene->setMorphWeights(mirror_model, morph_weights);
 
-
+	
 	pose_history.emplace_back(time, final_avatar_pose, last_bone_data);
 	while(pose_history.front().time < time - pose_delay){
 		pose_history.pop_front();
@@ -427,7 +427,7 @@ void MirrorApp::run() {
 	shift_pose = glm::translate(shift_pose, recording_offset);
 	scene->setPose(camera_avatar_instance, shift_pose * h.pose * coord_fix, h.bone_data);
 	scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
-
+	
 }
 
 

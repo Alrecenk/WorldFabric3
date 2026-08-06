@@ -83,7 +83,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		triangleFragShader,
 		sizeof(ScenePlugin::DefaultPushConstants),
 		num_textures,
-		VK_CULL_MODE_FRONT_BIT, // TODO switch back to front bit for performance
+		VK_CULL_MODE_FRONT_BIT,
 		window->window_target,
 		OVERWRITE
 	));
@@ -506,8 +506,12 @@ int exampleMain(int argc, char* argv[]) {
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
 		int stagger_step = (int)(sync_time / (3 * plugins.size()));
+		if(stagger_step > 1000){ // prevent death spiral from a single slow frame
+			stagger_step = 0 ;
+		}
 		int stagger = 0;
 		for (auto& p : plugins) {
+			
 			p->stagger_micros = stagger;
 			stagger += stagger_step;
 		}
