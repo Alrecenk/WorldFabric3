@@ -145,7 +145,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		window->device,
 		shadow_vertex_shader,
 		shadow_frag_shader,
-		sizeof(ScenePlugin::DefaultPushConstants),
+		sizeof(ScenePlugin::TranslucentPushConstants),
 		num_textures,
 		VK_CULL_MODE_FRONT_BIT,
 		scene->getAShadowTarget(),
