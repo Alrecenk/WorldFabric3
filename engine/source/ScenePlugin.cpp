@@ -869,7 +869,8 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			
 			GLTF::Node& parent = instance.skeleton->nodes[instance.skeleton->nodes[spring.node].parent];
 			glm::mat4 unrotate = glm::mat4_cast(glm::inverse(node.rotation) * node.base_rotation );
-			glm::vec3 target = instance.pose * (node.bone_to_model * unrotate * glm::vec4(spring.local_point, 1.0f));
+			glm::mat4 base_to_world = instance.pose * node.bone_to_model * unrotate ;
+			glm::vec3 target = base_to_world * glm::vec4(spring.local_point, 1.0f);
 			spring.last_target = target ;
 			if (spring.reset) {
 				spring.world_point = target ;
@@ -901,15 +902,14 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			spring.world_point = next_world_point;
 			
 			//Align bone to face the spring point
-			glm::vec3 current = instance_pose * node.bone_to_model * glm::vec4(spring.local_point, 1.0f);
-			glm::dvec3 to_current = glm::normalize(glm::dvec3(current) - glm::dvec3(bone_zero)) ;
+			glm::dvec3 to_target = glm::normalize(glm::dvec3(target) - glm::dvec3(bone_zero)) ;
 			glm::dvec3 to_point = glm::normalize(glm::dvec3(spring.world_point) - glm::dvec3(bone_zero)) ;
-			double dot = glm::dot(to_current, to_point) ;
+			double dot = glm::dot(to_target, to_point) ;
 
 			if(abs(dot) < 0.99997){ // don't rotate at all if it's moot
 				//Get rotation in world space
-				glm::quat world_delta = glm::angleAxis((float)acos(dot), glm::vec3(glm::normalize(glm::cross(to_current,to_point)))) ;
-				glm::quat world_rot_old = glm::quat_cast(bone_to_world);
+				glm::quat world_delta = glm::angleAxis((float)acos(dot), glm::vec3(glm::normalize(glm::cross(to_target,to_point)))) ;
+				glm::quat world_rot_old = glm::quat_cast(base_to_world);
 				glm::quat world_rot_new = world_delta * world_rot_old;
 				//get parent rotation
 				glm::mat4 parent_bone_to_world = instance_pose * instance.skeleton->nodes[node.parent].bone_to_model ;
