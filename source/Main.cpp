@@ -145,7 +145,7 @@ std::pair< std::shared_ptr<TriangleShaderProgram>, std::shared_ptr<TriangleShade
 		window->device,
 		shadow_vertex_shader,
 		shadow_frag_shader,
-		sizeof(ScenePlugin::DefaultPushConstants),
+		sizeof(ScenePlugin::TranslucentPushConstants),
 		num_textures,
 		VK_CULL_MODE_FRONT_BIT,
 		scene->getAShadowTarget(),
@@ -325,7 +325,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -412,14 +412,14 @@ void setupGameStates() {
 	//app->add(BallThrowApp::state_name, std::shared_ptr<BallThrowApp>(new BallThrowApp()));
 	//app->setState(BallThrowApp::state_name);
 
-	//app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
-	//app->setState(MirrorApp::state_name);
+	app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
+	app->setState(MirrorApp::state_name);
 
 	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
 	//app->setState(TraceApp::state_name);
 
-	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
-	app->setState(ConstraintTestApp::state_name);
+	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	//app->setState(ConstraintTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -435,7 +435,7 @@ int exampleMain(int argc, char* argv[]) {
 	printf("Command: %s\n", command_line.c_str());
 
 	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = false ; // Enable this for VR support
+	OpenXRPlugin::ENABLED = true; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
@@ -506,9 +506,10 @@ int exampleMain(int argc, char* argv[]) {
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
 		int stagger_step = (int)(sync_time / (3 * plugins.size()));
-		if(stagger_step > 1000){ // prevent death spiral from a single slow frame
-			stagger_step = 0 ;
+		if(stagger_step > 500){ // don't stagger too much if framerate is dropping
+			stagger_step = 500 ;
 		}
+		stagger_step  = 0 ;
 		int stagger = 0;
 		for (auto& p : plugins) {
 			

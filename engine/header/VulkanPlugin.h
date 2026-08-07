@@ -285,9 +285,9 @@ public:
 
 	static inline std::string tag = "VulkanLink";
 
-	static inline constexpr bool USE_VALIDATION_LAYERS = true;
+	static inline constexpr bool USE_VALIDATION_LAYERS = false;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
-	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
+	static inline int millis_to_hold_buffer = 30; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
 
 	static inline std::vector<std::pair<VkSampler, std::chrono::high_resolution_clock::time_point>> samplers_to_destroy; // This is stored in the vulkan plugin to prevent the global from being duplicated for different templated models
 

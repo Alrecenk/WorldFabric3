@@ -469,7 +469,8 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 	std::vector<std::shared_ptr<RenderModel>> models;
 	for (auto const& [material_id, mat] : materials) {
 		std::shared_ptr<RenderModel> render_model = std::shared_ptr<RenderModel>(new RenderModel());
-		std::unordered_map<int, int> old_to_new_index;
+		static std::unordered_map<int, int> old_to_new_index;
+		old_to_new_index.clear();
 		int num_vertices = 0;
 		int num_triangles = 0;
 		for(int k : morph_triangles){
@@ -2651,6 +2652,9 @@ std::shared_ptr<GLTF> GLTF::createMirrorImage(){
 	std::shared_ptr<GLTF> mirrored = std::make_shared<GLTF>(*this) ;
 	for(Vertex& v : mirrored->vertices){
 		v.normal*= -1.0f ;
+		for(int k=0;k<v.morph_normal.size();k++){
+			v.morph_normal[k] *= -1.0f ;
+		}
 	}
 
 	for (Triangle& t : mirrored->triangles) {

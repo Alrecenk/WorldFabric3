@@ -127,7 +127,7 @@ public:
 	template <typename PushConstants, typename VulkanInstance>
 	class GLTFShaderSet : public AbstractShaderSet{
 	public:
-		std::vector<std::shared_ptr<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>> morph_meshes ;
+		std::map<std::shared_ptr<GLTF>,std::vector<std::shared_ptr<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>>> morph_meshes ;
 		
 		GLTFShaderSet(int bones, std::shared_ptr<TriangleShaderProgram> main,std::shared_ptr<TriangleShaderProgram> shadow){
 			max_bones = bones;
@@ -190,7 +190,7 @@ public:
 			}
 
 			for(int k : morph_indices){ // keep references to the morphable part so we can quickly access it to morph later
-				morph_meshes.push_back(dynamic_pointer_cast<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>(gltf_meshes[k])) ;
+				morph_meshes[gltf_model].push_back(dynamic_pointer_cast<TriangleModel<PushConstants, GLTF::BufferVertex, VulkanInstance>>(gltf_meshes[k])) ;
 			}
 
 			return gltf_meshes;
@@ -202,7 +202,7 @@ public:
 			int j = 0 ;
 			//Shader set has renderables for each shader, so we need to push the morphs to all of them ever loaded
 			//each one should have a number of morphs equal to the size of the morphs array
-			for(auto& mesh : morph_meshes){
+			for(auto& mesh : morph_meshes[gltf_model]){
 				mesh->setModel(morphs[j%morphs.size()]->vertices, morphs[j%morphs.size()]->indices);
 				j++;
 			}
@@ -253,6 +253,7 @@ public:
 		glm::vec3 world_point; // The physically simulated point in World Space
 		glm::vec3 prev_world_point ; // We use verlet integration for stability so this implicitly holds the current velocity
 		glm::vec3 last_target ;
+		bool reset = true ;
 		float half_return_time = 0.25f ; // the amoutn of time it takes a spring bone to return halfway to it's model position
 		float half_velocity_time = 0.03f ; // the amount fo time it takes aspring bone point to lsoe half of its velocity
 		glm::vec3 acceleration; //external force being applied
@@ -460,9 +461,9 @@ public:
 
 	//Load any spring bone data from the skeleton of the given instance
 	// and enable it on that instance
-	void enableVRMSpringBones(int instance_id, float gravity_strength =10.0f , float collider_scale = 1.0f, float min_spring_collision_radius = 0.03f);
+	void enableVRMSpringBones(int instance_id, float gravity_strength =10.0f , float collider_scale = 0.98f, float min_spring_collision_radius = 0.03f);
 
-	// Remove any active spring bones onthe given instance
+	// Remove any active spring bones on the given instance
 	void clearSpringBones(int instance_id) ;
 
 	//Gets hte current world positions of a spring set on an instance

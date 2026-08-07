@@ -207,7 +207,11 @@ void ScenePlugin::setPose(const int  instance_id, const glm::mat4& pose, const s
 
 // Returns the bone data of the given instance on the last frame
 std::vector<glm::mat4> ScenePlugin::getBoneData(const int instance_id) {
-	return instances[instance_id].bone_data;
+	if (hasInstance(instance_id)) {
+		return instances[instance_id].bone_data;
+	}else{
+		return std::vector<glm::mat4>() ;
+	}
 }
 
 // Overrides the orientation of a specific bone on a specific instance
@@ -724,6 +728,10 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 	}
 	Instance& instance = instances[instance_id];
 	instance.skeleton->computeNodeMatrices() ;
+	glm::mat4 instance_pose = instance.pose;
+	if (group_transforms.find(instance.transform_group) != group_transforms.end()) {
+		instance_pose = group_transforms[instance.transform_group].second * instance_pose;
+	}
 	for(GLTF::SpringChain& chain : instance.skeleton->spring_chains){
 		//printf("Chain: %s\n", chain.name.c_str()) ;
 		for(int k=0;k<chain.joints.size() - 1;k++){ // we use the position o the next node as local point, so we get one less spring than the chain length
@@ -737,17 +745,18 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 			//stiffness parameter doesn't directly map to our exponential decay spring system
 			// But empirically these numbers are reasonable
 			if(chain.joints[k].stiffness >= 0.7f){
-				spring.half_return_time = 0.1f ;
+				spring.half_return_time = 0.3f ;
 			}else if(chain.joints[k].stiffness >= 0.4f){
-				spring.half_return_time = 0.25f;
+				spring.half_return_time = 0.8f;
 			}else{
-				spring.half_return_time = 0.5f;
+				spring.half_return_time = 1.0f;
 			}
 
 			spring.acceleration = glm::vec3(0, -gravity_strength, 0);
 			spring.local_point = instance.skeleton->nodes[chain.joints[k+1].node].base_translation ;
-			spring.world_point = instance.pose * (instance.skeleton->nodes[spring.node].bone_to_model * glm::vec4(spring.local_point, 1.0f));
-			spring.prev_world_point = spring.world_point ;
+			//printf("base translation: %f, %f, %f\n", spring.local_point.x, spring.local_point.y, spring.local_point.z) ;
+			//spring.world_point = instance_pose * (instance.skeleton->nodes[spring.node].bone_to_model * glm::vec4(spring.local_point, 1.0f));
+			spring.reset = true ;
 
 			spring.collision_radius = chain.joints[k].radius * collider_scale ;
 			if(spring.collision_radius < min_spring_collision_radius){
@@ -829,9 +838,6 @@ std::vector<glm::vec3> ScenePlugin::getSpringBoneTargetPositions(int instance_id
 	}
 	Instance& instance = instances[instance_id];
 	for (auto& [node, spring] : instance.spring_bones) {
-		GLTF::Node& node = instance.skeleton->nodes[spring.node];
-		glm::vec3 target = instance.pose * (node.transform * (node.bone_to_mesh * glm::vec4(spring.local_point, 1.0f)));
-		glm::vec3 bone_zero = instance.pose * (node.transform * (node.bone_to_mesh * glm::vec4(0, 0, 0, 1.0f)));
 		points.push_back(spring.last_target);
 	}
 	return points;
@@ -846,31 +852,41 @@ std::vector<ScenePlugin::Capsule> ScenePlugin::getSpringBoneColliders(int instan
 // The instance should already have had all other posing performed on its skeleton before this is called
 void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pose, float dt, float prev_dt){
 	instance.skeleton->computeNodeMatrices();
-
-	//Update colliders on model
+	//Update colliders on model for the current pose
 	for(Capsule& collider : instance.colliders){
 		GLTF::Node& node = instance.skeleton->nodes[collider.node];
 		glm::mat4 bone_to_world = instance_pose * node.bone_to_model;
 		collider.world_center.first = bone_to_world*glm::vec4(collider.local_center.first,1) ;
 		collider.world_center.second = bone_to_world * glm::vec4(collider.local_center.second, 1);
-		// TODO remove extra sqrt
 		collider.world_radius = collider.local_radius * glm::distance(collider.world_center.first, collider.world_center.second)/glm::distance(collider.local_center.first, collider.local_center.second); 
 	}
-	float time_ratio = dt / prev_dt;
+	// Time ratio is used to adjust verlet integration for variable framerate
+	float time_ratio = std::min(std::max(0.5f,dt / prev_dt), 2.0f); //clamped to prevent jumps on frame hitching
 	for (auto& [node_id, spring] : instance.spring_bones) {
 			GLTF::Node& node = instance.skeleton->nodes[spring.node] ;
-			//Where the bone would be pointing if it were not springy
+			//Calculate where the bone would be pointing if it were not springy
 			glm::mat4 bone_to_world = instance_pose * node.bone_to_model ;
 			glm::vec3 bone_zero = bone_to_world * glm::vec4(0,0,0, 1.0f);
-			glm::vec3 target = bone_to_world * glm::vec4(spring.local_point, 1.0f);
+			
+			GLTF::Node& parent = instance.skeleton->nodes[instance.skeleton->nodes[spring.node].parent];
+			glm::mat4 unrotate = glm::mat4_cast(glm::inverse(node.rotation) * node.base_rotation );
+			glm::mat4 base_to_world = instance_pose * node.bone_to_model * unrotate ;
+			glm::vec3 target = base_to_world * glm::vec4(spring.local_point, 1.0f);
 			spring.last_target = target ;
+			if (spring.reset) {
+				spring.world_point = target ;
+				spring.prev_world_point = target;
+				spring.reset = false;
+			}
+			//Half-lives for spring stiffness and drag createp predictable exponetial decay of movement
 			float stiffness_factor = 1.0f -expf(-logf(2) * dt/ spring.half_return_time);
 			float drag_factor = expf(-logf(2) * dt / spring.half_velocity_time);
+			//Verlet integration with spring and applied forces
 			glm::vec3 velocity_step = (spring.world_point - spring.prev_world_point) * drag_factor * time_ratio;
+			glm::vec3 external_acceleration = spring.acceleration * (dt * dt);
 			glm::vec3 spring_offset = (target - spring.world_point) * stiffness_factor;
-			glm::vec3 external_accel = spring.acceleration * (dt * dt);
-			glm::vec3 next_world_point = spring.world_point + velocity_step + spring_offset + external_accel;
-
+			glm::vec3 next_world_point = spring.world_point + spring_offset + velocity_step + external_acceleration;
+			
 			//Handle constraints after integration
 			//Scale to be correct length
 			float target_length = glm::distance(bone_zero, target);
@@ -885,15 +901,16 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 
 			spring.prev_world_point = spring.world_point;
 			spring.world_point = next_world_point;
-
+			
 			//Align bone to face the spring point
 			glm::dvec3 to_target = glm::normalize(glm::dvec3(target) - glm::dvec3(bone_zero)) ;
 			glm::dvec3 to_point = glm::normalize(glm::dvec3(spring.world_point) - glm::dvec3(bone_zero)) ;
 			double dot = glm::dot(to_target, to_point) ;
+
 			if(abs(dot) < 0.99997){ // don't rotate at all if it's moot
 				//Get rotation in world space
 				glm::quat world_delta = glm::angleAxis((float)acos(dot), glm::vec3(glm::normalize(glm::cross(to_target,to_point)))) ;
-				glm::quat world_rot_old = glm::quat_cast(bone_to_world);
+				glm::quat world_rot_old = glm::quat_cast(base_to_world);
 				glm::quat world_rot_new = world_delta * world_rot_old;
 				//get parent rotation
 				glm::mat4 parent_bone_to_world = instance_pose * instance.skeleton->nodes[node.parent].bone_to_model ;
@@ -901,10 +918,10 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 				// make the bone rotation what is needed to get the world rotation after the parent's
 				node.rotation = glm::inverse(parent_world_rot) * world_rot_new ;
 				node.rotation = glm::normalize(node.rotation) ;
-				//Recmpute matrices for this node and its children
+				//Recompute matrices for this node and its children
 				instance.skeleton->computeNodeMatrices(spring.node,instance.skeleton->nodes[node.parent].bone_to_model) ;
 			}
-
+			
 	}
 	instance.bone_data = instance.skeleton->getBoneVector();
 }
