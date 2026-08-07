@@ -466,7 +466,7 @@ int exampleMain(int argc, char* argv[]) {
 	setupGameStates();
 
 	printf("Starting main loop...\n");
-	bool display_profile = true;
+	bool display_profile = false;
 
 
 

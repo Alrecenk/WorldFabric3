@@ -80,7 +80,6 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 		finger_map = std::vector<BoneMapping>();
 		if(hand_tracking){ // GO into calibration mode
 			scene->enableIK(my_instance, false);
-			//scene->enableIK(my_instance, true);
 
 			finger_map.emplace_back(left_hand_skeleton, "wrist_l", avatar->human_bone["leftHand"]);
 
@@ -159,7 +158,6 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 
 	calibrated = false;
 	start_time = now();
-
 	recenter(scene, current_head_pose);
 }
 
@@ -189,11 +187,13 @@ void MirrorApp::run() {
 
 	audio->SetListenerToHMD(current_head_pose); // set listener position to VR head location
 	std::shared_ptr<GLTF> avatar = scene->getModelController(avatar_model);
-	
-	std::vector<glm::mat4> last_bone_data = scene->getBoneData(my_instance);
-	
+	glm::mat4 final_avatar_pose = avatar_pose;
+	if (wiggle_enabled) {
+		double time = getTool<PanelPlugin>()->getTime();
+		final_avatar_pose = glm::rotate(final_avatar_pose, (float)sin(time * 3.0f) * 0.3f, glm::vec3(1, 0, 1));
+	}
 	if(!calibrated && hand_tracking){
-		scene->setPose(my_instance, avatar_pose * coord_fix);
+		scene->setPose(my_instance, avatar_pose * coord_fix);	
 		if(millisBetween(start_time,now()) > millis_before_calibrate && OpenXRPlugin::ENABLED){
 			for (auto& bone_map : finger_map) {
 				bone_map.addCalibrationPoint(avatar_model, avatar_pose * coord_fix) ;
@@ -206,12 +206,11 @@ void MirrorApp::run() {
 			
 			calibrated = true ;
 		}
-	}else{
-
-		scene->setPose(my_instance, avatar_pose * coord_fix, last_bone_data);
+	}else if(OpenXRPlugin::ENABLED){
+		scene->setPose(my_instance, final_avatar_pose * coord_fix);
 		scene->setPinTarget(my_instance, hips, avatar_pose * initial_hips_matrix * coord_fix);
 		scene->setPinTarget(my_instance, head, current_head_pose * coord_fix);
-
+		
 		if(hand_tracking){
 			std::map<int,glm::quat> finger_rotations ;
 			for (auto& bone_map : finger_map) {
@@ -239,9 +238,9 @@ void MirrorApp::run() {
 
 			current_left_hand_pose = current_left_hand_pose * left_hand_pose_fix * initial_left_hand_matrix;
 			current_right_hand_pose = current_right_hand_pose * right_hand_pose_fix * initial_right_hand_matrix;
-
+			
 			scene->setPinTarget(my_instance, left_hand, current_left_hand_pose * coord_fix);
-			scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);
+			scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);			
 		}
 	
 				
@@ -253,19 +252,11 @@ void MirrorApp::run() {
 
 	}
 
-	glm::mat4 final_avatar_pose = avatar_pose ;
-	if(wiggle_enabled){
-		double time = getTool<PanelPlugin>()->getTime();
-		final_avatar_pose = glm::rotate(final_avatar_pose,(float)sin(time*3.0f) * 0.3f, glm::vec3(1,0,1)) ;
-	}else{
-
-		//final_avatar_pose = glm::rotate(final_avatar_pose, (float) 0.3f, glm::vec3(0, 0, 1));
-	}
-
+	
 	scene->setPose(my_instance, final_avatar_pose * coord_fix) ;
 
 	//Set the mirror pose to match but mirrored
-	
+	std::vector<glm::mat4> last_bone_data = scene->getBoneData(my_instance);
 	if (last_bone_data.size() > 0) {
 		glm::mat4 mirror_pose = glm::mat4(1.0f);
 		mirror_pose = glm::translate(mirror_pose, glm::vec3(0, 0, -mirror_distance));
@@ -340,7 +331,7 @@ void MirrorApp::run() {
 	}
 	right_held = window->keyDown(SDLK_RIGHT);
 
-
+	
 
 	if(recording){
 		
@@ -450,7 +441,7 @@ void MirrorApp::run() {
 
 	std::vector<std::pair<glm::vec3, float>> spring_debug = scene->getSpringBoneWorldPositions(my_instance);
 
-	
+/*	
 	for (std::pair<glm::vec3, float> sphere : spring_debug) {
 		int p = particles->createParticle(0);
 		spring_debug_particles.push_back(p);
@@ -478,47 +469,44 @@ void MirrorApp::run() {
 		//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
 	}
 		
-
-/*
-		
-		std::vector<ScenePlugin::Capsule> spring_debug3 = scene->getSpringBoneColliders(my_instance);
-		for (ScenePlugin::Capsule capsule : spring_debug3) {
-			int p = particles->createParticle(0);
-			spring_debug_particles.push_back(p);
-			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
-			glm::mat4 pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.first, 1)));
-			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
-			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
-			particles->setPose(p, shift_pose* pose* coord_fix);
+	std::vector<ScenePlugin::Capsule> spring_debug3 = scene->getSpringBoneColliders(my_instance);
+	for (ScenePlugin::Capsule capsule : spring_debug3) {
+		int p = particles->createParticle(0);
+		spring_debug_particles.push_back(p);
+		particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+		glm::mat4 pose = glm::mat4(1.0f);
+		pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.first, 1)));
+		//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+		pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+		particles->setPose(p, shift_pose* pose* coord_fix);
 
 
 
-			p = particles->createParticle(0);
-			spring_debug_particles.push_back(p);
-			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
-			pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.second, 1)));
-			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
-			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
-			particles->setPose(p, shift_pose* pose* coord_fix);
+		p = particles->createParticle(0);
+		spring_debug_particles.push_back(p);
+		particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+		pose = glm::mat4(1.0f);
+		pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.second, 1)));
+		//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+		pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+		particles->setPose(p, shift_pose* pose* coord_fix);
 
 
-			p = particles->createParticle(0);
-			spring_debug_particles.push_back(p);
-			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
-			pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, glm::vec3(glm::vec4((capsule.world_center.first + capsule.world_center.second) * 0.5f, 1)));
-			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
-			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
-			particles->setPose(p, shift_pose* pose* coord_fix);
+		p = particles->createParticle(0);
+		spring_debug_particles.push_back(p);
+		particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+		pose = glm::mat4(1.0f);
+		pose = glm::translate(pose, glm::vec3(glm::vec4((capsule.world_center.first + capsule.world_center.second) * 0.5f, 1)));
+		//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+		pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+		particles->setPose(p, shift_pose* pose* coord_fix);
 
-			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
-		}
-		*/
+		//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+	}
+	*/
 
 
-
+	
 
 }
 

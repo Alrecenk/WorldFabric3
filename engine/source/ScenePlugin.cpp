@@ -207,10 +207,11 @@ void ScenePlugin::setPose(const int  instance_id, const glm::mat4& pose, const s
 
 // Returns the bone data of the given instance on the last frame
 std::vector<glm::mat4> ScenePlugin::getBoneData(const int instance_id) {
-	lock.lock();
-	auto bd = instances[instance_id].bone_data;
-	lock.unlock();
-	return bd ;
+	if (hasInstance(instance_id)) {
+		return instances[instance_id].bone_data;
+	}else{
+		return std::vector<glm::mat4>() ;
+	}
 }
 
 // Overrides the orientation of a specific bone on a specific instance
@@ -869,7 +870,7 @@ void ScenePlugin::simulateSpringBones(Instance& instance,glm::mat4& instance_pos
 			
 			GLTF::Node& parent = instance.skeleton->nodes[instance.skeleton->nodes[spring.node].parent];
 			glm::mat4 unrotate = glm::mat4_cast(glm::inverse(node.rotation) * node.base_rotation );
-			glm::mat4 base_to_world = instance.pose * node.bone_to_model * unrotate ;
+			glm::mat4 base_to_world = instance_pose * node.bone_to_model * unrotate ;
 			glm::vec3 target = base_to_world * glm::vec4(spring.local_point, 1.0f);
 			spring.last_target = target ;
 			if (spring.reset) {
