@@ -284,7 +284,7 @@ void MirrorApp::run() {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
 
-	if(window->keyDown(SDLK_SPACE)){
+	if(window->keyDown(SDLK_SPACE) || controls->getBoolean("/actions/general/in/press_b")){
 		if(!space_held){ // space pressed
 			if(!recording){
 				audio->startRecording("Vozard");

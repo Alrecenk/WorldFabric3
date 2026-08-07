@@ -325,7 +325,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -435,7 +435,7 @@ int exampleMain(int argc, char* argv[]) {
 	printf("Command: %s\n", command_line.c_str());
 
 	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = false ; // Enable this for VR support
+	OpenXRPlugin::ENABLED = true; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
