@@ -34,7 +34,7 @@ public:
     // wraps the run function on the thread to time it
     void runTimed();
 
-    bool async_enabled = true; // whether this plugin will block the main prep thread with run or spawn its own thread for running
+    bool async_enabled = false; // whether this plugin will block the main prep thread with run or spawn its own thread for running
 
 	bool ready = false;// whether wants to execture run
 	bool running = false; // whether currently executingrun

@@ -52,7 +52,7 @@ public:
 	static inline glm::mat4 scene_pose = glm::mat4(1.0f) ;
 
 	glm::vec3 recording_offset = glm::vec3(10,0,0);
-	double pose_delay = 1.3 ; // amount of time to delay poses to sync up with audio and morph data (this is needed when using a slow voice changer so movement matches audio)
+	double pose_delay = 0 ; // 1.3 ; // amount of time to delay poses to sync up with audio and morph data (this is needed when using a slow voice changer so movement matches audio)
 	int camera_scene_instance;
 	int camera_avatar_instance ;
 	int camera_avatar_instance_2 ; // a mirroed version in case it isn't built for backface culling
@@ -234,7 +234,7 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
-	bool wiggle_enabled = false;
+	bool wiggle_enabled = true;
 
 
 	std::chrono::high_resolution_clock::time_point start_time ;

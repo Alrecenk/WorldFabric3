@@ -433,6 +433,93 @@ void MirrorApp::run() {
 	scene->setPose(camera_avatar_instance_2, shift_pose * h.pose * coord_fix, h.bone_data);
 	scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
 	
+
+
+
+
+
+
+
+
+	ParticlePlugin* particles = getTool<ParticlePlugin>();
+	for (int& p : spring_debug_particles) {
+		particles->destroyParticle(p);
+	}
+	spring_debug_particles.clear();
+
+
+	std::vector<std::pair<glm::vec3, float>> spring_debug = scene->getSpringBoneWorldPositions(my_instance);
+
+	/*
+		for (std::pair<glm::vec3, float> sphere : spring_debug) {
+			int p = particles->createParticle(0);
+			spring_debug_particles.push_back(p);
+			particles->setColor(p, glm::vec4(1, 0, 0, 0.5f));
+			glm::mat4 pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, glm::vec3(glm::vec4(sphere.first, 1)));
+			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.second, sphere.first.x, sphere.first.y, sphere.first.z);
+			pose = glm::scale(pose, glm::vec3(sphere.second*0.5f, sphere.second * 0.5f, sphere.second * 0.5f));
+			particles->setPose(p, shift_pose* pose* coord_fix);
+
+			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+		}
+		*/
+		float size = 0.02f ;
+		std::vector<glm::vec3> spring_debug2 = scene->getSpringBoneTargetPositions(my_instance);
+		for (glm::vec3 pos : spring_debug2) {
+			int p = particles->createParticle(0);
+			spring_debug_particles.push_back(p);
+			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+			glm::mat4 pose = glm::mat4(1.0f);
+			//pos.z *= -1.0f; // TODO WHY? This seems wrong!
+			pose = glm::translate(pose, glm::vec3(glm::vec4(pos, 1)));
+			pose = glm::scale(pose, glm::vec3(size, size, size));
+			particles->setPose(p, shift_pose* pose* coord_fix);
+			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+		}
+		
+
+/*
+		
+		std::vector<ScenePlugin::Capsule> spring_debug3 = scene->getSpringBoneColliders(my_instance);
+		for (ScenePlugin::Capsule capsule : spring_debug3) {
+			int p = particles->createParticle(0);
+			spring_debug_particles.push_back(p);
+			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+			glm::mat4 pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.first, 1)));
+			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+			particles->setPose(p, shift_pose* pose* coord_fix);
+
+
+
+			p = particles->createParticle(0);
+			spring_debug_particles.push_back(p);
+			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+			pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, glm::vec3(glm::vec4(capsule.world_center.second, 1)));
+			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+			particles->setPose(p, shift_pose* pose* coord_fix);
+
+
+			p = particles->createParticle(0);
+			spring_debug_particles.push_back(p);
+			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+			pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, glm::vec3(glm::vec4((capsule.world_center.first + capsule.world_center.second) * 0.5f, 1)));
+			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.world_radius, sphere.world_center.x, sphere.world_center.y, sphere.world_center.z);
+			pose = glm::scale(pose, glm::vec3(capsule.world_radius, capsule.world_radius, capsule.world_radius));
+			particles->setPose(p, shift_pose* pose* coord_fix);
+
+			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+		}
+		*/
+
+
+
+
 }
 
 
@@ -495,7 +582,7 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	avatar->setToOriginalPose();
 	scene->setPose(my_instance, avatar_pose,avatar->getBoneVector());
 	scene->clearSpringBones(my_instance) ;
-	scene->enableVRMSpringBones(my_instance, 5.0f);
+	scene->enableVRMSpringBones(my_instance, 10.0f);
 
 
 
