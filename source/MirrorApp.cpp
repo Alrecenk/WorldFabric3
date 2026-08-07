@@ -450,33 +450,33 @@ void MirrorApp::run() {
 
 	std::vector<std::pair<glm::vec3, float>> spring_debug = scene->getSpringBoneWorldPositions(my_instance);
 
-	/*
-		for (std::pair<glm::vec3, float> sphere : spring_debug) {
-			int p = particles->createParticle(0);
-			spring_debug_particles.push_back(p);
-			particles->setColor(p, glm::vec4(1, 0, 0, 0.5f));
-			glm::mat4 pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, glm::vec3(glm::vec4(sphere.first, 1)));
-			//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.second, sphere.first.x, sphere.first.y, sphere.first.z);
-			pose = glm::scale(pose, glm::vec3(sphere.second*0.5f, sphere.second * 0.5f, sphere.second * 0.5f));
-			particles->setPose(p, shift_pose* pose* coord_fix);
+	
+	for (std::pair<glm::vec3, float> sphere : spring_debug) {
+		int p = particles->createParticle(0);
+		spring_debug_particles.push_back(p);
+		particles->setColor(p, glm::vec4(1, 0, 0, 0.5f));
+		glm::mat4 pose = glm::mat4(1.0f);
+		pose = glm::translate(pose, glm::vec3(glm::vec4(sphere.first, 1)));
+		//printf("Sphere radius: %f pos: %f, %f,%f \n", sphere.second, sphere.first.x, sphere.first.y, sphere.first.z);
+		pose = glm::scale(pose, glm::vec3(sphere.second*0.5f, sphere.second * 0.5f, sphere.second * 0.5f));
+		particles->setPose(p, shift_pose* pose* coord_fix);
 
-			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
-		}
-		*/
-		float size = 0.02f ;
-		std::vector<glm::vec3> spring_debug2 = scene->getSpringBoneTargetPositions(my_instance);
-		for (glm::vec3 pos : spring_debug2) {
-			int p = particles->createParticle(0);
-			spring_debug_particles.push_back(p);
-			particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
-			glm::mat4 pose = glm::mat4(1.0f);
-			//pos.z *= -1.0f; // TODO WHY? This seems wrong!
-			pose = glm::translate(pose, glm::vec3(glm::vec4(pos, 1)));
-			pose = glm::scale(pose, glm::vec3(size, size, size));
-			particles->setPose(p, shift_pose* pose* coord_fix);
-			//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
-		}
+		//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+	}
+		
+	float size = 0.02f ;
+	std::vector<glm::vec3> spring_debug2 = scene->getSpringBoneTargetPositions(my_instance);
+	for (glm::vec3 pos : spring_debug2) {
+		int p = particles->createParticle(0);
+		spring_debug_particles.push_back(p);
+		particles->setColor(p, glm::vec4(0, 0, 1, 0.5f));
+		glm::mat4 pose = glm::mat4(1.0f);
+		//pos.z *= -1.0f; // TODO WHY? This seems wrong!
+		pose = glm::translate(pose, glm::vec3(glm::vec4(pos, 1)));
+		pose = glm::scale(pose, glm::vec3(size, size, size));
+		particles->setPose(p, shift_pose* pose* coord_fix);
+		//printf("spring pos: %f, %f, %f\n", pos.x, pos.y, pos.z);
+	}
 		
 
 /*
