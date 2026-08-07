@@ -745,11 +745,11 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 			//stiffness parameter doesn't directly map to our exponential decay spring system
 			// But empirically these numbers are reasonable
 			if(chain.joints[k].stiffness >= 0.7f){
-				spring.half_return_time = 0.1f ;
+				spring.half_return_time = 0.3f ;
 			}else if(chain.joints[k].stiffness >= 0.4f){
-				spring.half_return_time = 0.25f;
+				spring.half_return_time = 0.8f;
 			}else{
-				spring.half_return_time = 0.5f;
+				spring.half_return_time = 1.0f;
 			}
 
 			spring.acceleration = glm::vec3(0, -gravity_strength, 0);

@@ -461,9 +461,9 @@ public:
 
 	//Load any spring bone data from the skeleton of the given instance
 	// and enable it on that instance
-	void enableVRMSpringBones(int instance_id, float gravity_strength =10.0f , float collider_scale = 1.0f, float min_spring_collision_radius = 0.03f);
+	void enableVRMSpringBones(int instance_id, float gravity_strength =10.0f , float collider_scale = 0.98f, float min_spring_collision_radius = 0.03f);
 
-	// Remove any active spring bones onthe given instance
+	// Remove any active spring bones on the given instance
 	void clearSpringBones(int instance_id) ;
 
 	//Gets hte current world positions of a spring set on an instance
