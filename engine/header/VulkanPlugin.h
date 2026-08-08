@@ -286,6 +286,11 @@ class VulkanPlugin : public AsyncPlugin {
 
 public:
 
+	static inline int instance_time = 0 ;
+	static inline int model_time = 0;
+	static inline int texture_time = 0;
+	static inline int lock_time = 0;
+
 	static inline std::string tag = "VulkanLink";
 
 	static inline constexpr bool USE_VALIDATION_LAYERS = false;
@@ -771,6 +776,7 @@ public:
 	std::shared_ptr<VulkanBuffer> vertex_buffer;
 	std::vector<Vertex> vertices;
 	bool model_changed = false;
+	bool model_size_changed = false;
 
 	//Instance specific data
 	std::shared_ptr<VulkanBuffer> instance_buffer;
@@ -850,6 +856,7 @@ public:
 
 	void setModel(const std::vector<Vertex>& new_vertices, const std::vector<uint32_t>& new_indices) {
 		lock.lock();
+		model_size_changed |= vertices.size() != new_vertices.size() || indices.size() != new_indices.size() ;
 		vertices = new_vertices;
 		indices = new_indices;
 		model_changed = true;
@@ -942,22 +949,33 @@ public:
 
 	//Push any pending buffer changes, like model, instance, or textures
 	void updateBuffers(VulkanPlugin* renderer) override{
+		auto start_time = now();
 		lock.lock();
-		//renderer->stampTime(cmd, concat("A - ",group));
-		if (model_changed) {
-			vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-			renderer->pushBufferData(vertices, vertex_buffer);
+		auto end_time = now();
+		VulkanPlugin::lock_time += microsBetween(start_time, end_time);
+		
 
-			index_buffer = renderer->createVulkanBuffer(indices.size() * sizeof(int32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+		if (model_changed) {
+			auto start_time = now();
+			if(model_size_changed){
+				vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+				index_buffer = renderer->createVulkanBuffer(indices.size() * sizeof(int32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+				model_size_changed = false ;
+			}
+			renderer->pushBufferData(vertices, vertex_buffer);
 			renderer->pushBufferData(indices, index_buffer);
 
 			model_changed = false;
 			if (debug_print) {
 				printf("model update\n");
 			}
+			auto end_time = now();
+			int micros = microsBetween(start_time, end_time) ;
+			VulkanPlugin::model_time += micros ;
+			//printf("Update buffer time: %d  size:%d \n", micros, (int)(vertices.size() * sizeof(Vertex) + indices.size() * sizeof(int32_t)));
 		}
-		//renderer->stampTime(cmd, "B");
 		if (textures_changed) {
+			auto start_time = now();
 			if (has_descriptor) {
 				renderer->destroyBinding(texture_set_descriptor);
 			}
@@ -967,10 +985,14 @@ public:
 			if (debug_print) {
 				printf("textures_updated\n");
 			}
+			auto end_time = now();
+			int micros = microsBetween(start_time, end_time);
+			VulkanPlugin::texture_time += micros ;
+			//printf("Update texture time: %d  \n", micros);
 		}
-		//renderer->stampTime(cmd, "C");
 
 		if (instances_changed) {
+			auto start_time = now();
 			if (num_instances_changed) {
 				//printf("initializing new buffer size of %d in phase %d\n", (int) instances.size(), phase) ;
 				instance_buffer = renderer->createVulkanBuffer(instances.size() * sizeof(Instance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
@@ -982,6 +1004,10 @@ public:
 			if (debug_print) {
 				printf("instances updated\n");
 			}
+			auto end_time = now();
+			int micros = microsBetween(start_time, end_time);
+			VulkanPlugin::instance_time += micros ;
+			//printf("Update instance time: %d   size: %d \n", micros,(int)(instances.size() * sizeof(Instance)) );
 		}
 		lock.unlock();
 	}

@@ -888,11 +888,19 @@ void VulkanPlugin::clear(VkCommandBuffer cmd, std::shared_ptr<VulkanBuffer> buff
 void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 	std::map<int,std::unordered_map<int,std::vector<std::shared_ptr<Renderable>>>> to_draw; // key is phases and then groups
 	lock.lock(); // lock just while iterating renderables
+	printf("Frame Started\n"); 
+	instance_time = 0;
+	model_time = 0;
+	texture_time = 0;
+	lock_time = 0;
+	auto start_time = now();
 	for(auto& [key, renderable] : renderables){
 		to_draw[renderable->phase][renderable->group].push_back(renderable) ;
 		renderable->updateBuffers(this);
 		//inputDisplay(renderable->input_num,5, true);
 	}
+	auto after_gather = now();
+	printf("Gather time : %d  lock: %d, model: %d, texture: %d, instance: %d\n", microsBetween(start_time, after_gather),lock_time, model_time, texture_time, instance_time );
 	lock.unlock();
 
 	for(auto& [phase, group_map] : to_draw){ // for each user-defined phase
