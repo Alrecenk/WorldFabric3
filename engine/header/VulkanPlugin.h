@@ -498,6 +498,9 @@ public:
 
 	void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 
+	std::shared_ptr <VulkanBuffer> staging  ;
+	size_t staging_size = 0 ;
+
 	template<typename T>
 	inline void pushBufferData(const std::vector<T>& input_data, std::shared_ptr<VulkanBuffer> buffer) {
 		lock.lock();
@@ -506,7 +509,10 @@ public:
 			lock.unlock();
 			return ;
 		}
-		std::shared_ptr <VulkanBuffer> staging = createVulkanBuffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+		if (staging_size < buffer_size) {
+			staging = createVulkanBuffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+			staging_size = buffer_size ;
+		}
 		void* staging_data;
 		vmaMapMemory(VMA_allocator, staging->allocation, &staging_data);
 
