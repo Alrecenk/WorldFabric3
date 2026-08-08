@@ -896,7 +896,7 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 	auto start_time = now();
 	for(auto& [key, renderable] : renderables){
 		to_draw[renderable->phase][renderable->group].push_back(renderable) ;
-		renderable->updateBuffers(this);
+		renderable->updateBuffers(cmd, this);
 		//inputDisplay(renderable->input_num,5, true);
 	}
 	auto after_gather = now();
