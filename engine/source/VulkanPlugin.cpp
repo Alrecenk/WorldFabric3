@@ -887,9 +887,10 @@ void VulkanPlugin::clear(VkCommandBuffer cmd, std::shared_ptr<VulkanBuffer> buff
 
 void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 	std::map<int,std::unordered_map<int,std::vector<std::shared_ptr<Renderable>>>> to_draw; // key is phases and then groups
-	lock.lock();
+	lock.lock(); // lock just while iterating renderables
 	for(auto& [key, renderable] : renderables){
 		to_draw[renderable->phase][renderable->group].push_back(renderable) ;
+		renderable->updateBuffers(this);
 		//inputDisplay(renderable->input_num,5, true);
 	}
 	lock.unlock();
@@ -910,8 +911,10 @@ void VulkanPlugin::drawRenderables(VkCommandBuffer cmd){
 		int calls = 0 ;
 		lock.lock();
 		auto active_render_targets = active_targets ;
-		
 		lock.unlock();
+
+		
+
 		for(auto& target : active_render_targets){ // for each render target
 			target->setViewport(cmd, this);
 			for (auto& [group, group_list] : group_map) { // for each group

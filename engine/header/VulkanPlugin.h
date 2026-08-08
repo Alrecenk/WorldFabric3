@@ -238,8 +238,11 @@ public:
 	// you can assume that beinGroup will have been called for at leats one entity in a group
 	virtual void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) = 0;
 
-	// Mkae sure all textues are i nthe texture layout in case they were rendered to
+	// Make sure all textues are in the correct texture layout in case they were rendered to
 	virtual void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) = 0 ;
+
+	//Push any pending buffer changes, like model, instance, or textures
+	virtual void updateBuffers(VulkanPlugin* renderer) = 0;
 
 	// Allows setting instances on a TriangleModel through a Renderable withut knowing the exact instant type
 	// instances will need to actually match the model
@@ -937,19 +940,9 @@ public:
 	void endGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
 	}
 
-	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
+	//Push any pending buffer changes, like model, instance, or textures
+	void updateBuffers(VulkanPlugin* renderer) override{
 		lock.lock();
-		for(std::shared_ptr<WFImage> texture : textures){
-			renderer->requireLayout(cmd,texture->getVulkanImage(renderer), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		}
-		lock.unlock();
-	}
-
-	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override{
-		lock.lock();
-		if(debug_print){
-			printf("render called\n");
-		}
 		//renderer->stampTime(cmd, concat("A - ",group));
 		if (model_changed) {
 			vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
@@ -965,18 +958,18 @@ public:
 		}
 		//renderer->stampTime(cmd, "B");
 		if (textures_changed) {
-			if(has_descriptor){
-				renderer->destroyBinding(texture_set_descriptor) ;
+			if (has_descriptor) {
+				renderer->destroyBinding(texture_set_descriptor);
 			}
 			texture_set_descriptor = renderer->createImageBinding(textures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			has_descriptor = true ;
+			has_descriptor = true;
 			textures_changed = false;
 			if (debug_print) {
 				printf("textures_updated\n");
 			}
 		}
 		//renderer->stampTime(cmd, "C");
-		
+
 		if (instances_changed) {
 			if (num_instances_changed) {
 				//printf("initializing new buffer size of %d in phase %d\n", (int) instances.size(), phase) ;
@@ -989,6 +982,22 @@ public:
 			if (debug_print) {
 				printf("instances updated\n");
 			}
+		}
+		lock.unlock();
+	}
+
+	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
+		lock.lock();
+		for(std::shared_ptr<WFImage> texture : textures){
+			renderer->requireLayout(cmd,texture->getVulkanImage(renderer), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
+		lock.unlock();
+	}
+
+	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override{
+		lock.lock();
+		if(debug_print){
+			printf("render called\n");
 		}
 		
 		//renderer->stampTime(cmd, "D");
@@ -1214,15 +1223,20 @@ public:
 	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
 		
 	}
-
-	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
+	//Push any pending buffer changes, like model, instance, or textures
+	void updateBuffers(VulkanPlugin* renderer) override{
 		lock.lock();
 		if (model_changed) {
 			component_buffer = renderer->createVulkanBuffer(components.size() * sizeof(Component), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 			renderer->pushBufferData(components, component_buffer);
 			model_changed = false;
 		}
+		lock.unlock();
+	}
 
+	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
+		lock.lock();
+		
 		*push_camera_matrix = target->camera_matrix;
 		*push_camera_position = target->camera_position;
 		*push_component_buffer_location = component_buffer->device_address;
