@@ -238,8 +238,11 @@ public:
 	// you can assume that beinGroup will have been called for at leats one entity in a group
 	virtual void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) = 0;
 
-	// Mkae sure all textues are i nthe texture layout in case they were rendered to
+	// Make sure all textues are in the correct texture layout in case they were rendered to
 	virtual void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) = 0 ;
+
+	//Push any pending buffer changes, like model, instance, or textures
+	virtual void updateBuffers(VkCommandBuffer cmd, VulkanPlugin* renderer) = 0;
 
 	// Allows setting instances on a TriangleModel through a Renderable withut knowing the exact instant type
 	// instances will need to actually match the model
@@ -287,7 +290,7 @@ public:
 
 	static inline constexpr bool USE_VALIDATION_LAYERS = false;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
-	static inline int millis_to_hold_buffer = 30; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
+	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
 
 	static inline std::vector<std::pair<VkSampler, std::chrono::high_resolution_clock::time_point>> samplers_to_destroy; // This is stored in the vulkan plugin to prevent the global from being duplicated for different templated models
 
@@ -490,8 +493,9 @@ public:
 
 	void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 
+
 	template<typename T>
-	inline void pushBufferData(const std::vector<T>& input_data, std::shared_ptr<VulkanBuffer> buffer) {
+	inline void pushBufferData(VkCommandBuffer& cmd, const std::vector<T>& input_data, std::shared_ptr<VulkanBuffer> buffer) {
 		lock.lock();
 		const size_t buffer_size = input_data.size() * sizeof(T);
 		if(buffer_size == 0){
@@ -499,23 +503,29 @@ public:
 			return ;
 		}
 		std::shared_ptr <VulkanBuffer> staging = createVulkanBuffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+			
 		void* staging_data;
 		vmaMapMemory(VMA_allocator, staging->allocation, &staging_data);
 
 		memcpy(staging_data, input_data.data(), buffer_size);// copy vertex buffer into staging
 
-		immediateSubmit([&](VkCommandBuffer cmd) { // move from staging to given buffer
-			VkBufferCopy data_copy{ 0 };
-			data_copy.dstOffset = 0;
-			data_copy.srcOffset = 0;
-			data_copy.size = buffer_size;
-			vkCmdCopyBuffer(cmd, staging->buffer, buffer->buffer, 1, &data_copy);
-			});
-		//destroyBuffer(staging);
+		// move from staging to given buffer
+		VkBufferCopy data_copy{ 0 };
+		data_copy.dstOffset = 0;
+		data_copy.srcOffset = 0;
+		data_copy.size = buffer_size;
+		vkCmdCopyBuffer(cmd, staging->buffer, buffer->buffer, 1, &data_copy); // staging goes out of scope here, but buffers always hang around for millis_to_hold_buffer so this is fine
 		buffer->object_count = (uint32_t)input_data.size();
 		lock.unlock();
 	}
 
+	template<typename T>
+	inline void pushBufferData(const std::vector<T>& input_data, std::shared_ptr<VulkanBuffer> buffer) {
+		//create Vulkan command to submit automatically (This is slow  you should pass a command buffer if you have one)
+		immediateSubmit([&](VkCommandBuffer cmd) {
+			pushBufferData(cmd, input_data, buffer) ;
+		});
+	}
 
 	static inline bool timing_enabled = false;
 	static inline int log_print_interval_seconds = 10 ;
@@ -768,6 +778,7 @@ public:
 	std::shared_ptr<VulkanBuffer> vertex_buffer;
 	std::vector<Vertex> vertices;
 	bool model_changed = false;
+	bool model_size_changed = false;
 
 	//Instance specific data
 	std::shared_ptr<VulkanBuffer> instance_buffer;
@@ -847,6 +858,7 @@ public:
 
 	void setModel(const std::vector<Vertex>& new_vertices, const std::vector<uint32_t>& new_indices) {
 		lock.lock();
+		model_size_changed |= vertices.size() != new_vertices.size() || indices.size() != new_indices.size() ;
 		vertices = new_vertices;
 		indices = new_indices;
 		model_changed = true;
@@ -937,6 +949,50 @@ public:
 	void endGroup(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
 	}
 
+	//Push any pending buffer changes, like model, instance, or textures
+	void updateBuffers(VkCommandBuffer cmd, VulkanPlugin* renderer) override{
+		lock.lock();
+		if (model_changed) {
+			if(model_size_changed){
+				vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+				index_buffer = renderer->createVulkanBuffer(indices.size() * sizeof(int32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+				model_size_changed = false ;
+			}
+			renderer->pushBufferData(cmd,vertices, vertex_buffer);
+			renderer->pushBufferData(cmd,indices, index_buffer);
+
+			model_changed = false;
+			if (debug_print) {
+				printf("model update\n");
+			}
+		}
+		if (textures_changed) {
+			if (has_descriptor) {
+				renderer->destroyBinding(texture_set_descriptor);
+			}
+			texture_set_descriptor = renderer->createImageBinding(textures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			has_descriptor = true;
+			textures_changed = false;
+			if (debug_print) {
+				printf("textures_updated\n");
+			}
+		}
+		if (instances_changed) {
+			if (num_instances_changed) {
+				//printf("initializing new buffer size of %d in phase %d\n", (int) instances.size(), phase) ;
+				instance_buffer = renderer->createVulkanBuffer(instances.size() * sizeof(Instance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+				num_instances_changed = false;
+				draw_indirect_buffer_allocated = false; // the draw command needs to be updated to draw the new amount of instances
+			}
+			renderer->pushBufferData(cmd, instances, instance_buffer);
+			instances_changed = false;
+			if (debug_print) {
+				printf("instances updated\n");
+			}
+		}
+		lock.unlock();
+	}
+
 	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
 		lock.lock();
 		for(std::shared_ptr<WFImage> texture : textures){
@@ -949,46 +1005,6 @@ public:
 		lock.lock();
 		if(debug_print){
 			printf("render called\n");
-		}
-		//renderer->stampTime(cmd, concat("A - ",group));
-		if (model_changed) {
-			vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-			renderer->pushBufferData(vertices, vertex_buffer);
-
-			index_buffer = renderer->createVulkanBuffer(indices.size() * sizeof(int32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-			renderer->pushBufferData(indices, index_buffer);
-
-			model_changed = false;
-			if (debug_print) {
-				printf("model update\n");
-			}
-		}
-		//renderer->stampTime(cmd, "B");
-		if (textures_changed) {
-			if(has_descriptor){
-				renderer->destroyBinding(texture_set_descriptor) ;
-			}
-			texture_set_descriptor = renderer->createImageBinding(textures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			has_descriptor = true ;
-			textures_changed = false;
-			if (debug_print) {
-				printf("textures_updated\n");
-			}
-		}
-		//renderer->stampTime(cmd, "C");
-		
-		if (instances_changed) {
-			if (num_instances_changed) {
-				//printf("initializing new buffer size of %d in phase %d\n", (int) instances.size(), phase) ;
-				instance_buffer = renderer->createVulkanBuffer(instances.size() * sizeof(Instance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-				num_instances_changed = false;
-				draw_indirect_buffer_allocated = false; // the draw command needs to be updated to draw the new amount of instances
-			}
-			renderer->pushBufferData(instances, instance_buffer);
-			instances_changed = false;
-			if (debug_print) {
-				printf("instances updated\n");
-			}
 		}
 		
 		//renderer->stampTime(cmd, "D");
@@ -1214,15 +1230,20 @@ public:
 	void requireTextureLayouts(VkCommandBuffer cmd, VulkanPlugin* renderer) override {
 		
 	}
-
-	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
+	//Push any pending buffer changes, like model, instance, or textures
+	void updateBuffers(VkCommandBuffer cmd, VulkanPlugin* renderer) override{
 		lock.lock();
 		if (model_changed) {
 			component_buffer = renderer->createVulkanBuffer(components.size() * sizeof(Component), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-			renderer->pushBufferData(components, component_buffer);
+			renderer->pushBufferData(cmd, components, component_buffer);
 			model_changed = false;
 		}
+		lock.unlock();
+	}
 
+	void render(VkCommandBuffer cmd, VulkanPlugin* renderer, std::shared_ptr<RenderTarget> target) override {
+		lock.lock();
+		
 		*push_camera_matrix = target->camera_matrix;
 		*push_camera_position = target->camera_position;
 		*push_component_buffer_location = component_buffer->device_address;

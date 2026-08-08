@@ -410,7 +410,7 @@ void MirrorApp::run() {
 	updateBlink(morph_weights);
 	//morph_weights[blink_morph] = randomFloat();
 	scene->setMorphWeights(avatar_model, morph_weights);
-	//scene->setMorphWeights(mirror_model, morph_weights); // disable to improve performance for recording
+	scene->setMorphWeights(mirror_model, morph_weights);
 	
 	pose_history.emplace_back(time, final_avatar_pose, last_bone_data);
 	while(pose_history.front().time < time - pose_delay){
@@ -424,13 +424,6 @@ void MirrorApp::run() {
 	scene->setPose(camera_avatar_instance_2, shift_pose * h.pose * coord_fix, h.bone_data);
 	scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
 	
-
-
-
-
-
-
-
 
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	for (int& p : spring_debug_particles) {
