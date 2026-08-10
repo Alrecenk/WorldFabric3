@@ -61,7 +61,7 @@ layout( push_constant ) uniform constants
 void main() 
 {
 	vec4 tex_color = texture(color_texture, in_tex_coord) * in_color;
-	
+
 	ivec2 pixel = ivec2(gl_FragCoord.xy);
     uint pixel_index = pixel.y * PushConstants.frame_width + pixel.x ;
 
