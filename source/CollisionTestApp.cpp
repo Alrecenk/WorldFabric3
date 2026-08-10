@@ -4,6 +4,111 @@
 #include "FlagSet.h"
 
 
+CollisionTestApp::ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) {
+	vertex = vertices;
+	face = faces;
+}
+
+// Returns a shape for an axis aligned bounding box
+CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3 min, glm::vec3 max) {
+	std::vector<glm::vec3> vertices;
+	vertices.emplace_back(min.x, min.y, min.z); // 0
+	vertices.emplace_back(max.x, min.y, min.z); // 1
+	vertices.emplace_back(min.x, max.y, min.z); // 2
+	vertices.emplace_back(max.x, max.y, min.z); // 3
+	vertices.emplace_back(min.x, min.y, max.z); // 4
+	vertices.emplace_back(max.x, min.y, max.z); // 5
+	vertices.emplace_back(min.x, max.y, max.z); // 6
+	vertices.emplace_back(max.x, max.y, max.z); // 7
+
+	std::vector<std::vector<int>> faces;
+	faces.push_back(std::vector<int>({ 0, 4, 6, 2 })); // min x
+	faces.push_back(std::vector<int>({ 1, 3, 7, 5 })); // max x
+	faces.push_back(std::vector<int>({ 0, 1, 5, 4 })); // min y
+	faces.push_back(std::vector<int>({ 2, 6, 7, 3 })); // max y
+	faces.push_back(std::vector<int>({ 0, 2, 3, 1 })); // min z
+	faces.push_back(std::vector<int>({ 4, 5, 7, 6 })); // max z
+	return ConvexPolyhedron(vertices, faces);
+}
+
+//Alternate form that always centers on the origin
+CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3 size) {
+	return makeAxisAlignedBox(size * -0.5f, size * 0.5f);
+}
+
+glm::vec3 CollisionTestApp::ConvexPolyhedron::support(const glm::vec3& direction){
+	float highest = -FLT_MAX ;
+	glm::vec3 support ;
+	//TODO walk edge graph to make this more efficient for more complex polyhedron
+	for(auto& v : vertex){
+		float dot = glm::dot(v,direction);
+		if(dot > highest){
+			highest = dot ;
+			support = v ;
+		}
+	}
+}
+
+// Returns a shapefor a cylinder with center of ends and A and B
+CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeCylinder(glm::vec3 A, glm::vec3 B, float radius, int sides) {
+	glm::vec3 Z = B - A; // get axis_ along cylinder ((0,0,0) = A, (0,0,1) = B)
+	glm::vec3 X = glm::normalize(glm::cross(glm::vec3(1, .8, .7), Z)) *
+		radius; // Get an arbitrary axis orthogonal to Z
+	glm::vec3 Y = glm::normalize(glm::cross(X, Z)) * radius; // Get final axis
+	std::vector<glm::vec3> vertices;
+	std::vector<std::vector<int>> faces;
+	std::vector<int> top, bottom;
+	const float twopi = 6.28318530718f;
+	for (int side = 0; side < sides; side++) {
+		float angle = side * twopi / sides;
+		float dx = sin(angle);
+		float dy = cos(angle);
+		vertices.push_back(A + X * dx + Y * dy);
+		vertices.push_back(B + X * dx + Y * dy);
+		faces.emplace_back(
+			std::vector<int>({ 2 * side + 1, 2 * side, (2 * side + 2) % (sides * 2), (2 * side + 3) % (sides * 2) }));
+		top.push_back(side * 2 + 1);
+		bottom.push_back((sides - 1 - side) * 2); // flip order for bottom face
+	}
+	//Top and bottom face
+	faces.emplace_back(top);
+	faces.emplace_back(bottom);
+	return ConvexPolyhedron(vertices, faces);
+}
+
+
+// Returns a shape for a Tetrahedron with the given points
+CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D) {
+	std::vector<glm::vec3> vertices;
+	vertices.push_back(A);
+	vertices.push_back(B);
+	vertices.push_back(C);
+	vertices.push_back(D);
+
+	std::vector<std::vector<int>> faces;
+	faces.push_back(std::vector<int>({ 0, 1, 2 }));
+	faces.push_back(std::vector<int>({ 0, 1, 3 }));
+	faces.push_back(std::vector<int>({ 0, 3, 2 }));
+	faces.push_back(std::vector<int>({ 3, 1, 2 }));
+
+	// Fix winding order so normals face out
+	glm::vec3 center = (A + B + C + D) * 0.25f;
+	for (int k = 0; k < faces.size(); k++) {
+		glm::vec3& a = vertices[faces[k][0]];
+		glm::vec3& b = vertices[faces[k][1]];
+		glm::vec3& c = vertices[faces[k][2]];
+
+		glm::vec3 n = glm::cross(b - a, c - a);
+		if (glm::dot(a - center, n) < 0) {
+			int t = faces[k][1];
+			faces[k][1] = faces[k][2];
+			faces[k][2] = t;
+		}
+	}
+	return ConvexPolyhedron(vertices, faces);
+}
+
+
 CollisionTestApp::CollisionTestApp() {}
 
 // Called when switching into this state before the first time run is called

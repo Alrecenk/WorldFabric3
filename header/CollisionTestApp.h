@@ -9,6 +9,33 @@ class CollisionTestApp : public MachineState {
 
 public:
 
+	class CollisionShape {
+	public:
+		virtual glm::vec3 support(const glm::vec3& direction)  = 0;
+
+	};
+
+	class ConvexPolyhedron : public CollisionShape{
+		std::vector<glm::vec3> vertex;
+		std::vector<std::vector<int>> face;
+
+		ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) ;
+
+		glm::vec3 support(const glm::vec3& direction) override ;
+
+		// Returns an axis aligned bounding box
+		static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 min, glm::vec3 max);
+
+		//Alternate form of box that always centers on the origin
+		static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 size);
+
+		// Returns a shape for a cylinder with center of ends A and B and the given radius and side count
+		static ConvexPolyhedron makeCylinder(glm::vec3 A, glm::vec3 B, float radius, int sides);
+
+		// Returns a shape for a Tetrahedron with the given points
+		static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D);
+
+	};
 
 	static inline const std::string state_name = "collision_test_state";
 
