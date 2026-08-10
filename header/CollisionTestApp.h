@@ -16,10 +16,15 @@ public:
 	};
 
 	class ConvexPolyhedron : public CollisionShape{
+	public:
 		std::vector<glm::vec3> vertex;
 		std::vector<std::vector<int>> face;
 
+		ConvexPolyhedron(){}
+
 		ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) ;
+
+		ConvexPolyhedron(std::shared_ptr<ConvexPolyhedron> base, const glm::mat4& pose) ;
 
 		glm::vec3 support(const glm::vec3& direction) override ;
 
@@ -35,6 +40,24 @@ public:
 		// Returns a shape for a Tetrahedron with the given points
 		static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D);
 
+	};
+
+	class PolyInstance{
+	public:
+		std::shared_ptr<ConvexPolyhedron> base_shape ;
+		std::shared_ptr<ConvexPolyhedron> world_shape;
+		
+		int scene_id  = -1 ;
+		glm::mat4 pose ;
+
+		PolyInstance()  = default ;
+
+
+		PolyInstance(std::string model, std::shared_ptr<ConvexPolyhedron> base);
+
+		void setPose(glm::mat4& p);
+		
+		
 	};
 
 	static inline const std::string state_name = "collision_test_state";
@@ -55,23 +78,22 @@ public:
 
 private:
 
+	std::map<std::string, std::shared_ptr<ConvexPolyhedron>> base_shape ;
+
+	std::vector<PolyInstance> instances; // maps scene instance to transform of base shape
+
+
+	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
+	std::vector<glm::vec3> positions = { {0,-0.5f,-1}, {0,0,0},{0,-0.5f,1} };
+
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
-	std::chrono::high_resolution_clock::time_point last_ball_time = now();
-
-
-
-	glm::vec3 min = { -3,-4,-3 };
-	glm::vec3 max = { 3,4,3 };
-	float gravity = 4.0f;
-	int millis_between_balls = 600;
-	int max_balls = 250;
 
 	// Csmera control stuff
-	glm::vec3 look_at = glm::vec3(0, -3, 0);
+	glm::vec3 look_at = glm::vec3(0, 0, 0);
 	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
 	float fov = 1.0f;
 	float camera_theta = 0.5f;

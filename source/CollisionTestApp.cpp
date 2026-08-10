@@ -9,6 +9,14 @@ CollisionTestApp::ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3
 	face = faces;
 }
 
+CollisionTestApp::ConvexPolyhedron::ConvexPolyhedron(std::shared_ptr<ConvexPolyhedron> base, const glm::mat4& pose){
+	vertex = base->vertex ;
+	face = base->face;
+	for(auto& v : vertex){
+		v = pose * glm::vec4(v,1.0f) ;
+	}
+}
+
 // Returns a shape for an axis aligned bounding box
 CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3 min, glm::vec3 max) {
 	std::vector<glm::vec3> vertices;
@@ -47,6 +55,7 @@ glm::vec3 CollisionTestApp::ConvexPolyhedron::support(const glm::vec3& direction
 			support = v ;
 		}
 	}
+	return support ;
 }
 
 // Returns a shapefor a cylinder with center of ends and A and B
@@ -109,6 +118,18 @@ CollisionTestApp::ConvexPolyhedron CollisionTestApp::ConvexPolyhedron::makeTetra
 }
 
 
+CollisionTestApp::PolyInstance::PolyInstance(std::string model, std::shared_ptr<ConvexPolyhedron> base) {
+	base_shape = base;
+	pose = glm::mat4(1.0f);
+	scene_id = getTool<ScenePlugin>()->createInstance(model, pose);
+}
+
+void CollisionTestApp::PolyInstance::setPose(glm::mat4& p){
+	pose = p ;
+	getTool<ScenePlugin>()->setPose(scene_id,pose) ;
+	world_shape = std::make_shared<ConvexPolyhedron>(base_shape, pose) ;
+}
+
 CollisionTestApp::CollisionTestApp() {}
 
 // Called when switching into this state before the first time run is called
@@ -139,7 +160,22 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	//cell = std::make_shared<PhysicsCell>(min, max);
+	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(1,1,1)));
+	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 1), glm::vec3(1, 0, 0),glm::vec3(0, 1, 0),glm::vec3(0, 0, 0))) ;
+	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1), 0.5f, 8)) ;
+
+	int c = 0 ;
+	for(auto& [name, base] : base_shape){
+		std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
+		model->setPolyhedronModel(base->vertex,base->face,colors[c]) ;
+		scene->createModelSet(name,model) ;
+		instances.emplace_back(name,base);
+		glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]) ;
+		instances[instances.size()-1].setPose(pose) ;
+		c++;
+	}
+
+
 
 }
 
@@ -178,6 +214,14 @@ void CollisionTestApp::run() {
 	particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
 	particles->setPose(mouse_particle_id, particle_pose);
 
+
+	int c = 0 ;
+	for(auto& inst : instances){
+		glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
+		pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
+		inst.setPose(pose);
+		c++;
+	}
 
 	updateCamera();
 
