@@ -399,8 +399,8 @@ void setupGameStates() {
 	//app->add(SceneDemoApp::state_name, std::shared_ptr<SceneDemoApp>(new SceneDemoApp()));
 	//app->setState(SceneDemoApp::state_name);
 
-	//app->add(SceneDemoApp2::state_name, std::shared_ptr<SceneDemoApp2>(new SceneDemoApp2()));
-	//app->setState(SceneDemoApp2::state_name);
+	app->add(SceneDemoApp2::state_name, std::shared_ptr<SceneDemoApp2>(new SceneDemoApp2()));
+	app->setState(SceneDemoApp2::state_name);
 
 	//app->add(BallTestApp::state_name, std::shared_ptr<BallTestApp>(new BallTestApp()));
 	//app->setState(BallTestApp::state_name);
@@ -422,8 +422,8 @@ void setupGameStates() {
 	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
 	//app->setState(ConstraintTestApp::state_name);
 
-	app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
-	app->setState(CollisionTestApp::state_name);
+	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
+	//app->setState(CollisionTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -557,6 +557,6 @@ int exampleMain(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	//Narball::main(argc, argv);
+	exampleMain(argc, argv);
 }
