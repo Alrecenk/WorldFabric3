@@ -51,14 +51,14 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 	if (!scene->hasModel(small_box_model)) {
 		std::shared_ptr<ConvexShape> small_box = std::make_shared<ConvexShape>(ConvexShape::makeAxisAlignedBox(glm::vec3(0.005f, 0.005f, 0.005f)));
 		std::shared_ptr<GLTF> gltf_model = std::shared_ptr<GLTF>(new GLTF);
-		gltf_model->setPolyhedronModel(small_box->vertex, small_box->face, glm::vec3(1.0f, 1.0f, 1.0f));
+		gltf_model->setPolyhedronModel(small_box->vertex, small_box->face, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		scene->createModelSet(small_box_model, gltf_model, false);
 	}
 
 	if (!scene->hasModel(small_sphere_model)) {
 		std::shared_ptr<ConvexShape> small_sphere = std::make_shared<ConvexShape>(ConvexShape::makeSphere(glm::vec3(0,0,0),0.005f,2));
 		std::shared_ptr<GLTF> gltf_model = std::shared_ptr<GLTF>(new GLTF);
-		gltf_model->setPolyhedronModel(small_sphere->vertex, small_sphere->face, glm::vec3(1.0f, 1.0f, 1.0f));
+		gltf_model->setPolyhedronModel(small_sphere->vertex, small_sphere->face, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		scene->createModelSet(small_sphere_model, gltf_model, false);
 	}
 
