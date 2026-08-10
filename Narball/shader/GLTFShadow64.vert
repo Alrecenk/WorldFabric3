@@ -8,6 +8,7 @@ layout (location = 2) out vec2 out_tex_coord;
 struct Vertex {
 	vec3 position;
 	vec3 normal;
+	vec4 color;
 	vec2 tex_coord;
 	ivec4 joints;
 	vec4 weights;
@@ -68,5 +69,5 @@ void main()
 	out_position = (root * vec4(v_game_position, 1.0)).xyz;
 	gl_Position = PushConstants.camera_matrix * vec4(out_position, 1.0);
 	out_tex_coord = v.tex_coord;
-	out_normal = (root * vec4(v_game_normal, 0.0)).xyz;
+	out_normal = normalize((root * vec4(v_game_normal, 0.0)).xyz);
 }

@@ -27,5 +27,3 @@ glslc Panel.vert -o Panel.vert.spv
 glslc Panel.frag -o Panel.frag.spv
 glslc PanelElement.vert -o PanelElement.vert.spv
 glslc PanelElement.frag -o PanelElement.frag.spv
-
-glslc NarballLightMapPost.comp -o NarballLightMapPost.comp.spv

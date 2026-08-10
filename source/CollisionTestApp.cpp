@@ -168,7 +168,7 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	for(auto& [name, base] : base_shape){
 		std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 		model->setPolyhedronModel(base->vertex,base->face,colors[c]) ;
-		scene->createModelSet(name,model) ;
+		scene->createModelSet(name,model,false, false) ;
 		instances.emplace_back(name,base);
 		glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]) ;
 		instances[instances.size()-1].setPose(pose) ;

@@ -380,21 +380,21 @@ std::vector<std::shared_ptr<GLTF::RenderModel>> GLTF::getRenderBuffers(bool incl
 				if(old_to_new_index.find(triangles[k].A) == old_to_new_index.end()){
 					old_to_new_index[triangles[k].A] = num_vertices ;
 					Vertex& v = vertices[triangles[k].A];
-					render_model->vertices.push_back({v.position, v.normal, v.tex_coord,v.joints,v.weights});
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord,v.joints,v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].A]) ;
 				if (old_to_new_index.find(triangles[k].B) == old_to_new_index.end()) {
 					old_to_new_index[triangles[k].B] = num_vertices;
 					Vertex& v = vertices[triangles[k].B];
-					render_model->vertices.push_back({ v.position, v.normal, v.tex_coord,v.joints,v.weights });
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].B]);
 				if (old_to_new_index.find(triangles[k].C) == old_to_new_index.end()) {
 					old_to_new_index[triangles[k].C] = num_vertices;
 					Vertex& v = vertices[triangles[k].C];
-					render_model->vertices.push_back({ v.position, v.normal, v.tex_coord,v.joints,v.weights });
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].C]);
@@ -485,7 +485,7 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 						position += v.morph_position[i] * weights[i] ;
 						normal += v.morph_normal[i] * weights[i] ;
 					}
-					render_model->vertices.push_back({ position, normal, v.tex_coord,v.joints,v.weights });
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].A]);
@@ -498,7 +498,7 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 						position += v.morph_position[i] * weights[i];
 						normal += v.morph_normal[i] * weights[i];
 					}
-					render_model->vertices.push_back({ position, normal, v.tex_coord,v.joints,v.weights });
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].B]);
@@ -511,7 +511,7 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 						position += v.morph_position[i] * weights[i];
 						normal += v.morph_normal[i] * weights[i];
 					}
-					render_model->vertices.push_back({ position, normal, v.tex_coord,v.joints,v.weights });
+					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].C]);

@@ -117,6 +117,7 @@ class GLTF : public OptimizationProblem, public TableInterface {
 		struct alignas(16) BufferVertex{
 			alignas(16) glm::vec3 position = { 0, 0, 0 }; // position in global space
 			alignas(16) glm::vec3 normal = { 0, 0, 0 }; // normal in global space
+			alignas(16) glm::vec4 color = { 1, 1, 1, 1 };
 			alignas(16) glm::vec2 tex_coord = { 0, 0 };
 
 			alignas(16) glm::ivec4 joints = { 0,0,0,0 }; // Nodes this vertex is skinned to if any
