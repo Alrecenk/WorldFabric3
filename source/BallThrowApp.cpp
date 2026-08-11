@@ -71,7 +71,7 @@ void BallThrowApp::enter(std::shared_ptr<MachineState> from) {
 	scene->addModelToInstance(foxes[2]->scene_id, "hat");
 
 	//make the balls
-	scene->createModelSet("ball", "./assets/BeachBall.glb", true);
+	scene->createModelSet("ball", "./Narball/asset/BeachBall.glb", true);
 
 	balls[0] = std::make_shared<BallSequence>(BallSequence(scene)) ;
 	balls[1] = std::make_shared<BallSequence>(BallSequence(scene));
@@ -91,9 +91,9 @@ void BallThrowApp::enter(std::shared_ptr<MachineState> from) {
 		//createDefaultSequence(start_time, 1.0f, 3.0f) ;
 		//createServerStateSequence(start_time,hold_time,air_time,ping) ;
 		//createOwnerSequence(start_time, hold_time, air_time, ping);
-		createRollbackSequence(start_time, hold_time, air_time, ping);
+		//createRollbackSequence(start_time, hold_time, air_time, ping);
 		//createRollbackInterpolationSequence(start_time, hold_time, air_time, ping, ping*0.35f);
-		//createTimeWarpSequence(start_time, hold_time, air_time, ping, 7.8f/(ping*0.5f));
+		createTimeWarpSequence(start_time, hold_time, air_time, ping, 8.0f/(ping*0.5f));
 
 
 		start_time += hold_time*2 + air_time*2 + ping*2.0f ; ;

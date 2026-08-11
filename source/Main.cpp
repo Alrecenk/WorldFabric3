@@ -410,8 +410,8 @@ void setupGameStates() {
 	//app->add(SocketTest::state_name, std::shared_ptr<SocketTest>(new SocketTest()));
 	//app->setState(SocketTest::state_name);
 
-	//app->add(BallThrowApp::state_name, std::shared_ptr<BallThrowApp>(new BallThrowApp()));
-	//app->setState(BallThrowApp::state_name);
+	app->add(BallThrowApp::state_name, std::shared_ptr<BallThrowApp>(new BallThrowApp()));
+	app->setState(BallThrowApp::state_name);
 
 	//app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
 	//app->setState(MirrorApp::state_name);
@@ -422,8 +422,8 @@ void setupGameStates() {
 	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
 	//app->setState(ConstraintTestApp::state_name);
 
-	app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
-	app->setState(CollisionTestApp::state_name);
+	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
+	//app->setState(CollisionTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
