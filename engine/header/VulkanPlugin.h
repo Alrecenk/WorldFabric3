@@ -787,6 +787,8 @@ public:
 	VkDeviceMemory draw_indirect_buffer_memory;
 	bool draw_indirect_buffer_allocated = false;
 
+	VkBuffer last_draw_indirect_buffer; // hold onto reference to previous so we don't clear it while it's still in use
+	VkDeviceMemory last_draw_indirect_buffer_memory;
 
 	// Texture data
 	std::vector<std::shared_ptr<WFImage>> textures;
@@ -1034,10 +1036,19 @@ public:
 		if (!draw_indirect_buffer_allocated) {
 			
 			if(draw_indirect_buffer){ // if this isn't our first buffer
-				vkDestroyBuffer(renderer->device, draw_indirect_buffer, nullptr); // delete previous buffer from GPU
-				if(draw_indirect_buffer_memory){
-					vkFreeMemory(renderer->device, draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
+			
+				//clear buffer we were holding onto just in case
+				if(last_draw_indirect_buffer){
+					vkDestroyBuffer(renderer->device, last_draw_indirect_buffer, nullptr); // delete previous buffer from GPU
+					if (draw_indirect_buffer_memory) {
+						vkFreeMemory(renderer->device, last_draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
+					}
 				}
+
+				//hold onto buffer for a bit in case it's in use
+				last_draw_indirect_buffer = draw_indirect_buffer ;
+				last_draw_indirect_buffer_memory = draw_indirect_buffer_memory ;
+				
 			}
 
 			VkDrawIndexedIndirectCommand drawCmd{};
