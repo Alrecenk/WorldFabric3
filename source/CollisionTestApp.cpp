@@ -176,6 +176,12 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	}
 
 
+	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
+	box->setBoundingBoxModel(min, max, glm::vec4(1, 1, 1, 1));
+	box = box->createMirrorImage(); // Flips winding order inside out
+	scene->createModelSet("room", box);
+	room_instance_id = scene->createInstance("room", glm::mat4(1.0f));
+
 
 }
 

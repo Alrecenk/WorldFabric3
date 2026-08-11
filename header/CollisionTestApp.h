@@ -91,6 +91,10 @@ private:
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
+	glm::vec3 min = { -3,-4,-3 };
+	glm::vec3 max = { 3,4,3 };
+	int room_instance_id  = -1 ;
+
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, 0, 0);
