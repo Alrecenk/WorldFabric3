@@ -3,7 +3,7 @@
 
 layout (location = 0) out vec3 out_position;
 layout (location = 1) out vec4 out_color;
-//layout (location = 2) out vec3 out_normal;
+layout (location = 2) out vec3 out_normal;
 layout (location = 3) out vec2 out_tex_coord;
 
 struct Vertex {
@@ -64,7 +64,7 @@ void main()
 
 	out_position = (root * vec4(v.position, 1.0)).xyz;
 	gl_Position = PushConstants.camera_matrix * vec4(out_position, 1.0);
-	//out_normal = normalize((root * vec4(v.normal, 0.0)).xyz);
+	out_normal = normalize((root * vec4(v.normal, 0.0)).xyz);
 	out_tex_coord = v.tex_coord;
 	out_color = v.color ;
 

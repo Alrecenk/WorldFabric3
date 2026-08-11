@@ -4,7 +4,7 @@
 //shader input
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec4 in_color;
-//layout (location = 2) in vec3 in_normal;
+layout (location = 2) in vec3 in_normal;
 layout (location = 3) in vec2 in_tex_coord;
 
 layout(set = 0, binding = 0) uniform sampler2D color_texture;
@@ -61,6 +61,10 @@ layout( push_constant ) uniform constants
 void main() 
 {
 	vec4 tex_color = texture(color_texture, in_tex_coord) * in_color;
+
+	vec3 to_viewer  = normalize(PushConstants.camera_position - in_position) ;
+	float brightness = dot(to_viewer, normalize(in_normal)) ;
+	tex_color = vec4(tex_color.r*brightness, tex_color.g*brightness,tex_color.b*brightness,tex_color.a) ;
 
 	ivec2 pixel = ivec2(gl_FragCoord.xy);
     uint pixel_index = pixel.y * PushConstants.frame_width + pixel.x ;

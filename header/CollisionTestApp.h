@@ -83,7 +83,7 @@ private:
 	std::vector<PolyInstance> instances; // maps scene instance to transform of base shape
 
 
-	std::vector<glm::vec4> colors = { {1,0,0,0.03}, {0,1,0,0.03},{0,0,1,0.03} };
+	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
 	std::vector<glm::vec3> positions = { {0,-0.5f,-1}, {0,0,0},{0,-0.5f,1} };
 
 	int light_id = -1; // Scene light
