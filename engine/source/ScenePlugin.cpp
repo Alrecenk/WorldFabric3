@@ -697,7 +697,7 @@ void ScenePlugin::createModelSet(const std::string& name, std::shared_ptr<GLTF>&
 
 	for (int k = 0; k < main_model_set.size(); k++) {
 		main_model_set[k]->phase = translucent ? TRANSLUCENT_PHASE : MAIN_PHASE;
-		main_model_set[k]->group = min_max_bones; // group with everything else using this shader
+		main_model_set[k]->group = min_max_bones + (translucent ? 100000 : 0); // group with everything else using this shader
 		mset.main_model_ids.push_back(renderer->addRenderable(main_model_set[k]));
 	}
 
@@ -705,7 +705,7 @@ void ScenePlugin::createModelSet(const std::string& name, std::shared_ptr<GLTF>&
 		auto shadow_model_set = selected_set->loadGLTF(mset.gltf_model, renderer, selected_set->shadow_program);
 		for (int k = 0; k < shadow_model_set.size(); k++) {
 			shadow_model_set[k]->phase = SHADOW_PHASE;
-			shadow_model_set[k]->group = min_max_bones;// group with everything else using this shader
+			shadow_model_set[k]->group = min_max_bones + (translucent ? 100000 : 0);// group with everything else using this shader
 			mset.shadow_model_ids.push_back(renderer->addRenderable(shadow_model_set[k]));
 		}
 	}
