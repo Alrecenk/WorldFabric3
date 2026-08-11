@@ -8,6 +8,7 @@ layout (location = 3) out vec2 outTexCoord;
 struct Vertex {
 	vec3 position;
 	vec3 normal;
+	vec4 color;
 	vec2 tex_coord;
 	ivec4 joints;
 	vec4 weights;

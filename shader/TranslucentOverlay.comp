@@ -35,7 +35,6 @@ layout( push_constant ) uniform constants
 	mat4 render_matrix;
 	vec3 camera_position ;
 	ComponentBuffer component_buffer;
-
 	FragmentBuffer fragment_buffer;
 	CountBuffer count_buffer ;
 	int frame_width;
@@ -56,13 +55,16 @@ void main() {
 
 	uint num_fragments = min(PushConstants.frame_fragments, cb.counts[pixel_index]) ; // cannot have more than the frame buffer but the count could be higher
 
-
+	vec4 result = imageLoad(final_image, pixel_coord) ; // start with the opaque color
 	if(num_fragments >0 && num_fragments <= PushConstants.frame_fragments){
 		
 
+		float opaque_depth = 10000.0f ;
 		vec4 raw_p = imageLoad(position, pixel_coord) ;
-		vec4 clip_p = PushConstants.render_matrix * raw_p ;
-        float opaque_depth = clip_p.z / clip_p.w;
+		if(raw_p.w > 0){
+			vec4 clip_p = PushConstants.render_matrix * raw_p ;
+			opaque_depth = clip_p.z / clip_p.w;
+		}
 		
 		Fragment local[8] ; // array needs fixed size so this is an even harder max than frame fragments
 		
@@ -81,24 +83,18 @@ void main() {
 			}
 		}
 		
-
-		
-		vec4 result = imageLoad(final_image, pixel_coord) ; // start with the opaque color
-		
 		for (uint i = 0; i < num_fragments; i++) {
 			if(local[i].depth < opaque_depth){
 				vec4 translucent =	unpackUnorm4x8(local[i].color);
 				float a = translucent.a ;
 				float m = 1.0 - a;
-				result = vec4(translucent.r * a + result.r * m ,translucent.g * a + result.g * m ,translucent.g * a + result.g * m ,  1.0) ;
+				result = vec4(translucent.r * a + result.r * m ,translucent.g * a + result.g * m ,translucent.b * a + result.b * m ,  1.0) ;
 			}
 		}
-			
-		imageStore(final_image, pixel_coord, result);
-		
-		
 		
 	}
+
+	imageStore(final_image, pixel_coord, result);
 	
 	/*
 		vec4 result = vec4(num_fragments/4.0,PushConstants.frame_fragments/8.0,0,1 ) ;

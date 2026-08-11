@@ -14,6 +14,7 @@ layout(set = 0, binding = 0) uniform sampler2D color_texture;
 struct Vertex {
 	vec3 position;
 	vec3 normal;
+	vec4 color;
 	vec2 tex_coord;
 	ivec4 joints;
 	vec4 weights;
@@ -48,6 +49,6 @@ void main() {
 		discard ;
 	}
 	
-	vec4 clip= PushConstants.camera_matrix*vec4(in_position - normalize(in_normal)*0.07,1.0f) ;
-	out_frag_depth = clip.z/clip.w ;
+	vec4 clip= PushConstants.camera_matrix*vec4(in_position - in_normal*0.02f,1.0f) ;
+	out_frag_depth = clip.z/clip.w + 0.0002 ;
 }

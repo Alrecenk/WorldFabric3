@@ -8,10 +8,11 @@ layout (location = 2) out vec2 out_tex_coord;
 struct Vertex {
 	vec3 position;
 	vec3 normal;
+	vec4 color;
 	vec2 tex_coord;
 	ivec4 joints;
 	vec4 weights;
-}; 
+};  
 
 struct Instance {
 	mat4 root;

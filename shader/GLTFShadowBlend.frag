@@ -14,6 +14,7 @@ layout(set = 0, binding = 0) uniform sampler2D color_texture;
 struct Vertex {
 	vec3 position;
 	vec3 normal;
+	vec4 color;
 	vec2 tex_coord;
 	ivec4 joints;
 	vec4 weights;

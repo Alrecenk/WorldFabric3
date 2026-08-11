@@ -36,12 +36,14 @@ struct ImageToDestroy{
 	VkImage image;
 	VkImageView imageView;
 	VmaAllocation allocation;
+	int frame = 0;
 	std::chrono::high_resolution_clock::time_point time;
 };
 
 struct BufferToDestroy{
 	VkBuffer buffer;
 	VmaAllocation allocation;
+	int frame = 0 ;
 	std::chrono::high_resolution_clock::time_point time ;
 };
 
@@ -59,11 +61,8 @@ class VulkanImage {
 
 		static inline std::mutex buffer_lock;
 
-		~VulkanImage(){
-			buffer_lock.lock();
-			vulkan_images_to_destroy.push_back({image,imageView,allocation, now()});
-			buffer_lock.unlock();
-		}
+		~VulkanImage();
+
 		static inline std::vector<ImageToDestroy> vulkan_images_to_destroy = std::vector<ImageToDestroy>();
 };
 
@@ -77,11 +76,7 @@ class VulkanBuffer {
 
 		static inline std::mutex buffer_lock ;
 
-		~VulkanBuffer(){
-			buffer_lock.lock() ;
-			vulkan_buffers_to_destroy.push_back({ buffer,allocation, now() });
-			buffer_lock.unlock();
-		}
+		~VulkanBuffer() ;
 
 		static inline std::vector<BufferToDestroy> vulkan_buffers_to_destroy = std::vector<BufferToDestroy>();
 };
@@ -288,9 +283,11 @@ public:
 
 	static inline std::string tag = "VulkanLink";
 
-	static inline constexpr bool USE_VALIDATION_LAYERS = false;
+	static inline constexpr bool USE_VALIDATION_LAYERS = true;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
 	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
+	static inline int frames_to_hold_buffer = 3 ; // In case frame rate hitches, like when loading large models, also make sure buffers hang around for frame completion
+	static inline int frame_number = 0 ; // number of frames displayed so far
 
 	static inline std::vector<std::pair<VkSampler, std::chrono::high_resolution_clock::time_point>> samplers_to_destroy; // This is stored in the vulkan plugin to prevent the global from being duplicated for different templated models
 
@@ -610,7 +607,6 @@ private:
 	};
 
 	FrameData frames[CHAIN_FRAMES]; // frames of th swap chain for buffering
-	int frame_number = 0 ;
 
 	bool resize_requested = false ;
 	bool minimized = false;
@@ -791,6 +787,8 @@ public:
 	VkDeviceMemory draw_indirect_buffer_memory;
 	bool draw_indirect_buffer_allocated = false;
 
+	VkBuffer last_draw_indirect_buffer; // hold onto reference to previous so we don't clear it while it's still in use
+	VkDeviceMemory last_draw_indirect_buffer_memory;
 
 	// Texture data
 	std::vector<std::shared_ptr<WFImage>> textures;
@@ -1038,10 +1036,19 @@ public:
 		if (!draw_indirect_buffer_allocated) {
 			
 			if(draw_indirect_buffer){ // if this isn't our first buffer
-				vkDestroyBuffer(renderer->device, draw_indirect_buffer, nullptr); // delete previous buffer from GPU
-				if(draw_indirect_buffer_memory){
-					vkFreeMemory(renderer->device, draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
+			
+				//clear buffer we were holding onto just in case
+				if(last_draw_indirect_buffer){
+					vkDestroyBuffer(renderer->device, last_draw_indirect_buffer, nullptr); // delete previous buffer from GPU
+					if (draw_indirect_buffer_memory) {
+						vkFreeMemory(renderer->device, last_draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
+					}
 				}
+
+				//hold onto buffer for a bit in case it's in use
+				last_draw_indirect_buffer = draw_indirect_buffer ;
+				last_draw_indirect_buffer_memory = draw_indirect_buffer_memory ;
+				
 			}
 
 			VkDrawIndexedIndirectCommand drawCmd{};

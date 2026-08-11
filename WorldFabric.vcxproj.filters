@@ -1539,6 +1539,9 @@
     <ClInclude Include="header\ConstraintTestApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="header\CollisionTestApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2144,6 +2147,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\ConstraintTestApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\CollisionTestApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

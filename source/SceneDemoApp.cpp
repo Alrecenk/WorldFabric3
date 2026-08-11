@@ -51,7 +51,7 @@ void SceneDemoApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	
-	scene->createModelSet("beach", "./assets/palmdiorama.glb", true);
+	scene->createModelSet("beach", "./Narball/asset/palmdiorama.glb", true);
 	glm::mat4 beach_pose = glm::mat4(1.0f);
 	beach_pose = glm::translate(beach_pose, glm::vec3(0,0.435,1));
 	//beach_pose = glm::rotate(beach_pose, 3.141f, glm::vec3(0, 1, 0));

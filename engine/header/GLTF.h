@@ -117,6 +117,7 @@ class GLTF : public OptimizationProblem, public TableInterface {
 		struct alignas(16) BufferVertex{
 			alignas(16) glm::vec3 position = { 0, 0, 0 }; // position in global space
 			alignas(16) glm::vec3 normal = { 0, 0, 0 }; // normal in global space
+			alignas(16) glm::vec4 color = { 1, 1, 1, 1 };
 			alignas(16) glm::vec2 tex_coord = { 0, 0 };
 
 			alignas(16) glm::ivec4 joints = { 0,0,0,0 }; // Nodes this vertex is skinned to if any
@@ -270,7 +271,7 @@ class GLTF : public OptimizationProblem, public TableInterface {
 		void setBoundingBoxModel(const glm::vec3& min, const glm::vec3& max, const glm::vec4 color);
 
         // Sets the model to a polyhedron of the given color (Can be used to generate visuals for ConvexShape objects)
-        void setPolyhedronModel(std::vector<glm::vec3>& vertices, std::vector<std::vector<int>>& faces, glm::vec3 color);
+        void setPolyhedronModel(std::vector<glm::vec3>& vertices, std::vector<std::vector<int>>& faces, glm::vec4 color);
 
         void addPrimitive(std::vector<Vertex>& vertices, std::vector<Triangle>& triangles,
             Variant& primitive, int node_id, const glm::mat4& transform, Variant& json, const Variant& bin);
