@@ -36,12 +36,14 @@ struct ImageToDestroy{
 	VkImage image;
 	VkImageView imageView;
 	VmaAllocation allocation;
+	int frame = 0;
 	std::chrono::high_resolution_clock::time_point time;
 };
 
 struct BufferToDestroy{
 	VkBuffer buffer;
 	VmaAllocation allocation;
+	int frame = 0 ;
 	std::chrono::high_resolution_clock::time_point time ;
 };
 
@@ -59,11 +61,8 @@ class VulkanImage {
 
 		static inline std::mutex buffer_lock;
 
-		~VulkanImage(){
-			buffer_lock.lock();
-			vulkan_images_to_destroy.push_back({image,imageView,allocation, now()});
-			buffer_lock.unlock();
-		}
+		~VulkanImage();
+
 		static inline std::vector<ImageToDestroy> vulkan_images_to_destroy = std::vector<ImageToDestroy>();
 };
 
@@ -77,11 +76,7 @@ class VulkanBuffer {
 
 		static inline std::mutex buffer_lock ;
 
-		~VulkanBuffer(){
-			buffer_lock.lock() ;
-			vulkan_buffers_to_destroy.push_back({ buffer,allocation, now() });
-			buffer_lock.unlock();
-		}
+		~VulkanBuffer() ;
 
 		static inline std::vector<BufferToDestroy> vulkan_buffers_to_destroy = std::vector<BufferToDestroy>();
 };
@@ -291,6 +286,8 @@ public:
 	static inline constexpr bool USE_VALIDATION_LAYERS = true;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
 	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
+	static inline int frames_to_hold_buffer = 3 ; // In case frame rate hitches, like when loading large models, also make sure buffers hang around for frame completion
+	static inline int frame_number = 0 ; // number of frames displayed so far
 
 	static inline std::vector<std::pair<VkSampler, std::chrono::high_resolution_clock::time_point>> samplers_to_destroy; // This is stored in the vulkan plugin to prevent the global from being duplicated for different templated models
 
@@ -610,7 +607,6 @@ private:
 	};
 
 	FrameData frames[CHAIN_FRAMES]; // frames of th swap chain for buffering
-	int frame_number = 0 ;
 
 	bool resize_requested = false ;
 	bool minimized = false;

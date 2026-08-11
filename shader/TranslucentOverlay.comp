@@ -35,7 +35,6 @@ layout( push_constant ) uniform constants
 	mat4 render_matrix;
 	vec3 camera_position ;
 	ComponentBuffer component_buffer;
-
 	FragmentBuffer fragment_buffer;
 	CountBuffer count_buffer ;
 	int frame_width;
