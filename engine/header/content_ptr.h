@@ -91,7 +91,7 @@ public:
 	content_ptr(){};
 
 	//Make an element by taking a unique_ptr
-	content_ptr(std::unique_ptr<T> initial_data)
+	content_ptr(std::unique_ptr<T>& initial_data)
 		: local_value(std::move(initial_data)), clean(false), local(true) {
 	}
 
@@ -231,122 +231,83 @@ auto static getStructure(TrackedObj& obj) {
 	return std::tie(obj.value);
 }
 
-
-//TODO check AI generated tests
-
-// Helper to print current status
-void print_stats(const std::string& test_name) {
-	std::cout << "[" << test_name << "] Allocs: " << TrackedObj::allocs
-		<< " | Frees: " << TrackedObj::frees
-		<< " | CAS Size: " << ContentAddressedStorage::content.size()
-		<< std::endl;
-}
-
-// ============================================================================
-// TEST CASES
-// ============================================================================
-
-void test_basic_cow_sharing() {
+void testContentPtr() {
 	TrackedObj::reset_counters();
-	std::cout << "Running: Basic CoW & Sharing..." << std::endl;
-
-	// 1. Initial creation (1 alloc)
-	content_ptr<TrackedObj> p1(10);
-
-	// 2. Modify p1 -> transitions to dirty local (Still 1 alloc, because it started local)
-	p1->value = 20;
-
-	// 3. Copy to p2 -> triggers hash and CAS insert (1 more alloc for the TypedContentValue wrapper)
-	content_ptr<TrackedObj> p2 = p1;
-
-	// Verification: p2 should see 20, p1 should still be local
-	assert(p2->value == 20);
-
-	// 4. Modify p1 again -> should be ZERO new allocations because it's already Local
-	int allocs_before = TrackedObj::allocs;
-	p1->value = 30;
-	assert(TrackedObj::allocs == allocs_before && "Editing a local object must not allocate!");
-
-	// 5. Modify p2 -> should trigger CoW allocation (1 new alloc)
-	p2->value = 40;
-	assert(p2->value == 40);
-	assert(p1->value == 30);
-
-	print_stats("Basic CoW");
-}
-
-void test_cas_cleanup() {
-	TrackedObj::reset_counters();
-	std::cout << "Running: CAS Cleanup..." << std::endl;
-
-	{
-		content_ptr<TrackedObj> p1(100);
-		p1.commit(); // Push to CAS and drop local (now Pure Hash)
-
-		content_ptr<TrackedObj> p2 = p1; // Both point to same hash
-		content_ptr<TrackedObj> p3 = p1; // All three share one hash
+	std::cout << "Starting Test..." << std::endl;
+	bool passing = true ;
+	const int NUM_SLOTS = 100;
+	std::vector<content_ptr<TrackedObj>> slots;
+	slots.reserve(NUM_SLOTS);
+	std::cout << "(Init Empty) Allocs =  0 " << TrackedObj::allocs << std::endl;
+	passing &= TrackedObj::allocs == 0 ;
+	// Create 10 unique objects. 
+	for (int i = 0; i < NUM_SLOTS; ++i) {
+		slots.emplace_back(i);
 	}
-	// Everything out of scope. All refs should be gone, CAS should be empty.
+	passing &= TrackedObj::allocs == NUM_SLOTS;
+	std::cout << "(Init Full) Allocs " << NUM_SLOTS << " = " << TrackedObj::allocs << std::endl;
 
-	assert(ContentAddressedStorage::content.size() == 0 && "CAS failed to prune unreferenced objects!");
-	print_stats("CAS Cleanup");
-}
-
-void test_move_semantics_frame_pattern() {
-	TrackedObj::reset_counters();
-	std::cout << "Running: Move-Steal Frame Pattern..." << std::endl;
-
-	// Simulation of frame-to-frame transfer
-	content_ptr<TrackedObj> current_frame(50);
-	current_frame->value = 60; // Now Dirty Local
-
-	for (int i = 1; i <= 3; ++i) {
-		// Transfer to next frame using move semantics
-		// This should hash the object for history, but STEAL the buffer for the new pointer
-		content_ptr<TrackedObj> next_frame = std::move(current_frame);
-
-		// Modify in the new frame
-		next_frame->value += 10; // Should be zero allocation because it stole the buffer
-
-		int allocs_during_edit = TrackedObj::allocs;
-		next_frame->value += 1;
-		assert(TrackedObj::allocs == allocs_during_edit && "Move-stealing must prevent re-allocation on next frame edit!");
-
-		current_frame = std::move(next_frame);
+	// Hammer the slots at random
+	for (int i = 0; i < 100; ++i) {
+		int target = (int)(randomFloat()*NUM_SLOTS) ;
+		slots[target]->value = i;
 	}
+	passing &= TrackedObj::allocs == NUM_SLOTS;
+	std::cout << "(Mutation Burst) Allocs still " << TrackedObj::allocs << std::endl;
 
-	print_stats("Move Steal");
+	// Copy one slot to every slot
+	int target = 5 ;
+	for (int i = 0; i < NUM_SLOTS; ++i) {
+		slots[i] = slots[target]; // even self copy is safe
+	}
+	passing &= TrackedObj::allocs == NUM_SLOTS + 1;
+	std::cout << "(Sharing Wave) Allocs " << NUM_SLOTS + 1 << " = " << TrackedObj::allocs << std::endl;
+
+	// Make slot [0] unique again by editing it.
+	slots[0]->value = 999;
+	passing &= TrackedObj::allocs == NUM_SLOTS + 2;
+	std::cout << "(Dirty 0) Allocs " << NUM_SLOTS + 2 << " = " << TrackedObj::allocs << std::endl;
+
+	// move the local copy of slot 0 across the list one at time
+	for (int i = 1; i < NUM_SLOTS; ++i) {
+		slots[i] = std::move(slots[i-1]);
+	}
+	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
+	
+	//Edit the local copy at the end of the list, should be free if was properly moved
+	slots[NUM_SLOTS-1] = 345 ;
+	passing &= TrackedObj::allocs == NUM_SLOTS + 4;
+
+	for (int i = 0; i < NUM_SLOTS - 1; ++i) {
+		passing &= slots[i]->value == 999;
+		if(slots[i]->value != 999){
+			printf("Incorrect value after sweep!\n");
+		}
+	}
+	passing &= slots[NUM_SLOTS - 1]->value == 345 ;
+	if (slots[NUM_SLOTS - 1]->value != 345) {
+		printf("Incorrect value at endof sweep!\n");
+	}
+	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
+	std::cout << "(Move Sweep) Allocs " << NUM_SLOTS + 3 << " = " << TrackedObj::allocs << std::endl;
+
+	//Commit everything to content storage and out of local
+	for (int i = 1; i < NUM_SLOTS; ++i) {
+		slots[i].commit();
+	}
+	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
+	std::cout << "(Commit) Allocs "<< NUM_SLOTS + 4 << "= " << TrackedObj::allocs << std::endl;
+	//Clear all the data
+	slots.clear();
+	passing &= TrackedObj::allocs == TrackedObj::frees && ContentAddressedStorage::content.size() == 0 ;
+	
+	std::cout << "Final Tally -> Allocs: " << TrackedObj::allocs << " Frees: " << TrackedObj::frees << std::endl;
+	if(passing){
+		std::cout << "All tests passed!" << std::endl;
+	}else{
+		std::cout << "Tests failed!" << std::endl;
+	}
 }
 
-void test_complex_interleaving() {
-	TrackedObj::reset_counters();
-	std::cout << "Running: Complex Interleaving..." << std::endl;
-
-	content_ptr<TrackedObj> a(1);
-	content_ptr<TrackedObj> b = a; // Hash created
-
-	a->value = 2; // a is dirty local
-	content_ptr<TrackedObj> c = a; // a hashed again, c is clean nonlocal
-
-	b->value = 3; // b was clean nonlocal -> allocates new local (CoW)
-
-	a.commit(); // a becomes pure hash
-	c.reset();   // c released
-
-	// Final check: Only 'a' and 'b' exist. 'a' is clean, 'b' is dirty.
-	assert(a->value == 2);
-	assert(b->value == 3);
-
-	print_stats("Complex Interleaving");
-}
-
-
-static void testContentPtr() {
-		test_basic_cow_sharing();
-		test_cas_cleanup();
-		test_move_semantics_frame_pattern();
-		test_complex_interleaving();
-		std::cout << "\nALL TESTS PASSED SUCCESSFULLY!" << std::endl;
-}
 
 #endif // #ifndef _CONTENT_PTR_H_
