@@ -7,8 +7,8 @@
 #include "SteamworksPlugin.h"
 #include "GLTF.h"
 #include "SavePlugin.h"
-
 #include "StatePlugin.h"
+#include "content_ptr.h"
 
 #include "BallTestApp.h"
 #include "VulkanDemoApp.h"
@@ -553,7 +553,9 @@ int exampleMain(int argc, char* argv[]) {
 	return 0;
 }
 
+
 int main(int argc, char* argv[]) {
 	//Narball::main(argc, argv);
-	exampleMain(argc, argv);
+	//exampleMain(argc, argv);
+	testContentPtr();
 }

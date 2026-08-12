@@ -169,6 +169,7 @@
     <ClInclude Include="engine\header\ActionMap.h" />
     <ClInclude Include="engine\header\AsyncPlugin.h" />
     <ClInclude Include="engine\header\AudioPlugin.h" />
+    <ClInclude Include="engine\header\content_ptr.h" />
     <ClInclude Include="engine\header\ConvexShape.h" />
     <ClInclude Include="engine\header\ConvexSolid.h" />
     <ClInclude Include="engine\header\CSVLog.h" />
