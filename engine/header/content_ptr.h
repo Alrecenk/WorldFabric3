@@ -241,7 +241,7 @@ public:
 	}
 
 	//Non-const access requires a local copy
-	T* operator->() {
+	T* edit() {
 		if (local) {
 			if(clean){
 				clean = false ;
@@ -320,7 +320,7 @@ void testContentPtr() {
 	// Hammer the slots at random
 	for (int i = 0; i < 100; ++i) {
 		int target = (int)(randomFloat()*NUM_SLOTS) ;
-		slots[target]->value = i;
+		slots[target].edit()->value = i;
 	}
 	passing &= TrackedObj::allocs == NUM_SLOTS;
 	std::cout << "(Mutation Burst) Allocs still " << TrackedObj::allocs << std::endl;
@@ -334,7 +334,7 @@ void testContentPtr() {
 	std::cout << "(Sharing Wave) Allocs " << NUM_SLOTS + 1 << " = " << TrackedObj::allocs << std::endl;
 
 	// Make slot [0] unique again by editing it.
-	slots[0]->value = 999;
+	slots[0].edit()->value = 999;
 	passing &= TrackedObj::allocs == NUM_SLOTS + 2;
 	std::cout << "(Dirty 0) Allocs " << NUM_SLOTS + 2 << " = " << TrackedObj::allocs << std::endl;
 
@@ -345,7 +345,7 @@ void testContentPtr() {
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 	
 	//Edit the local copy at the end of the list, should be free if was properly moved
-	slots[NUM_SLOTS-1]->value = 345 ;
+	slots[NUM_SLOTS-1].edit()->value = 345 ;
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 
 	for (int i = 0; i < NUM_SLOTS - 1; ++i) {
