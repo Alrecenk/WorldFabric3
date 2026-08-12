@@ -90,14 +90,91 @@ public:
 	//empty pointer, needed for use in some data structures
 	content_ptr(){};
 
+	//Make an element from raw data
+	content_ptr(const T& initial_data)
+		: local_value(std::make_unique<T>(initial_data)), clean(false), local(true) {
+	}
+
+	content_ptr& operator=(const T& initial_data) {
+		reset();
+		local_value = std::make_unique<T>(initial_data);
+		clean = false;
+		local = true;
+		return *this;
+	}
+
+	//Make an element from an initializer allocated on the the stack without a copy
+	template <typename U>
+	content_ptr(U&& initial_data)
+		: local_value(std::make_unique<T>(std::forward<U>(initial_data))), clean(false), local(true) {
+	}
+
+
+	template <typename U>
+	content_ptr& operator=(U&& initial_data) {
+		reset();
+		local_value = std::make_unique<T>(std::forward<U>(initial_data)) ;
+		clean = false;
+		local = true;
+		return *this;
+	}
+
 	//Make an element by taking a unique_ptr
 	content_ptr(std::unique_ptr<T>& initial_data)
 		: local_value(std::move(initial_data)), clean(false), local(true) {
 	}
 
-	//Make an element from raw data
-	content_ptr(const T& initial_data)
-		: local_value(std::make_unique<T>(initial_data)), clean(false), local(true) {
+	content_ptr& operator=(std::unique_ptr<T>& initial_data) {
+		reset();
+		local_value = std::move(initial_data) ;
+		clean = false;
+		local = true;
+		return *this;
+	}
+
+	//Move semantics, steals local buffer but other remains a clean nonlocal content_ptr
+	content_ptr(content_ptr&& other) noexcept {
+		if (!other.clean) {
+			// Clean the other object by copying it to storage
+			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.clean = true;
+		}
+
+		hash = other.hash;
+		ContentAddressedStorage::addReference(hash);
+		clean = true;
+		local = false;
+
+		if (other.local) {
+			local_value = std::move(other.local_value);
+			local = true;
+			other.local = false;
+		}
+	}
+
+	content_ptr& operator=(content_ptr&& other) noexcept {
+		if (this == &other) {
+			return *this;
+		}
+		reset();
+
+		if (!other.clean) {
+			// Clean the other object by copying it to storage
+			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.clean = true;
+		}
+
+		hash = other.hash;
+		ContentAddressedStorage::addReference(hash);
+		clean = true;
+		local = false;
+
+		if (other.local) {
+			local_value = std::move(other.local_value);
+			local = true;
+			other.local = false;
+		}
+		return *this;
 	}
 
 	// Copy semantics
@@ -114,7 +191,6 @@ public:
 		local = false;
 	}
 
-	//Equal semantics
 	content_ptr& operator=(const content_ptr& other) {
 		if (this == &other){ // set equal to self
 			return *this; // don't break anything
@@ -133,16 +209,11 @@ public:
 		return *this;
 	}
 
-	content_ptr& operator=(const T& initial_data) {
+	content_ptr& operator=(content_ptr& other) {
+		if (this == &other) { // set equal to self
+			return *this; // don't break anything
+		}
 		reset(); // we're being overwritten, so clean up anything we have
-		local_value = std::make_unique<T>(initial_data) ;
-		clean = false;
-		local = true ;
-		return *this;
-	}
-
-	//Move semantics, steals local buffer but other remains a clean nonlocal content_ptr
-	content_ptr(content_ptr&& other) noexcept {
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
 			other.hash = ContentAddressedStorage::insert(*other.local_value);
@@ -153,19 +224,14 @@ public:
 		ContentAddressedStorage::addReference(hash);
 		clean = true;
 		local = false;
-
-		if(other.local){
-			local_value = std::move(other.local_value) ;
-			local = true ;
-			other.local = false ;
-		}
+		return *this;
 	}
 
 	~content_ptr(){
 		reset();
 	}
 
-	//Constaccessor is read only, no dirty required
+	//Const accessor is read only, no dirty required
 	const T* operator->() const {
 		if (local){
 			return local_value.get();
@@ -174,9 +240,13 @@ public:
 		}
 	}
 
-	//Non const access requires a local copy
+	//Non-const access requires a local copy
 	T* operator->() {
 		if (local) {
+			if(clean){
+				clean = false ;
+				ContentAddressedStorage::removeReference(hash);
+			}
 			return local_value.get(); // already local, good
 		}else if(clean){ // not local but valid CAS data
 			local_value = std::make_unique<T> (* ContentAddressedStorage::get<T>(hash)); // copy CAS into local
@@ -275,18 +345,21 @@ void testContentPtr() {
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 	
 	//Edit the local copy at the end of the list, should be free if was properly moved
-	slots[NUM_SLOTS-1] = 345 ;
-	passing &= TrackedObj::allocs == NUM_SLOTS + 4;
+	slots[NUM_SLOTS-1]->value = 345 ;
+	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 
 	for (int i = 0; i < NUM_SLOTS - 1; ++i) {
-		passing &= slots[i]->value == 999;
-		if(slots[i]->value != 999){
+		const auto& ptr = slots[i];
+		passing &= ptr->value == 999;
+		if(ptr->value != 999){
 			printf("Incorrect value after sweep!\n");
 		}
+		
 	}
-	passing &= slots[NUM_SLOTS - 1]->value == 345 ;
-	if (slots[NUM_SLOTS - 1]->value != 345) {
-		printf("Incorrect value at endof sweep!\n");
+	const auto& ptr = slots[NUM_SLOTS - 1] ;
+	passing &= ptr->value == 345 ;
+	if (ptr->value != 345) {
+		printf("Incorrect value at end of sweep!\n");
 	}
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 	std::cout << "(Move Sweep) Allocs " << NUM_SLOTS + 3 << " = " << TrackedObj::allocs << std::endl;
@@ -295,7 +368,7 @@ void testContentPtr() {
 	for (int i = 1; i < NUM_SLOTS; ++i) {
 		slots[i].commit();
 	}
-	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
+	passing &= TrackedObj::allocs == NUM_SLOTS + 4;
 	std::cout << "(Commit) Allocs "<< NUM_SLOTS + 4 << "= " << TrackedObj::allocs << std::endl;
 	//Clear all the data
 	slots.clear();
