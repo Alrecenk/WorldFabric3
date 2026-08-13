@@ -1,5 +1,5 @@
-#ifndef _CONTENT_PTR_H_
-#define _CONTENT_PTR_H_ 1
+#ifndef _local_ptr_H_
+#define _local_ptr_H_ 1
 
 #include "Registry.h" // Used for generic hash and serializer
 
@@ -67,7 +67,7 @@ public:
 };
 
 template <typename T>
-class content_ptr {
+class local_ptr {
 public:
 	mutable bool clean = false ; // wehtehr our current data matches the content storage and our hash is valid
 	mutable bool local = false ; // whether we have a local copy ready to edit on
@@ -88,14 +88,14 @@ public:
 	}
 		
 	//empty pointer, needed for use in some data structures
-	content_ptr(){};
+	local_ptr(){};
 
 	//Make an element from raw data
-	content_ptr(const T& initial_data)
+	local_ptr(const T& initial_data)
 		: local_value(std::make_unique<T>(initial_data)), clean(false), local(true) {
 	}
 
-	content_ptr& operator=(const T& initial_data) {
+	local_ptr& operator=(const T& initial_data) {
 		reset();
 		local_value = std::make_unique<T>(initial_data);
 		clean = false;
@@ -104,14 +104,16 @@ public:
 	}
 
 	//Make an element from an initializer allocated on the the stack without a copy
-	template <typename U>
-	content_ptr(U&& initial_data)
+	template <typename U,
+		typename std::enable_if<!std::is_same<typename std::decay<U>::type, local_ptr>::value, int>::type = 0>// don't use this for local_ptr
+	local_ptr(U&& initial_data)
 		: local_value(std::make_unique<T>(std::forward<U>(initial_data))), clean(false), local(true) {
 	}
 
 
-	template <typename U>
-	content_ptr& operator=(U&& initial_data) {
+	template <typename U ,
+	typename std::enable_if<!std::is_same<typename std::decay<U>::type, local_ptr>::value, int>::type = 0> // don't use this for local_ptr
+	local_ptr& operator=(U&& initial_data) {
 		reset();
 		local_value = std::make_unique<T>(std::forward<U>(initial_data)) ;
 		clean = false;
@@ -120,11 +122,11 @@ public:
 	}
 
 	//Make an element by taking a unique_ptr
-	content_ptr(std::unique_ptr<T>& initial_data)
+	local_ptr(std::unique_ptr<T>& initial_data)
 		: local_value(std::move(initial_data)), clean(false), local(true) {
 	}
 
-	content_ptr& operator=(std::unique_ptr<T>& initial_data) {
+	local_ptr& operator=(std::unique_ptr<T>& initial_data) {
 		reset();
 		local_value = std::move(initial_data) ;
 		clean = false;
@@ -132,8 +134,8 @@ public:
 		return *this;
 	}
 
-	//Move semantics, steals local buffer but other remains a clean nonlocal content_ptr
-	content_ptr(content_ptr&& other) noexcept {
+	//Move semantics, steals local buffer but other remains a clean nonlocal local_ptr
+	local_ptr(local_ptr&& other) noexcept {
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
 			other.hash = ContentAddressedStorage::insert(*other.local_value);
@@ -152,7 +154,7 @@ public:
 		}
 	}
 
-	content_ptr& operator=(content_ptr&& other) noexcept {
+	local_ptr& operator=(local_ptr&& other) noexcept {
 		if (this == &other) {
 			return *this;
 		}
@@ -178,7 +180,7 @@ public:
 	}
 
 	// Copy semantics
-	content_ptr(const content_ptr& other) {
+	local_ptr(const local_ptr& other) {
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
 			other.hash = ContentAddressedStorage::insert(*other.local_value);
@@ -191,25 +193,7 @@ public:
 		local = false;
 	}
 
-	content_ptr& operator=(const content_ptr& other) {
-		if (this == &other){ // set equal to self
-			return *this; // don't break anything
-		}
-		reset(); // we're being overwritten, so clean up anything we have
-		if (!other.clean) {
-			// Clean the other object by copying it to storage
-			other.hash = ContentAddressedStorage::insert(*other.local_value);
-			other.clean = true;
-		}
-
-		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
-		clean = true;
-		local = false;
-		return *this;
-	}
-
-	content_ptr& operator=(content_ptr& other) {
+	local_ptr& operator=(const local_ptr& other) {
 		if (this == &other) { // set equal to self
 			return *this; // don't break anything
 		}
@@ -227,7 +211,25 @@ public:
 		return *this;
 	}
 
-	~content_ptr(){
+	local_ptr& operator=(local_ptr& other) {
+		if (this == &other) { // set equal to self
+			return *this; // don't break anything
+		}
+		reset(); // we're being overwritten, so clean up anything we have
+		if (!other.clean) {
+			// Clean the other object by copying it to storage
+			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.clean = true;
+		}
+
+		hash = other.hash;
+		ContentAddressedStorage::addReference(hash);
+		clean = true;
+		local = false;
+		return *this;
+	}
+
+	~local_ptr(){
 		reset();
 	}
 
@@ -277,7 +279,7 @@ public:
 };
 
 
-// An object whichtracks its allocations and deallocations, used only for tests
+// An object which tracks its allocations and deallocations, used only for tests
 class TrackedObj {
 public:
 	static inline int allocs = 0;
@@ -289,10 +291,9 @@ public:
 	TrackedObj(const TrackedObj& other) : value(other.value) { allocs++; }
 	~TrackedObj() { frees++; }
 
-	static void reset_counters() {
+	static void resetCounters() {
 		allocs = 0;
 		frees = 0;
-		ContentAddressedStorage::content.clear();
 	}
 };
 
@@ -301,12 +302,36 @@ auto static getStructure(TrackedObj& obj) {
 	return std::tie(obj.value);
 }
 
-void testContentPtr() {
-	TrackedObj::reset_counters();
+void testLocalPtr() {
+	TrackedObj::resetCounters();
 	std::cout << "Starting Test..." << std::endl;
 	bool passing = true ;
-	const int NUM_SLOTS = 100;
-	std::vector<content_ptr<TrackedObj>> slots;
+
+	local_ptr<TrackedObj> first = 10 ; // one alloc
+	local_ptr<TrackedObj> second = first ; // one alloc because push to CAS
+	local_ptr<TrackedObj> third = first; // no allocs
+	first.edit()->value = 20 ; // no allocs, local retained
+
+	passing &= first->value == 20 ;
+	passing &= second->value == 10;
+	passing &= third->value == 10;
+	passing &= TrackedObj::allocs == 2 ;
+	if(passing){
+		std::cout << "Value retained after source edit check passed\n" ;
+	}
+	first.reset();
+	second.reset();
+	third.reset();
+	passing &= TrackedObj::frees == 2;
+	passing &= ContentAddressedStorage::content.size() == 0 ;
+	
+	if (passing) {
+		std::cout << "Clean up after source edit check passed\n";
+	}
+	TrackedObj::resetCounters() ;
+		
+	const int NUM_SLOTS = 10;
+	std::vector<local_ptr<TrackedObj>> slots;
 	slots.reserve(NUM_SLOTS);
 	std::cout << "(Init Empty) Allocs =  0 " << TrackedObj::allocs << std::endl;
 	passing &= TrackedObj::allocs == 0 ;
@@ -352,14 +377,14 @@ void testContentPtr() {
 		const auto& ptr = slots[i];
 		passing &= ptr->value == 999;
 		if(ptr->value != 999){
-			printf("Incorrect value after sweep!\n");
+			std::cout << "Incorrect value after sweep!" << std::endl;
 		}
 		
 	}
 	const auto& ptr = slots[NUM_SLOTS - 1] ;
 	passing &= ptr->value == 345 ;
 	if (ptr->value != 345) {
-		printf("Incorrect value at end of sweep!\n");
+		std::cout << "Incorrect value at end of sweep!" << std::endl;
 	}
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 	std::cout << "(Move Sweep) Allocs " << NUM_SLOTS + 3 << " = " << TrackedObj::allocs << std::endl;
@@ -383,4 +408,4 @@ void testContentPtr() {
 }
 
 
-#endif // #ifndef _CONTENT_PTR_H_
+#endif // #ifndef _local_ptr_H_
