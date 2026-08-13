@@ -210,8 +210,8 @@ public:
 		local = false;
 		return *this;
 	}
-
-	local_ptr& operator=(local_ptr& other) {
+	// yes this does seem to be required for some cases where the const one fails
+	local_ptr& operator=(local_ptr& other) { 
 		if (this == &other) { // set equal to self
 			return *this; // don't break anything
 		}
@@ -243,6 +243,7 @@ public:
 	}
 
 	//Non-const access requires a local copy
+	//Explicitly delete non_const -> so user have to do .edit()-> to explicity get a writeable
 	T* edit() {
 		if (local) {
 			if(clean){
@@ -369,7 +370,7 @@ void testLocalPtr() {
 	}
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 	
-	//Edit the local copy at the end of the list, should be free if was properly moved
+	//Edit the local copy at the end of the list, should be free if buffer was properly moved
 	slots[NUM_SLOTS-1].edit()->value = 345 ;
 	passing &= TrackedObj::allocs == NUM_SLOTS + 3;
 
