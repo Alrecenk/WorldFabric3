@@ -4,6 +4,12 @@
 #include "Registry.h" // Used for generic hash and serializer
 
 
+
+// Trait to detect any local_ptr regardless of template argument T
+template <typename T> struct is_local_ptr : std::false_type {};
+template <typename T> struct is_local_ptr<local_ptr<T>> : std::true_type {};
+template <typename T> inline constexpr bool is_local_ptr_v = is_local_ptr<T>::value;
+
 struct ContentValue {
 	int references = 1;
 	virtual ~ContentValue() = default;
@@ -74,6 +80,8 @@ public:
  
 	mutable int64_t hash = 0 ;
 	mutable std::unique_ptr<T> local_value  = nullptr;
+
+	using value_type = T; // This allows us to extract T from an instance
 	
 	// Reset to nullptr state
 	void reset(){
@@ -263,7 +271,7 @@ public:
 	}
 
 	//Explicity push local data to the CAS
-	void commit(){
+	void commit() const{
 		if(!clean && ! local){
 			return ;
 		}
@@ -276,6 +284,76 @@ public:
 			local = false;
 		}
 	}
+
+
+
+	// Forward declare tuple helper function because it's mutally recursive with nontuple collectHashesArg
+	template <typename Tuple, size_t Index = 0>
+	static void collectHashesTupleArg(std::unordered_set<int64_t>& hashes, const Tuple& t);
+
+	// Appends the given argument to the end of the byte buffer
+	// Function arguments and class member types must be in this list for them to be serializable
+	template<typename T>
+	static inline void collectHashesArg(std::unordered_set<int64_t>& hashes, const T& arg) {
+		using RawType = std::remove_cvref_t<T>;
+		if(constexpr (is_local_ptr_v<RawType>){
+			arg.commit(); // push to CAS if local
+			if(arg.clean && hashes.find(arg.hash) == hashes.end()){ // not null, and not already walked
+				hashes.insert(arg.hash);
+				// recurse into the held object
+				collectHashesArg(hashes, *ContentAddressedStorage::get<RawType::value_type>(hash)) ;
+			}
+		}else if constexpr (is_vector_v<RawType>) {
+			if constexpr (!std::is_trivially_copyable_v<RawType::value_type>) { // contained objects could have local_ptr
+				for (const auto& item : arg) {
+					collectHashesArg(hashes, item);  // recursively search each item
+				}
+			}
+		}else if constexpr (is_pair_v<RawType>) {
+			collectHashesArg(hashes, arg.first);
+			collectHashesArg(hashes, arg.second);
+		}
+		else if constexpr (is_any_set_v<RawType>) {
+			if constexpr (!std::is_trivially_copyable_v<RawType::value_type>) { // contained objects could have local_ptr
+				for (const auto& item : arg) {
+					collectHashesArg(hashes, item);  // recursively search each item
+				}
+			}
+		}else if constexpr (is_any_map_v<RawType>) {
+			if constexpr (!std::is_trivially_copyable_v<RawType::key_type>) { // contained keys could have local_ptr
+				for (const auto& kv : arg) {
+					collectHashesArg(hashes, kv.first);
+				}
+			}
+			if constexpr (!std::is_trivially_copyable_v<RawType::mapped_type>) { // contained values could have local_ptr
+				for (const auto& kv : arg) {
+					collectHashesArg(hashes, kv.second;
+				}
+			}
+		}else if constexpr (has_getStructure_v<RawType>) {
+			collectHashesTupleArg(buffer, getStructure(const_cast<RawType&>(arg)));
+		}
+		else if constexpr (is_tuple_like_v<RawType>) {
+			collectHashesTupleArg(buffer, arg);
+		}
+		//Trivially copyable types andeverythin else fallse through and is not searched for hashes
+	}
+
+	template <typename Tuple, size_t Index>
+	static inline void collectHashesTupleArg(std::unordered_set<int64_t>& hashes, const Tuple& t) {
+		if constexpr (Index < std::tuple_size_v<Tuple>) {
+			collectHashesArg(hahes, std::get<Index>(t));
+			collectHashesTupleArg<Tuple, Index + 1>(hashes, t);
+		}
+	}
+
+	//Walks a set of arguments and collects a list of all hashes referenced by those arguments
+	template<typename... Args>
+	static inline void collectHashes(std::unordered_set<int64_t>& hashes, const Args&... args) {
+		(collectHashesArg(hashes, args), ...); // Fold expression runs serialize on every arg in order, return values ignored (data is appended to serial)
+	}
+
+	
 	
 };
 
