@@ -177,6 +177,7 @@
     <ClInclude Include="engine\header\FlagSet.h" />
     <ClInclude Include="engine\header\GLTF.h" />
     <ClInclude Include="engine\header\LinearPredictiveCode.h" />
+    <ClInclude Include="engine\header\local_ptr_test.h" />
     <ClInclude Include="engine\header\MachineState.h" />
     <ClInclude Include="engine\header\OpenXRPlugin.h" />
     <ClInclude Include="engine\header\OptimizationProblem.h" />
