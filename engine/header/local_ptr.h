@@ -291,8 +291,7 @@ public:
 	template <typename Tuple, size_t Index = 0>
 	static void collectHashesTupleArg(std::unordered_set<int64_t>& hashes, const Tuple& t);
 
-	// Appends the given argument to the end of the byte buffer
-	// Function arguments and class member types must be in this list for them to be serializable
+	// Collect all hashes for data that could be reached through an argument
 	template<typename T>
 	static inline void collectHashesArg(std::unordered_set<int64_t>& hashes, const T& arg) {
 		using RawType = std::remove_cvref_t<T>;
@@ -336,9 +335,10 @@ public:
 		else if constexpr (is_tuple_like_v<RawType>) {
 			collectHashesTupleArg(buffer, arg);
 		}
-		//Trivially copyable types andeverythin else fallse through and is not searched for hashes
+		//Trivially copyable types and everything else falls through and is not searched for hashes
 	}
 
+	// Collect all hashes for data that could be reached through an element of a tuple
 	template <typename Tuple, size_t Index>
 	static inline void collectHashesTupleArg(std::unordered_set<int64_t>& hashes, const Tuple& t) {
 		if constexpr (Index < std::tuple_size_v<Tuple>) {
@@ -347,10 +347,10 @@ public:
 		}
 	}
 
-	//Walks a set of arguments and collects a list of all hashes referenced by those arguments
+	//Walks a set of arguments and collects a list of all hashes that could be reached through them
 	template<typename... Args>
 	static inline void collectHashes(std::unordered_set<int64_t>& hashes, const Args&... args) {
-		(collectHashesArg(hashes, args), ...); // Fold expression runs serialize on every arg in order, return values ignored (data is appended to serial)
+		(collectHashesArg(hashes, args), ...); // Fold expression runs collectHashes on every arg in order, return values ignored (result is pushed into set)
 	}
 
 	
