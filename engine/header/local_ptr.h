@@ -299,6 +299,13 @@ public:
 			local = false;
 		}
 	}
+
+	void setToHash(const int64& new_hash){
+		reset();
+		hash = new_hash ;
+		ContentAddressedStorage::addReference(hash);
+		clean = true ;
+	}
 	
 };
 
