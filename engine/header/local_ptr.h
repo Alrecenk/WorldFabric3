@@ -4,63 +4,109 @@
 #include "Registry.h" // Used for generic hash and serializer
 
 
-struct ContentValue {
-	int references = 1;
-	virtual ~ContentValue() = default;
-
+struct UntypedContent {
+	std::vector<char> data;
+	int references ; // untyped data may not have a reference when created as it is the sum of typed references
+	UntypedContent(std::vector<char> b, int r = 0) : data(std::move(b)), references(r) {} // steal the vector's internal pointer to avoid a copy
 };
 
+
 template <typename T>
-struct TypedContentValue : public ContentValue {
+struct TypedContent  {
 	const T data;
+	int references ; // Typed data should have at least one rerence when created
 	// Copy data when putting it into the content storage
-	TypedContentValue(const T& value) : data(value) {}
+	TypedContent(const T& value, int r = 1) : data(value), references(r) {} // a copy
 };
 
 class ContentAddressedStorage {
 public:
 
-	static inline std::unordered_map<int64_t,std::unique_ptr<ContentValue>> content ;
+	static inline std::unordered_map<int64_t,UntypedContent> content ;
 
+	// Type-erased cache. One static map per unique T.
+	template <typename T>
+	struct Typed {
+		static inline std::unordered_map<int64_t, TypedContent<T>> content;
+	};
+
+	//Adds an element to the tables or increments the refence counters if it is already present
 	template <typename T>
 	static int64_t insert(const T& value){
-		int64_t hash = hashBytes(serialize(value)) ; // could swap in your own hash function here if not using Registry
-		auto iter = content.find(hash) ;
-		if(iter == content.end()){
-			auto wrapper = std::make_unique<TypedContentValue<T>>(value);
-			content.emplace(hash, std::move(wrapper));
-		}else{
-			iter->second->references++;
+		std::vector<char> data = serialize(value);
+		int64_t hash = hashBytes(data) ; // could swap in your own hash function here if not using Registry
+		auto typed_iter = Typed<T>::content.find(hash) ;
+		auto untyped_iter = content.find(hash);
+		if(untyped_iter == content.end()){ // No existing data
+			// add raw data
+			content.emplace(std::piecewise_construct, // tuple forwarding builds directly in map
+				std::forward_as_tuple(hash),
+				std::forward_as_tuple(std::move(data),1)
+			);
+			//add typed reference
+			Typed<T>::content.emplace(std::piecewise_construct, // tuple forwarding builds directly in map
+				std::forward_as_tuple(hash),
+				std::forward_as_tuple(value, 1)
+			);
+		}else if(typed_iter == Typed<T>::content.end()){ // data exists but no reference with this type
+			//add typed reference
+			Typed<T>::content.emplace(std::piecewise_construct, // tuple forwarding builds directly in map
+				std::forward_as_tuple(hash),
+				std::forward_as_tuple(value, 1)
+			);
+			untyped_iter->second.references++; //add untypedtyped reference
+		}else{ // data and type exist
+			typed_iter->second.references++;
+			untyped_iter->second.references++; // just track new references
 		}
 		return hash ;
 	}
 
 	template <typename T>
 	static const T* get(const int64_t& hash){
-		auto iter = content.find(hash);
-		if (iter != content.end()) {
-			auto* typed = static_cast<TypedContentValue<T>*>(iter->second.get());
-			return &(typed->data) ;
+		auto typed_iter = Typed<T>::content.find(hash);
+		if (typed_iter != Typed<T>::content.end()) { // typed element exists
+			return &(typed_iter->second.data) ; // return it
 		}else{
-			return nullptr ;
+			return nullptr ; // DO NOT try to  pull from untyped if we never created the element with this type
 		}
 	}
 
+	//Add another reference of a specific type to a hash
+	//May deserilize raw data if no cached element of this type exists yet
+	template<typename T>
 	static void addReference(const int64_t& hash){
-		auto iter = content.find(hash);
-		if (iter != content.end()) {
-			iter->second->references++;
+		auto typed_iter = Typed<T>::content.find(hash);
+		auto untyped_iter = content.find(hash);
+		if (typed_iter != Typed<T>::content.end()) { // cache already materialized
+			typed_iter->second.references++; // just increment references
+			untyped_iter->second.references++;
+		}else if(untyped_iter != content.end()){ // content exists but no typed cache
+			const char* data_pointer = untyped_iter->second.data.data() ;
+			T element = deserializeArg<T>(data_pointer) ;
+			Typed<T>::content.emplace(hash, TypedContent<T>(element, 1)); // make the typed cache fro mthe data
+			untyped_iter->second.references++;
 		}else{
 			throw std::runtime_error("Adding a reference to content adressed storage element not found!");
 		}
 	}
 
+	template<typename T>
 	static void removeReference(const int64_t& hash){
-		auto iter = content.find(hash);
-		if (iter != content.end()) {
-			iter->second->references--;
-			if(iter->second->references <=0){
-				content.erase(iter->first) ;
+		auto typed_iter = Typed<T>::content.find(hash);
+		auto untyped_iter = content.find(hash);
+		//Clean up typed content if required
+		if (typed_iter != Typed<T>::content.end()) {
+			typed_iter->second.references--; 
+			if (typed_iter->second.references <= 0) {
+				Typed<T>::content.erase(typed_iter->first);
+			}
+		}
+		//Clean up raw data if required
+		if (untyped_iter != content.end()) {
+			untyped_iter->second.references--;
+			if (untyped_iter->second.references <= 0) {
+				content.erase(untyped_iter->first);
 			}
 		}
 	}
@@ -80,7 +126,7 @@ public:
 	// Reset to nullptr state
 	void reset(){
 		if(clean){
-			ContentAddressedStorage::removeReference(this->hash);
+			ContentAddressedStorage::removeReference<T>(this->hash);
 			clean = false;
 		}
 		if(local){
@@ -149,12 +195,12 @@ public:
 		}
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
-			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.hash = ContentAddressedStorage::insert<T>(*other.local_value);
 			other.clean = true;
 		}
 
 		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true;
 		local = false;
 
@@ -176,12 +222,12 @@ public:
 
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
-			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.hash = ContentAddressedStorage::insert<T>(*other.local_value);
 			other.clean = true;
 		}
 
 		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true;
 		local = false;
 
@@ -205,7 +251,7 @@ public:
 		}
 
 		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true;
 		local = false;
 	}
@@ -220,12 +266,12 @@ public:
 		reset(); // we're being overwritten, so clean up anything we have
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
-			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.hash = ContentAddressedStorage::insert<T>(*other.local_value);
 			other.clean = true;
 		}
 
 		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true;
 		local = false;
 		return *this;
@@ -241,12 +287,12 @@ public:
 		reset(); // we're being overwritten, so clean up anything we have
 		if (!other.clean) {
 			// Clean the other object by copying it to storage
-			other.hash = ContentAddressedStorage::insert(*other.local_value);
+			other.hash = ContentAddressedStorage::insert<T>(*other.local_value);
 			other.clean = true;
 		}
 
 		hash = other.hash;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true;
 		local = false;
 		return *this;
@@ -289,14 +335,14 @@ public:
 		if (local) {
 			if(clean){
 				clean = false ;
-				ContentAddressedStorage::removeReference(hash);
+				ContentAddressedStorage::removeReference<T>(hash);
 			}
 			return local_value.get(); // already local, good
 		}else if(clean){ // not local but valid CAS data
 			local_value = std::make_unique<T> (* ContentAddressedStorage::get<T>(hash)); // copy CAS into local
 			local = true ;
 			clean = false ; // this non-const -> immediately precedes a modifcation so its no longer clean
-			ContentAddressedStorage::removeReference(hash); // not clean means invalid refrence
+			ContentAddressedStorage::removeReference<T>(hash); // not clean means invalid refrence
 			return local_value.get();
 		}else{ // not local or clean is defined as a nullptr
 			return nullptr ;
@@ -309,7 +355,7 @@ public:
 			return ;
 		}
 		if(!clean){
-			hash = ContentAddressedStorage::insert(*local_value);
+			hash = ContentAddressedStorage::insert<T>(*local_value);
 			clean = true ;
 		}
 		if(local){
@@ -321,7 +367,7 @@ public:
 	void setToHash(const int64& new_hash){
 		reset();
 		hash = new_hash ;
-		ContentAddressedStorage::addReference(hash);
+		ContentAddressedStorage::addReference<T>(hash);
 		clean = true ;
 	}
 	

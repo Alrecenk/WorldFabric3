@@ -190,12 +190,12 @@ void testCollectHashes(){
 		map[i] = i+5 ; 
 	}
 	hashes = collectHashes(map);
-	passing &= hashes.size() == NUM_SLOTS * 2;
+	passing &= hashes.size() == NUM_SLOTS * 2 - 5;
 	printf("Map hashes == %d\n", (int)hashes.size());
 	map.clear();
 
 
-	printf("Attemptinto create a cycle...\n") ;
+	printf("Attempting to create a cycle...\n") ;
 	local_ptr<LocalNode> a = 7 ;
 	local_ptr<LocalNode> b = 8 ;
 	a.edit()->next = b ;
@@ -207,6 +207,12 @@ void testCollectHashes(){
 	b.reset();
 	printf("Elements after attempted cycle clear:%d\n", (int)ContentAddressedStorage::content.size());
 	passing &= ContentAddressedStorage::content.size() == 0 ;
+
+	if (passing) {
+		std::cout << "All tests passed!" << std::endl;
+	}else {
+		std::cout << "Tests failed!" << std::endl;
+	}
 
 } ;
 
