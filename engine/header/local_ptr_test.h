@@ -174,28 +174,39 @@ void testCollectHashes(){
 	printf("Vector hashes == %d\n", (int)hashes.size());
 	slots.clear();
 
-	printf("Starting elements:%d\n",(int) ContentAddressedStorage::content.size()) ;
+	std::unordered_set<local_ptr<int>> hash_set ;
+	for (int i = 0; i < NUM_SLOTS; ++i) {
+		hash_set.insert(i);
+	}
+	hashes = collectHashes(hash_set);
+	passing &= hashes.size() == NUM_SLOTS;
+	printf("Set hashes == %d\n", (int)hashes.size());
+	hash_set.clear();
+
+
+	std::unordered_map<local_ptr<int>, local_ptr<TrackedObj>> map;
+	for (int i = 0; i < NUM_SLOTS; ++i) {
+		// because of the fancy constructor both objects types should be buildable inline from raw ints
+		map[i] = i+5 ; 
+	}
+	hashes = collectHashes(map);
+	passing &= hashes.size() == NUM_SLOTS * 2;
+	printf("Map hashes == %d\n", (int)hashes.size());
+	map.clear();
+
+
+	printf("Attemptinto create a cycle...\n") ;
 	local_ptr<LocalNode> a = 7 ;
 	local_ptr<LocalNode> b = 8 ;
 	a.edit()->next = b ;
-	b.edit()->prev = a ; // makesome links to compare change to
+	b.edit()->prev = a ; 
 	a.edit()->next = b ; // these can't cycle as each change causes a clear duplication
-	a.commit();
-	b.commit(); // push to cas so we can see hashes
-	printf("start A: %lld, B: %lld\n", a.hash, b.hash) ;
-	printf("start A.next: %lld, B.prev: %lld  A.next.prev: %lld\n", a->next.hash, b->prev.hash, a->next->prev.hash);
-	//a.edit()->next.edit()->prev = a ; //WTF does this do?
-	a.edit()->next.edit()->prev.edit()->next.edit()->prev = a; //WTF does this do?
-	printf("end A: %lld, B: %lld\n", a.hash, b.hash);
-	printf("end A.next: %lld, B.prev: %lld  A.next.prev: %lld\n", a->next.hash, b->prev.hash, a->next->prev.hash);
-	hashes = collectHashes(a);
-	printf("collect A: %lld, B: %lld\n", a.hash, b.hash);
-	printf("collect A.next: %lld, B.prev: %lld  A.next.prev: %lld\n", a->next.hash, b->prev.hash, a->next->prev.hash);
-	printf("Ending elements:%d\n", (int)ContentAddressedStorage::content.size());
-	printf("hashes s:%d\n", (int)hashes.size());
+
+	a.edit()->next.edit()->prev.edit()->next.edit()->prev = a; // this alos shouldn't be able to actually create a cycle
 	a.reset();
 	b.reset();
-	printf("Elements after cycle clear:%d\n", (int)ContentAddressedStorage::content.size());
+	printf("Elements after attempted cycle clear:%d\n", (int)ContentAddressedStorage::content.size());
+	passing &= ContentAddressedStorage::content.size() == 0 ;
 
 } ;
 

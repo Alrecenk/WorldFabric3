@@ -252,6 +252,24 @@ public:
 		return *this;
 	}
 
+	bool operator==(const local_ptr<T>& other) const{
+		commit();
+		other.commit();
+		return hash == other.hash ;
+	}
+
+	bool operator<=(const local_ptr<T>& other) const {
+		commit();
+		other.commit();
+		return hash <= other.hash;
+	}
+	
+	bool operator<(const local_ptr<T>& other) const {
+		commit();
+		other.commit();
+		return hash < other.hash;
+	}
+
 	~local_ptr(){
 		reset();
 	}
@@ -315,6 +333,18 @@ auto static getStructure(local_ptr<T>& obj) {
 	// we never want to serialize the uncommited data or walk the local pointer, we should only be copying clean shallow hashes
 	return std::tie(obj.clean, obj.hash); 
 }
+
+
+// Overriding std::hash allows data types to be used as keys in unordered maps and sets
+template<typename T>
+struct std::hash<local_ptr<T>>
+{
+	std::size_t operator()(const local_ptr<T>& p) const noexcept
+	{
+		p.commit();
+		return p.hash ;
+	}
+};
 
 
 // Trait to detect any local_ptr regardless of template argument T
