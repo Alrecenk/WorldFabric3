@@ -559,4 +559,5 @@ int main(int argc, char* argv[]) {
 	//exampleMain(argc, argv);
 	testLocalPtr();
 	testCollectHashes() ;
+	testDuplication();
 }

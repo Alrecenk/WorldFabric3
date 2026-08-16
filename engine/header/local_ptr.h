@@ -83,8 +83,11 @@ public:
 			untyped_iter->second.references++;
 		}else if(untyped_iter != content.end()){ // content exists but no typed cache
 			const char* data_pointer = untyped_iter->second.data.data() ;
-			T element = deserializeArg<T>(data_pointer) ;
-			Typed<T>::content.emplace(hash, TypedContent<T>(element, 1)); // make the typed cache fro mthe data
+			T value = deserializeArg<T>(data_pointer) ;
+			Typed<T>::content.emplace(std::piecewise_construct, // tuple forwarding builds directly in map
+				std::forward_as_tuple(hash),
+				std::forward_as_tuple(value, 1)
+			);
 			untyped_iter->second.references++;
 		}else{
 			throw std::runtime_error("Adding a reference to content adressed storage element not found!");
@@ -110,6 +113,43 @@ public:
 			}
 		}
 	}
+
+	static inline void insertRaw(const int64_t& hash, std::vector<char>& data){
+		content.emplace(std::piecewise_construct, // tuple forwarding builds directly in map
+			std::forward_as_tuple(hash),
+			std::forward_as_tuple(std::move(data), 0) // no references when raw data is added, should be created separately directly in clean mode
+		);
+	}
+
+
+	//Create a packet to send over the internet to populate the underlyind data of a collection of local_ptr hashes
+	static std::vector<char> createPacket(std::unordered_set<int64_t>& hashes) {
+		std::map<int64_t, std::vector<char>> collected;
+		for (auto& hash : hashes) {
+			collected[hash] = ContentAddressedStorage::content.find(hash)->second.data;
+		}
+		return serialize(collected);
+	}
+
+	//Create a packet to send over the internet to populate the underlyind data of a collection of local_ptr hashes
+	static std::vector<char> createPacket(std::unordered_set<int64_t>& hashes, std::unordered_set<int64_t>& excluded) {
+		std::map<int64_t, std::vector<char>> collected;
+		for (auto& hash : hashes) {
+			if (excluded.find(hash) == excluded.end()) {
+				collected[hash] = ContentAddressedStorage::content.find(hash)->second.data;
+			}
+		}
+		return serialize(collected);
+	}
+
+	//Incorpororat a packet created with createPacket to duplicate data from the internet locally
+	static void addPacket(std::vector<char>& packet) {
+		const char* data_ptr = packet.data();
+		std::map<int64_t, std::vector<char>> collected = deserializeArg<std::map<int64_t, std::vector<char>>>(data_ptr);
+		for (auto& [hash, data] : collected) {
+			ContentAddressedStorage::insertRaw(hash, data);
+		}
+	}
 };
 
 template <typename T>
@@ -117,7 +157,6 @@ class local_ptr {
 public:
 	mutable bool clean = false ; // wehtehr our current data matches the content storage and our hash is valid
 	mutable bool local = false ; // whether we have a local copy ready to edit on
- 
 	mutable int64_t hash = 0 ;
 	mutable std::unique_ptr<T> local_value  = nullptr;
 
@@ -370,6 +409,7 @@ public:
 		ContentAddressedStorage::addReference<T>(hash);
 		clean = true ;
 	}
+
 	
 };
 
@@ -378,6 +418,20 @@ template <typename T>
 auto static getStructure(local_ptr<T>& obj) {
 	// we never want to serialize the uncommited data or walk the local pointer, we should only be copying clean shallow hashes
 	return std::tie(obj.clean, obj.hash); 
+}
+
+//override deserializeArg to make sure we count references when a local_ptr is created fro mdeserialization
+template <typename T>
+auto static deserializeOverride<local_ptr<T>>(const char*& data) {
+	// Copy typical deserialization of object
+	local_ptr<T> result;
+	auto ref_tuple = getStructure(result);
+	deserializeTupleArg(data, ref_tuple);
+	//But count the reference it creates in the CAS (which also intializes the typed element)
+	if(result.clean){
+		ContentAddressedStorage::addReference(result.hash);
+	}
+	return result;
 }
 
 
@@ -475,6 +529,5 @@ inline std::unordered_set<int64_t> collectHashes(const Args&... args) {
 	(collectHashesArg(hashes, args), ...); // Fold expression runs collectHashes on every arg in order, return values ignored (result is pushed into set)
 	return hashes ;
 }
-
 
 #endif // #ifndef _local_ptr_H_

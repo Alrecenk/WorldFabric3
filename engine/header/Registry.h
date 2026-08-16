@@ -113,7 +113,7 @@ struct is_pair<std::pair<F, S>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_pair_v = is_pair<T>::value;
 
-// --- "any map" detection (std::map or std::unordered_map) ---
+// map detection (std::map or std::unordered_map)
 template<typename T> struct is_any_map : std::false_type {};
 template<typename K, typename V, typename C, typename A>
 struct is_any_map<std::map<K, V, C, A>> : std::true_type {};
@@ -122,7 +122,7 @@ struct is_any_map<std::unordered_map<K, V, H, Eq, A>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_any_map_v = is_any_map<T>::value;
 
-// --- "any set" detection (std::set or std::unordered_set) ---
+// set detection (std::set or std::unordered_set)
 template<typename T> struct is_any_set : std::false_type {};
 template<typename K, typename C, typename A>
 struct is_any_set<std::set<K, C, A>> : std::true_type {};
@@ -132,13 +132,21 @@ template<typename T>
 inline constexpr bool is_any_set_v = is_any_set<T>::value;
 
 
-// --- detect if getStructure exists
+// detect if getStructure exists
 template<class T, class = void> struct has_getStructure : std::false_type {};
-
 template<class T> // getStructure should always have a non const reference param, but this should work with const or not reference
 struct has_getStructure<T, std::void_t<decltype(getStructure(std::declval< std::add_lvalue_reference_t<std::remove_cv_t<T>> >()))>>
 	: std::true_type {};
 template<typename T> inline constexpr bool has_getStructure_v = has_getStructure<T>::value;
+
+// detect if deserializeOverride exists
+template<class T, class = void> struct has_deserializeOverride : std::false_type {};
+template<class T>
+struct has_deserializeOverride<T, std::void_t<decltype(deserializeOverride<T>(std::declval<const char*&>()))>>
+	: std::true_type {
+};
+template<typename T> inline constexpr bool has_deserializeOverride_v = has_deserializeOverride<T>::value;
+
 
 // detect if can treat like a tuple
 template<class, class = void> struct is_tuple_like : std::false_type {};
@@ -271,8 +279,9 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
 			result.emplace(std::move(key), std::move(value));
 		}
 		return result;
-	}
-	else if constexpr (has_getStructure_v<RawType>) {
+	}else if constexpr(has_deserializeOverride_v<RawType>) { // Complex custom objects like local_ptr can control their own deserialization
+		return deserializeOverride<RawType>(data);
+	}else if constexpr (has_getStructure_v<RawType>) { // Custom objects typically use this
 		RawType result ;
 		auto ref_tuple = getStructure(result);
 		deserializeTupleArg(data, ref_tuple);
@@ -363,6 +372,10 @@ inline auto deserializeToTuple(const std::vector<char>& serial) {
 template<typename T, typename Ret>
 Ret getStructure(T&);
 
+//Objects that need to run code on construction can optionally override deserialize completely
+template <typename T, typename Ret>
+Ret deserializeOverride(const char*& data);
+
 // Deserializes the given data (produced with one of the serialize functions) and writes it over the given object 
 // Must override getStructure<object_type> for any object type using this method to know where to write
 template<typename T>
@@ -372,6 +385,12 @@ inline void deserializeInto(T& obj, const std::vector<char>& serial) {
         ref_tuple,
         deserializeToTuple<removeTupleRefs<decltype(ref_tuple)>>(serial)
     );
+}
+
+template<typename T>
+inline T deserializeValue(const std::vector<char>& serial) {
+	const char* ptr = serial.data();
+	return deserializeArg<T>(ptr) ;
 }
 
 // Runs a class method on a shared_ptr to an object with the arguments given as bytes generated from serialize(args)

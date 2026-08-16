@@ -41,6 +41,7 @@ auto static getStructure(LocalNode& obj) {
 	return std::tie(obj.value, obj.prev, obj.next);
 }
 
+
 void testLocalPtr() {
 	TrackedObj::resetCounters();
 	std::cout << "Starting local_ptr Test..." << std::endl;
@@ -214,6 +215,43 @@ void testCollectHashes(){
 		std::cout << "Tests failed!" << std::endl;
 	}
 
-} ;
+}
+
+
+void testDuplication(){
+
+	local_ptr<int> X = 5 ;
+	X.commit(); // must commit before serializing local_ptr
+	std::vector<char> ptr_serial = serialize(X);
+	local_ptr<int> Y = deserializeValue<local_ptr<int>>(ptr_serial);
+	std::cout << *(X.edit()) << " = " << *(Y.edit()) ;
+	X.reset();
+	Y.reset();
+
+	std::unordered_map<std::string, local_ptr<TrackedObj>> a_structure ;
+	a_structure["A"] = 1 ;
+	a_structure["B"] = 2;
+	a_structure["C"] = 3;
+
+	std::unordered_set<int64_t> hashes = collectHashes(a_structure); // will commit making serialize safe, do it first!
+	std::vector<char> obj_serial = serialize(a_structure) ;
+	
+	std::vector<char> packet = ContentAddressedStorage::createPacket(hashes) ;
+
+	std::cout << "Content: " << ContentAddressedStorage::content.size() << " Obj serial size: " << obj_serial.size() << " Packet size: " << packet.size() << std::endl;
+
+	a_structure.clear();
+	std::cout << "Content after clear: " << ContentAddressedStorage::content.size() << std::endl;
+
+	ContentAddressedStorage::addPacket(packet);
+	std::unordered_map<std::string, local_ptr<TrackedObj>> replicated_structure = deserializeValue<std::unordered_map<std::string, local_ptr<TrackedObj>>>(obj_serial) ;
+
+	std::cout << "Content after reconstruction: " << ContentAddressedStorage::content.size() << std::endl;
+	for(auto& [name, number] : replicated_structure){
+		std::cout << name << " : " << number->value << std::endl;
+	}
+	replicated_structure.clear();
+	std::cout << "Content after final clear: " << ContentAddressedStorage::content.size() << std::endl;
+}
 
 #endif // #ifndef _local_ptr_test_H_
