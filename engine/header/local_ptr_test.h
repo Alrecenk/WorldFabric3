@@ -224,7 +224,7 @@ void testDuplication(){
 	X.commit(); // must commit before serializing local_ptr
 	std::vector<char> ptr_serial = serialize(X);
 	local_ptr<int> Y = deserializeValue<local_ptr<int>>(ptr_serial);
-	std::cout << *(X.edit()) << " = " << *(Y.edit()) ;
+	std::cout << *(X.edit()) << " = " << *(Y.edit()) << std::endl;
 	X.reset();
 	Y.reset();
 
@@ -234,11 +234,13 @@ void testDuplication(){
 	a_structure["C"] = 3;
 
 	std::unordered_set<int64_t> hashes = collectHashes(a_structure); // will commit making serialize safe, do it first!
+	std::cout << "Content after collect hashes: " << ContentAddressedStorage::content.size() << std::endl;
+
 	std::vector<char> obj_serial = serialize(a_structure) ;
 	
 	std::vector<char> packet = ContentAddressedStorage::createPacket(hashes) ;
 
-	std::cout << "Content: " << ContentAddressedStorage::content.size() << " Obj serial size: " << obj_serial.size() << " Packet size: " << packet.size() << std::endl;
+	std::cout << "Obj serial size: " << obj_serial.size() << " Packet size: " << packet.size() << std::endl;
 
 	a_structure.clear();
 	std::cout << "Content after clear: " << ContentAddressedStorage::content.size() << std::endl;

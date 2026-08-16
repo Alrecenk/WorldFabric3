@@ -359,6 +359,14 @@ public:
 		reset();
 	}
 
+	//Called automatically after deserialization builds the object
+	void onDeserialize(){
+		if(clean){
+			// count this new reference and potentially realize the typed data from the serial
+			ContentAddressedStorage::addReference<T>(hash); 
+		}
+	}
+
 	//Const accessor is read only, no dirty required
 	const T* operator->() const {
 		if (local){
@@ -409,8 +417,6 @@ public:
 		ContentAddressedStorage::addReference<T>(hash);
 		clean = true ;
 	}
-
-	
 };
 
 //getStructure implementation is used by Registry to allow serialization of this object type
@@ -419,21 +425,6 @@ auto static getStructure(local_ptr<T>& obj) {
 	// we never want to serialize the uncommited data or walk the local pointer, we should only be copying clean shallow hashes
 	return std::tie(obj.clean, obj.hash); 
 }
-
-//override deserializeArg to make sure we count references when a local_ptr is created fro mdeserialization
-template <typename T>
-auto static deserializeOverride<local_ptr<T>>(const char*& data) {
-	// Copy typical deserialization of object
-	local_ptr<T> result;
-	auto ref_tuple = getStructure(result);
-	deserializeTupleArg(data, ref_tuple);
-	//But count the reference it creates in the CAS (which also intializes the typed element)
-	if(result.clean){
-		ContentAddressedStorage::addReference(result.hash);
-	}
-	return result;
-}
-
 
 // Overriding std::hash allows data types to be used as keys in unordered maps and sets
 template<typename T>

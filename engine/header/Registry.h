@@ -139,13 +139,14 @@ struct has_getStructure<T, std::void_t<decltype(getStructure(std::declval< std::
 	: std::true_type {};
 template<typename T> inline constexpr bool has_getStructure_v = has_getStructure<T>::value;
 
-// detect if deserializeOverride exists
-template<class T, class = void> struct has_deserializeOverride : std::false_type {};
+// detect if onDeserialize exists
+template<class T, class = void> struct has_onDeserialize : std::false_type {};
 template<class T>
-struct has_deserializeOverride<T, std::void_t<decltype(deserializeOverride<T>(std::declval<const char*&>()))>>
+struct has_onDeserialize<T, std::void_t<decltype(std::declval<T>().onDeserialize())>>
 	: std::true_type {
 };
-template<typename T> inline constexpr bool has_deserializeOverride_v = has_deserializeOverride<T>::value;
+template<typename T> inline constexpr bool has_onDeserialize_v = has_onDeserialize<T>::value;
+
 
 
 // detect if can treat like a tuple
@@ -279,12 +280,13 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
 			result.emplace(std::move(key), std::move(value));
 		}
 		return result;
-	}else if constexpr(has_deserializeOverride_v<RawType>) { // Complex custom objects like local_ptr can control their own deserialization
-		return deserializeOverride<RawType>(data);
 	}else if constexpr (has_getStructure_v<RawType>) { // Custom objects typically use this
 		RawType result ;
 		auto ref_tuple = getStructure(result);
 		deserializeTupleArg(data, ref_tuple);
+		if constexpr (has_onDeserialize_v<RawType>) {
+			result.onDeserialize(); // Call any post-deserialization logic if it exists
+		}
 		return result ;
 	} else if constexpr (is_tuple_like_v<RawType>) {
 		//DeserializeTuple
@@ -371,10 +373,6 @@ inline auto deserializeToTuple(const std::vector<char>& serial) {
 // auto getStructure(ObjectType& o) implemented that returns a tuple of references into their data
 template<typename T, typename Ret>
 Ret getStructure(T&);
-
-//Objects that need to run code on construction can optionally override deserialize completely
-template <typename T, typename Ret>
-Ret deserializeOverride(const char*& data);
 
 // Deserializes the given data (produced with one of the serialize functions) and writes it over the given object 
 // Must override getStructure<object_type> for any object type using this method to know where to write
@@ -601,7 +599,7 @@ public:
 	virtual void destroyedBase() = 0;
 };
 
-//This is the class youwant to override for your views and template on what is being viewed
+//This is the class you want to override for your views and template on what is being viewed
 template <typename T>
 class ObjectView : public BaseObjectView {
 	//static_assert(std::is_base_of<WorldObject, T>::value, "View template must inherit from WorldObject.");
