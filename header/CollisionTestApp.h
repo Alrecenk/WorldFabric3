@@ -76,6 +76,42 @@ public:
 	void updateCamera();
 
 
+	
+	//Point in minkowski difference space
+	struct SupportPoint{
+		glm::vec3 x ;
+		// hold onto points on shapes for use in subsequent steps
+		glm::vec3 a, b ;
+	};
+
+	//A triangle in monkowski space with a set winding order
+	struct SupportTriangle{
+		SupportPoint A ;
+		SupportPoint B ;
+		SupportPoint C ;
+		glm::vec3 normal; // normal should be normalize(cross(B - A, C - A))
+	};
+
+	//We use edges to build out expanding polytope as points are added
+	struct SupportEdge{
+		SupportPoint A;
+		SupportPoint B;
+	};
+
+	//Find the support point of the minkowski difference of two shapes
+	//Saves the pointson th shapes themselves for later reconstruction
+	SupportPoint findSupportPoint(const glm::vec3 support, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B) ;
+
+	//Uses GJK to detect whether two convex shapes collide
+	//If they collie this returns a simplex in Minkowski diference space enclosing the collision point
+	//If they do not collide, this returns an empty vector
+	std::vector<SupportTriangle> detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B);
+
+	//Uses expanding polytope algorithm on result of detectCollision
+	// Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
+	std::pair<glm::vec3, glm::vec3> getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B) ;
+
+
 private:
 
 	std::map<std::string, std::shared_ptr<ConvexPolyhedron>> base_shape ;
