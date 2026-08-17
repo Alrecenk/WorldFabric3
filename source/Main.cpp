@@ -8,7 +8,7 @@
 #include "GLTF.h"
 #include "SavePlugin.h"
 #include "StatePlugin.h"
-#include "local_ptr_test.h"
+#include "local_ptr.h"
 
 #include "BallTestApp.h"
 #include "VulkanDemoApp.h"
@@ -556,8 +556,5 @@ int exampleMain(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 	//Narball::main(argc, argv);
-	//exampleMain(argc, argv);
-	testLocalPtr();
-	testCollectHashes() ;
-	testDuplication();
+	exampleMain(argc, argv);
 }
