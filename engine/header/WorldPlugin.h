@@ -62,12 +62,13 @@ public:
 		std::shared_ptr<Timeline> timeline ;
 		float time_speed = 0 ; // multiplier on the rate of time in this world
 		glm::vec3 vantage_point = glm::vec3(0,0,0) ;
-		double current_time  = 0 ;
+		double current_time  = 0 ;		
 		std::chrono::high_resolution_clock::time_point system_time_of_current_time ;
 		float max_read_distance = 1E3;
 		float max_info_speed = 1E4;
 
 		std::vector<std::shared_ptr<Timeline::WorldEvent>> pending_local_events; //events to be added to the timeline on next run
+		double next_event_time = 0;// Used when time isn't specified for externally injected events
 
 	};
 
@@ -290,7 +291,8 @@ public:
 			if(world.timeline == nullptr){
 				printf("queueing event on world which exists without a timeline : world = %s, object = %I64d? \n", world_name.c_str(), obj_id);
 			}else{
-				queue(world_name, obj_id, world.current_time + world.timeline->min_event_duration * (1.0+ world.pending_local_events.size()*0.01), method, args...);
+				world.next_event_time += world.timeline->min_event_duration * 0.01;
+				queue(world_name, obj_id, world.next_event_time, method, args...);
 			}
 		}else {
 			printf("Got an event queued for a world that wasn't found: %s\n", world_name.c_str());
@@ -323,7 +325,8 @@ public:
 		auto iter = worlds.find(world_name);
 		if (iter != worlds.end()) {
 			World& world = iter->second;
-			return create(world_name, new_object, world.current_time + world.timeline->min_event_duration * (1.0f + world.pending_local_events.size() * 0.01f)) ;
+			world.next_event_time += world.timeline->min_event_duration * 0.01;
+			return create(world_name, new_object,world.next_event_time) ;
 		}
 		throw std::runtime_error("Attempting to create an object in a world that doesn't exist!");
 		return -1 ;

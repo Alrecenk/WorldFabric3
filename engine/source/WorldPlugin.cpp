@@ -42,6 +42,7 @@ void WorldPlugin::run(){
 		world.time_speed = (float)copy->extra_double_data[TIME_SPEED_EXTRA_INDEX] ;
 		world.vantage_point = copy->last_vantage;
 		world.current_time = copy->last_vantage_time ;
+		world.next_event_time = world.current_time + world.timeline->min_event_duration ;
 		world.system_time_of_current_time = now();
 		world.max_read_distance = copy->max_read_distance ;
 	}
@@ -87,6 +88,7 @@ void WorldPlugin::run(){
 			double expected_world_time = update_time + (ping *0.5 * world.time_speed);
 			double current_time = world.current_time;
 			world.current_time = current_time * (1.0 - clock_adjust_rate) + expected_world_time * clock_adjust_rate;
+			world.next_event_time = world.current_time + world.timeline->min_event_duration;
 			world.system_time_of_current_time = now();
 		}
 	}
@@ -108,6 +110,7 @@ void WorldPlugin::run(){
 		// Run to the new time
 		world.current_time += dt * world.time_speed ;
 		world.system_time_of_current_time = now();
+		world.next_event_time = world.current_time + world.timeline->min_event_duration;
 		world.timeline->run(world.vantage_point,world.current_time) ; // Note we are not locked when actually doing the running which is 95% of time
 		lock.lock();
 		observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); // buffer observations immediately after run so rollback can't be observed
@@ -239,6 +242,7 @@ void WorldPlugin::run(const std::string& world_name, double dt){
 	if(worlds.find(world_name) != worlds.end()){
 		World& world = worlds[world_name] ;
 		world.current_time += dt ;
+		world.next_event_time = world.current_time + world.timeline->min_event_duration;
 		world.timeline->run(world.vantage_point, world.current_time);
 	}
 }
