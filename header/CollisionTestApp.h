@@ -76,7 +76,7 @@ public:
 	void updateCamera();
 
 
-	
+	static inline const int MAX_GJK_ITERATIONS = 20;
 	//Point in minkowski difference space
 	struct SupportPoint{
 		glm::vec3 x ;
@@ -90,8 +90,21 @@ public:
 		SupportPoint B ;
 		SupportPoint C ;
 		glm::vec3 normal; // normal should be normalize(cross(B - A, C - A))
+		float d = 0 ; // normal * x + d > 0 means in front of the plane
+
+		SupportTriangle(const SupportPoint& a,const  SupportPoint& b,const  SupportPoint& c) : A(a), B(b), C(c){
+			normal = glm::normalize(glm::cross(B.x-A.x, C.x-A.x)) ;
+			d = -glm::dot(normal,A.x);
+		}
+
+		float signedDistance(const glm::vec3& p){
+			return glm::dot(normal, p) + d > 0 ;
+		}
+			
 	};
 
+
+	
 	//We use edges to build out expanding polytope as points are added
 	struct SupportEdge{
 		SupportPoint A;
@@ -99,11 +112,14 @@ public:
 	};
 
 	//Find the support point of the minkowski difference of two shapes
-	//Saves the pointson th shapes themselves for later reconstruction
-	SupportPoint findSupportPoint(const glm::vec3 support, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B) ;
+	//Saves the points on the shapes for later reconstruction
+	SupportPoint findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B) ;
+
+	//Build a support simplex from a triangle facing a point
+	std::vector<CollisionTestApp::SupportTriangle> buildSUpportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D);
 
 	//Uses GJK to detect whether two convex shapes collide
-	//If they collie this returns a simplex in Minkowski diference space enclosing the collision point
+	//If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 	//If they do not collide, this returns an empty vector
 	std::vector<SupportTriangle> detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B);
 

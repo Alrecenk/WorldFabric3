@@ -555,6 +555,6 @@ int exampleMain(int argc, char* argv[]) {
 
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	//Narball::main(argc, argv);
+	exampleMain(argc, argv);
 }

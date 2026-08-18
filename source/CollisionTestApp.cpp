@@ -286,3 +286,91 @@ void CollisionTestApp::updateCamera() {
 
 	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 30);
 }
+
+
+//Find the support point of the minkowski difference of two shapes
+	//Saves the points on the shapes for later reconstruction
+CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	SupportPoint sp ;
+	sp.a = A->support(direction);
+	sp.b = B->support(direction) ;
+	sp.x = sp.a - sp.b ;
+	return sp ;
+}
+
+
+//Build a support simplex from a triangle facing a point
+std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D){
+	std::vector<CollisionTestApp::SupportTriangle> simplex ; 
+	simplex.emplace_back(triangle.B, triangle.A, triangle.C) ; // flip initial triangle as outside is now inside
+	simplex.emplace_back(D, triangle.B, triangle.C);
+	simplex.emplace_back(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
+	simplex.emplace_back(triangle.A, triangle.B, D);
+	return simplex ;
+}
+
+//Uses GJK to detect whether two convex shapes collide
+//If they collide this returns a simplex in Minkowski diference space enclosing the collision point
+//If they do not collide, this returns an empty vector
+std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	// arbitrary first direction
+	glm::vec3 search_direction = glm::vec3(1, 0, 0);
+	const glm::vec3 origin(0,0,0) ;
+	//std::vector<SupportPoint> p;
+	SupportPoint p0 = findSupportPoint(search_direction, A , B) ;
+	search_direction = origin-p0.x ; // From p0 to origin
+	SupportPoint p1 = findSupportPoint(search_direction, A, B);
+	//New point could not get past zero in search direction
+	if (glm::dot(p1.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+	//Search perpendicular to p0 to p1 segment, toward origin
+	search_direction = glm::cross(cross(p1.x- p0.x,search_direction), p1.x - p0.x) ;
+	SupportPoint p2 = findSupportPoint(search_direction, A, B) ;
+	if (glm::dot(p2.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+
+	SupportTriangle first_triangle(p0, p1,p2) ;
+	//Search along normal of triangle toward origin
+	if(first_triangle.signedDistance(origin) < 0){ // facing wrong way to start
+		first_triangle = SupportTriangle(p1, p0, p2); // flip winding order
+	}
+
+	search_direction = first_triangle.normal ;
+	SupportPoint p3 = findSupportPoint(search_direction, A, B);
+	if (glm::dot(p3.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+	
+	std::vector<CollisionTestApp::SupportTriangle> simplex = buildSupportSimplex(first_triangle, p3);
+
+	int ier = 0 ;
+	for(int iter = 0; iter < MAX_GJK_ITERATIONS; iter++){
+		bool found_triangle = false;
+		for(int k=0; k < 4; k++){
+			if(simplex[k].signedDistance(origin) > 0){
+				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, B);
+				//New point could not get past zero in search direction
+				if (glm::dot(p3.x, search_direction) <= 0) {
+					return {}; // No collision
+				}
+				simplex = buildSupportSimplex(simplex[k], new_point) ;
+				found_triangle = true ;
+				break ;
+			}
+		}
+		if(!found_triangle){ // origin was insdide all faces
+			return simplex ; // collision detected
+		}
+	}
+	return {} ;
+
+}
+
+//Uses expanding polytope algorithm on result of detectCollision
+// Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
+std::pair<glm::vec3, glm::vec3> CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B){
+
+
+}
