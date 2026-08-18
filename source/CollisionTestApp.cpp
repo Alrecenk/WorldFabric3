@@ -183,21 +183,23 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	room_instance_id = scene->createInstance("room", glm::mat4(1.0f));
 
 
-	glm::vec3 pmin(-1.0, -1, -1.5f) ;
-	glm::vec3 pmax(1.0, 1, 1.5f);
-	float step = 0.25f ;
-	for(float x = pmin.x ; x <= pmax.x; x+= step){
-	for (float y = pmin.y; y <= pmax.y; y += step) {
-	for (float z = pmin.z; z <= pmax.z; z += step) {
-		std::shared_ptr<Point> p = std::make_shared<Point>(glm::vec3(x + randomFloat() * 0.0001f,y+randomFloat()*0.0001f,z + randomFloat() * 0.0001f)) ;
-		p->particle_id = particles->createParticle(0);
-		glm::mat4 particle_pose = glm::mat4(1.0f);
-		particle_pose = glm::translate(particle_pose, p->x);
-		particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
-		particles->setPose(p->particle_id, particle_pose);
-		particles->setColor(p->particle_id, glm::vec4(0,0,0,1)) ;
-		points.emplace_back(p);
-	}}}
+	if(show_grid){
+		glm::vec3 pmin(-1.0, -1, -1.5f) ;
+		glm::vec3 pmax(1.0, 1, 1.5f);
+		float step = 0.25f ;
+		for(float x = pmin.x ; x <= pmax.x; x+= step){
+		for (float y = pmin.y; y <= pmax.y; y += step) {
+		for (float z = pmin.z; z <= pmax.z; z += step) {
+			std::shared_ptr<Point> p = std::make_shared<Point>(glm::vec3(x + randomFloat() * 0.0001f,y+randomFloat()*0.0001f,z + randomFloat() * 0.0001f)) ;
+			p->particle_id = particles->createParticle(0);
+			glm::mat4 particle_pose = glm::mat4(1.0f);
+			particle_pose = glm::translate(particle_pose, p->x);
+			particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+			particles->setPose(p->particle_id, particle_pose);
+			particles->setColor(p->particle_id, glm::vec4(0,0,0,1)) ;
+			points.emplace_back(p);
+		}}}
+	}
 }
 
 //Called every frame while the state is active
@@ -259,6 +261,52 @@ void CollisionTestApp::run() {
 		}
 		particles->setPose(point->particle_id, particle_pose);
 	}
+
+
+
+	for(auto& id : last_display_particles){
+		particles->destroyParticle(id);
+	}
+	last_display_particles = display_particles ;
+	display_particles.clear();
+
+
+	for(int k=1;k<instances.size();k++){
+		for(int j=0;j<k;j++){
+			auto result = detectCollision(instances[k].world_shape, instances[j].world_shape);
+			if(result.size() > 0){
+				glm::vec3 O(0,0,0) ;
+				glm::vec3 A  = result[0].A.x ;
+				glm::vec3 AB = result[0].B.x - result[0].A.x;
+				glm::vec3 AC = result[0].C.x - result[0].A.x;
+				glm::vec3 AD = result[1].A.x - result[0].A.x;
+				glm::mat3 M(AB,AC,AD) ;
+				M = glm::inverse(M) ;
+				glm::vec3 bcd = M * (O-A) ;
+				float b = bcd.x ;
+				float c = bcd.y ;
+				float d = bcd.z ;
+				float a = 1 - b - c -d ;
+
+				glm::vec3 check = a * A + b * result[0].B.x + c * result[0].C.x + d * result[1].A.x;
+				printf("Check: %f, %f ,%f \n", check.x, check.y, check.z);
+				glm::vec3 p1 = a * result[0].A.a + b * result[0].B.a + c * result[0].C.a + d * result[1].A.a ;
+				glm::vec3 p2 = a * result[0].A.b + b * result[0].B.b + c * result[0].C.b + d * result[1].A.b ;
+
+				glm::vec3 p = (p1 + p2)*0.5f ;
+				printf("Found collision: %f, %f ,%f == %f,%f,%f\n", p1.x, p1.y, p1.z, p2.x,p2.y,p2.z);
+				int p_id = particles->createParticle(0);
+				glm::mat4 particle_pose = glm::mat4(1.0f);
+				particle_pose = glm::translate(particle_pose, p);
+				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+				particles->setPose(p_id, particle_pose);
+				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+				display_particles.push_back(p_id);
+			}
+
+		}
+	}
+
 
 	updateCamera();
 
@@ -376,7 +424,6 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 	
 	std::vector<CollisionTestApp::SupportTriangle> simplex = buildSupportSimplex(first_triangle, p3);
 
-	int ier = 0 ;
 	for(int iter = 0; iter < MAX_GJK_ITERATIONS; iter++){
 		bool found_triangle = false;
 		for(int k=0; k < 4; k++){
@@ -402,6 +449,6 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
 std::pair<glm::vec3, glm::vec3> CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B){
-
+	return {};
 
 }

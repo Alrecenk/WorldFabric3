@@ -134,10 +134,17 @@ public:
 	//If they do not collide, this returns an empty vector
 	std::vector<SupportTriangle> detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B);
 
+
+	// Given a support triangle and a point on it, this returns a point in real space representing that point
+	glm::vec3 getRealPoint(const SupportTriangle& triangle, const glm::vec3& x);
+
 	//Uses expanding polytope algorithm on result of detectCollision
 	// Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
 	std::pair<glm::vec3, glm::vec3> getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B) ;
 
+
+
+	
 
 private:
 
@@ -160,8 +167,11 @@ private:
 	glm::vec3 max = { 3,4,3 };
 	int room_instance_id  = -1 ;
 
+	bool show_grid = false;
 	std::vector<std::shared_ptr<Point>> points;
-	
+
+	std::vector<int> display_particles;
+	std::vector<int> last_display_particles;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, 0, 0);
