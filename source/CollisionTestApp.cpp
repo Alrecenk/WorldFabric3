@@ -183,6 +183,21 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	room_instance_id = scene->createInstance("room", glm::mat4(1.0f));
 
 
+	glm::vec3 pmin(-1.0, -1, -1.5f) ;
+	glm::vec3 pmax(1.0, 1, 1.5f);
+	float step = 0.25f ;
+	for(float x = pmin.x ; x <= pmax.x; x+= step){
+	for (float y = pmin.y; y <= pmax.y; y += step) {
+	for (float z = pmin.z; z <= pmax.z; z += step) {
+		std::shared_ptr<Point> p = std::make_shared<Point>(glm::vec3(x + randomFloat() * 0.0001f,y+randomFloat()*0.0001f,z + randomFloat() * 0.0001f)) ;
+		p->particle_id = particles->createParticle(0);
+		glm::mat4 particle_pose = glm::mat4(1.0f);
+		particle_pose = glm::translate(particle_pose, p->x);
+		particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+		particles->setPose(p->particle_id, particle_pose);
+		particles->setColor(p->particle_id, glm::vec4(0,0,0,1)) ;
+		points.emplace_back(p);
+	}}}
 }
 
 //Called every frame while the state is active
@@ -227,6 +242,22 @@ void CollisionTestApp::run() {
 		pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
 		inst.setPose(pose);
 		c++;
+	}
+
+
+	for(auto& point : points){
+		bool hit = false;
+		for (auto& inst : instances) {
+			hit |= detectCollision(inst.world_shape, point).size() != 0 ;
+		}
+		glm::mat4 particle_pose = glm::mat4(1.0f);
+		particle_pose = glm::translate(particle_pose, point->x);
+		if(hit){
+			particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+		}else{
+			particle_pose = glm::scale(particle_pose, glm::vec3(0.01, 0.01, 0.01));
+		}
+		particles->setPose(point->particle_id, particle_pose);
 	}
 
 	updateCamera();
@@ -293,7 +324,7 @@ void CollisionTestApp::updateCamera() {
 CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
 	SupportPoint sp ;
 	sp.a = A->support(direction);
-	sp.b = B->support(direction) ;
+	sp.b = B->support(-direction) ;
 	sp.x = sp.a - sp.b ;
 	return sp ;
 }
@@ -352,7 +383,7 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 			if(simplex[k].signedDistance(origin) > 0){
 				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, B);
 				//New point could not get past zero in search direction
-				if (glm::dot(p3.x, search_direction) <= 0) {
+				if (glm::dot(new_point.x, simplex[k].normal) <= 0) {
 					return {}; // No collision
 				}
 				simplex = buildSupportSimplex(simplex[k], new_point) ;

@@ -15,6 +15,17 @@ public:
 
 	};
 
+	class Point : public CollisionShape {
+	public:
+		glm::vec3 x ;
+		int particle_id = -1 ;
+		Point(const glm::vec3& p): x(p) {}
+
+		glm::vec3 support(const glm::vec3& direction) override{
+			return x ;
+		}
+	};
+
 	class ConvexPolyhedron : public CollisionShape{
 	public:
 		std::vector<glm::vec3> vertex;
@@ -98,7 +109,7 @@ public:
 		}
 
 		float signedDistance(const glm::vec3& p){
-			return glm::dot(normal, p) + d > 0 ;
+			return glm::dot(normal, p) + d ;
 		}
 			
 	};
@@ -134,9 +145,11 @@ private:
 
 	std::vector<PolyInstance> instances; // maps scene instance to transform of base shape
 
+	
+
 
 	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
-	std::vector<glm::vec3> positions = { {0,-0.5f,-1}, {0,0,0},{0,-0.5f,1} };
+	std::vector<glm::vec3> positions = { {0,-0.453f,-0.98}, {0,0,0},{0,-0.453f,0.98} };
 
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
@@ -147,6 +160,8 @@ private:
 	glm::vec3 max = { 3,4,3 };
 	int room_instance_id  = -1 ;
 
+	std::vector<std::shared_ptr<Point>> points;
+	
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, 0, 0);
@@ -168,5 +183,6 @@ private:
 	float light_theta = 0.4f;
 	float light_thi = 1.2f;
 	float mouse_wheel_y_previous = 0.0f;
+
 };
 #endif // #ifndef _COLLISION_TEST_APP_H_
