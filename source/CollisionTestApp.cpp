@@ -160,9 +160,9 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(1,1,1)));
-	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 1), glm::vec3(1, 0, 0),glm::vec3(0, 1, 0),glm::vec3(0, 0, 0))) ;
-	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1), 0.5f, 8)) ;
+	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(0.1,0.1,0.1)));
+	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.1), glm::vec3(0.1, 0, 0),glm::vec3(0, 0.1, 0),glm::vec3(0, 0, 0))) ;
+	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.1), glm::vec3(0, 0, -0.1), 0.05f, 8)) ;
 
 	int c = 0 ;
 	for(auto& [name, base] : base_shape){
@@ -184,8 +184,8 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	if(show_grid){
-		glm::vec3 pmin(-1.0, -1, -1.5f) ;
-		glm::vec3 pmax(1.0, 1, 1.5f);
+		glm::vec3 pmin = min*0.5f;
+		glm::vec3 pmax = max*0.5f;
 		float step = 0.25f ;
 		for(float x = pmin.x ; x <= pmax.x; x+= step){
 		for (float y = pmin.y; y <= pmax.y; y += step) {
@@ -194,7 +194,7 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 			p->particle_id = particles->createParticle(0);
 			glm::mat4 particle_pose = glm::mat4(1.0f);
 			particle_pose = glm::translate(particle_pose, p->x);
-			particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 			particles->setPose(p->particle_id, particle_pose);
 			particles->setColor(p->particle_id, glm::vec4(0,0,0,1)) ;
 			points.emplace_back(p);
@@ -234,16 +234,38 @@ void CollisionTestApp::run() {
 	}
 	glm::mat4 particle_pose = glm::mat4(1.0f);
 	particle_pose = glm::translate(particle_pose, mouse_position);
-	particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+	particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 	particles->setPose(mouse_particle_id, particle_pose);
 
 
 	int c = 0 ;
-	for(auto& inst : instances){
-		glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
-		pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
-		inst.setPose(pose);
-		c++;
+	if(! window->keyDown(SDLK_SPACE) && !OpenXRPlugin::ENABLED){
+		for(auto& inst : instances){
+			glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
+			pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
+			inst.setPose(pose);
+			c++;
+		}
+	}
+
+	if(OpenXRPlugin::ENABLED){
+		OpenXRPlugin* controls = getTool<OpenXRPlugin>();
+		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
+		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
+		int c=0 ;
+		for (auto& inst : instances) {
+			glm::mat4 hand_pose ;
+			if(c == 0){
+				hand_pose = current_left_hand_pose ;
+			}else if(c == 1){
+				hand_pose = current_right_hand_pose;
+			}else{
+				break ;
+			}
+
+			inst.setPose(hand_pose);
+			c++;
+		}
 	}
 
 
@@ -255,9 +277,9 @@ void CollisionTestApp::run() {
 		glm::mat4 particle_pose = glm::mat4(1.0f);
 		particle_pose = glm::translate(particle_pose, point->x);
 		if(hit){
-			particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 		}else{
-			particle_pose = glm::scale(particle_pose, glm::vec3(0.01, 0.01, 0.01));
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.3f, particle_size * 0.3f, particle_size * 0.3f));
 		}
 		particles->setPose(point->particle_id, particle_pose);
 	}
@@ -303,7 +325,7 @@ void CollisionTestApp::run() {
 				int p_id = particles->createParticle(0);
 				glm::mat4 particle_pose = glm::mat4(1.0f);
 				particle_pose = glm::translate(particle_pose, collision.a);
-				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 				particles->setPose(p_id, particle_pose);
 				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
 				display_particles.push_back(p_id);
@@ -311,7 +333,7 @@ void CollisionTestApp::run() {
 				p_id = particles->createParticle(0);
 				particle_pose = glm::mat4(1.0f);
 				particle_pose = glm::translate(particle_pose, collision.b);
-				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 				particles->setPose(p_id, particle_pose);
 				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
 				display_particles.push_back(p_id);
@@ -366,8 +388,8 @@ void CollisionTestApp::updateCamera() {
 		zoom /= 0.95f;
 	}
 
-	if (zoom < 1.0f) {
-		zoom = 1.0f;
+	if (zoom < 0.05f) {
+		zoom = 0.05f ;
 	}
 	mouse_wheel_y_previous = window->getMouseWheelPosition().y;
 
@@ -494,27 +516,19 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 
 		//Expansion didn't expand means we've reached closest surface face
 		if(active_face.signedDistance(new_point.x) < 0.0001f || iterations == MAX_GJK_ITERATIONS){
-			printf("new point: %f, %f, %f\n", new_point.x.x, new_point.x.y, new_point.x.z) ;
-			printf("distance:%f \n",  active_face.signedDistance(new_point.x)) ;
-			printf("Ax: %f, %f, %f\n", active_face.A.x.x, active_face.A.x.y, active_face.A.x.z) ;
-			printf("Bx: %f, %f, %f\n", active_face.B.x.x, active_face.B.x.y, active_face.B.x.z);
-			printf("Cx: %f, %f, %f\n", active_face.C.x.x, active_face.C.x.y, active_face.C.x.z);
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
-			printf("closest_x: %f,%f,%f\n", closest_x.x, closest_x.y, closest_x.z);
-			printf("closest distance: %f\n", active_face.signedDistance(closest_x)) ;
-			
+			//Get barycentric coordinates via area method
 			glm::vec3 v0 = closest_x - active_face.A.x;
 			glm::vec3 v1 = closest_x - active_face.B.x;
 			glm::vec3 v2 = closest_x - active_face.C.x;
-
 			float area_tot = glm::length(glm::cross(active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x));
 			float a = glm::length(glm::cross(v1, v2)) / area_tot;
 			float b = glm::length(glm::cross(v2, v0)) / area_tot;
 			float c = 1.0f - a - b;
 
 			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c ;
-			printf("a:%f, b:%f, c:%f\n", a,b,c) ;
-			printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
+			//printf("a:%f, b:%f, c:%f\n", a,b,c) ;
+			//printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
 			return collision_point ;
 		}
 

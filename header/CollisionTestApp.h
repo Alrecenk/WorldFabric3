@@ -130,7 +130,7 @@ public:
 		SupportPoint A;
 		SupportPoint B;
 		bool operator==(const SupportEdge& o) const {
-			return (A.x + B.x) == (o.A.x+o.B.x) ;
+			return glm::length2((A.x + B.x) - (o.A.x+o.B.x)) < 0.000001f ;
 		}
 	};
 
@@ -173,15 +173,15 @@ private:
 
 
 	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
-	std::vector<glm::vec3> positions = { {0,-0.453f,-0.98}, {0,0,0},{0,-0.453f,0.98} };
-
+	std::vector<glm::vec3> positions = { {0,0.6-0.0553f,-0.098}, {0,0.6,0},{0,0.6-0.0553f,0.098} };
+	float particle_size = 0.003f ;
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
-	glm::vec3 min = { -3,-4,-3 };
-	glm::vec3 max = { 3,4,3 };
+	glm::vec3 min = { -2,0,-2};
+	glm::vec3 max = { 2,3,2 };
 	int room_instance_id  = -1 ;
 
 	bool show_grid = false;
@@ -204,8 +204,8 @@ private:
 	float camera_down_thi = 0.0f;
 	float camera_x_speed = 0.002f;
 	float camera_y_speed = 0.002f;
-	float zoom = 11.0f;
-	float light_zoom = 20.0f;
+	float zoom = 1.0f;
+	float light_zoom = 2.0f;
 	float light_fov = 1.0f;
 	float light_theta = 0.4f;
 	float light_thi = 1.2f;
@@ -221,9 +221,9 @@ struct std::hash<CollisionTestApp::SupportEdge>
 {
 	std::size_t operator()(const CollisionTestApp::SupportEdge& p) const noexcept
 	{
-		std::size_t h1 = std::hash<float>{}(p.A.x.x + p.B.x.x);
-		std::size_t h2 = std::hash<float>{}(p.A.x.y + p.B.x.y); // hash on center of edge
-		std::size_t h3 = std::hash<float>{}(p.A.x.z + p.B.x.z);
+		std::size_t h1 = std::hash<int>{}((int)((p.A.x.x + p.B.x.x)*10000));
+		std::size_t h2 = std::hash<int>{}((int)((p.A.x.y + p.B.x.y)*10000)); // hash on center of edge
+		std::size_t h3 = std::hash<int>{}((int)((p.A.x.z + p.B.x.z)*10000));
 		return h1 ^ (h2 << 1) ^ (h3 << 2) ;
 	}
 };
