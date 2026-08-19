@@ -302,7 +302,15 @@ void CollisionTestApp::run() {
 
 				int p_id = particles->createParticle(0);
 				glm::mat4 particle_pose = glm::mat4(1.0f);
-				particle_pose = glm::translate(particle_pose, (collision.a+ collision.b)*0.5f);
+				particle_pose = glm::translate(particle_pose, collision.a);
+				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+				particles->setPose(p_id, particle_pose);
+				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+				display_particles.push_back(p_id);
+
+				p_id = particles->createParticle(0);
+				particle_pose = glm::mat4(1.0f);
+				particle_pose = glm::translate(particle_pose, collision.b);
 				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
 				particles->setPose(p_id, particle_pose);
 				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
@@ -486,21 +494,24 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 
 		//Expansion didn't expand means we've reached closest surface face
 		if(active_face.signedDistance(new_point.x) < 0.0001f || iterations == MAX_GJK_ITERATIONS){
-			
+			printf("new point: %f, %f, %f\n", new_point.x.x, new_point.x.y, new_point.x.z) ;
+			printf("distance:%f \n",  active_face.signedDistance(new_point.x)) ;
+			printf("Ax: %f, %f, %f\n", active_face.A.x.x, active_face.A.x.y, active_face.A.x.z) ;
+			printf("Bx: %f, %f, %f\n", active_face.B.x.x, active_face.B.x.y, active_face.B.x.z);
+			printf("Cx: %f, %f, %f\n", active_face.C.x.x, active_face.C.x.y, active_face.C.x.z);
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
-			printf("cloestes_x: %f,%f,%f\n", closest_x.x, closest_x.y, closest_x.z);
-			glm::mat2x3 Mt (active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x) ;
-			glm::mat3x2 M = glm::transpose(Mt); // linear least squares to solve for barycentric coordinates
-			printf("Mt: %f,%f,%f,%f,%f,%f\n", Mt[0][0], Mt[0][1], Mt[0][2], Mt[1][0], Mt[1][1], Mt[1][2]) ;
-			glm::mat2 mtm = Mt * M ;
-			printf("mtm: %f,%f,%f,%f\n", mtm[0][0], mtm[1][0], mtm[0][1], mtm[1][1]);
-			glm::mat2 inv = glm::inverse(Mt * M) ;
-			printf("inv: %f,%f,%f,%f\n", inv[0][0], inv[1][0], inv[0][1], inv[1][1]);
-			glm::vec2 bc = inv * (Mt * (closest_x - active_face.A.x)) ;
+			printf("closest_x: %f,%f,%f\n", closest_x.x, closest_x.y, closest_x.z);
+			printf("closest distance: %f\n", active_face.signedDistance(closest_x)) ;
 			
-			float b = bc.x;
-			float c = bc.y;
-			float a = 1.0f -b - c ;
+			glm::vec3 v0 = closest_x - active_face.A.x;
+			glm::vec3 v1 = closest_x - active_face.B.x;
+			glm::vec3 v2 = closest_x - active_face.C.x;
+
+			float area_tot = glm::length(glm::cross(active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x));
+			float a = glm::length(glm::cross(v1, v2)) / area_tot;
+			float b = glm::length(glm::cross(v2, v0)) / area_tot;
+			float c = 1.0f - a - b;
+
 			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c ;
 			printf("a:%f, b:%f, c:%f\n", a,b,c) ;
 			printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
