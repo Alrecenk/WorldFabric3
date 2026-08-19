@@ -368,7 +368,7 @@ void CollisionTestApp::updateCamera() {
 
 
 //Find the support point of the minkowski difference of two shapes
-	//Saves the points on the shapes for later reconstruction
+//Saves the points on the shapes for later reconstruction
 CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
 	SupportPoint sp ;
 	sp.a = A->support(direction);
@@ -446,9 +446,74 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 
 }
 
-//Uses expanding polytope algorithm on result of detectCollision
-// Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
-std::pair<glm::vec3, glm::vec3> CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B){
-	return {};
+void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::unordered_map<SupportEdge, int>& edge_counts){
+	SupportEdge edge = {A,B} ;
+	auto iter = edge_counts.find(edge);
+	if(iter == edge_counts.end()){
+		edge_counts[edge] = 1 ;
+	}else{
+		iter->second++;
+	}
+}
 
+//Uses expanding polytope algorithm on result of detectCollision
+// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
+CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	std::vector<SupportTriangle> polytope = collision_result;
+	std::unordered_map<SupportEdge, int> edge_counts ;
+	std::vector<SupportTriangle>new_polytope;
+
+	int iterations = 0 ;
+	while(true){
+		
+		//Find the nearest triangle on the polytope to the origin
+		int selected_triangle = -1 ;
+		float selected_distance = FLT_MAX;
+		for(int k=0;k<polytope.size();k++){
+			if(fabs(polytope[k].d) < selected_distance){
+				selected_triangle = k ;
+				selected_distance = fabs(polytope[k].d) ;
+			}
+		}
+		SupportTriangle& active_face = polytope[selected_triangle] ;
+		//use it's normal to expand to a new point
+		SupportPoint new_point = findSupportPoint(active_face.normal,A, B) ;
+
+		//Expansion didn't expand means we've reached closest surface face
+		if(active_face.signedDistance(new_point.x) < 0.0001f || iterations == MAX_GJK_ITERATIONS){
+			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
+			glm::mat2x3 Mt (active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x) ;
+			glm::mat3x2 M = glm::transpose(M); // linear least squares to solve for barycentric coordinates
+			glm::vec2 bc = glm::inverse((Mt*M)) * (Mt * (closest_x - active_face.A.x)) ;
+			float b = bc.x;
+			float c = bc.y;
+			float a = 1.0f -b - c ;
+			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c ;
+			printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
+			return collision_point ;
+		}
+
+		//Remove all triangles facing the new point and collect their edges
+		for(int k=0;k<polytope.size(); k++){
+			if(polytope[k].signedDistance(new_point.x) > 0){
+				countEdge(polytope[k].A, polytope[k].B, edge_counts) ;
+				countEdge(polytope[k].B, polytope[k].C, edge_counts) ; 
+				countEdge(polytope[k].C, polytope[k].A, edge_counts) ;// Order of points matters here to make sure new triangles face outward
+			}else{
+				// triangles not facing new point are carried into new polytope
+				new_polytope.push_back(polytope[k]) ; 
+			}
+		}
+		//Add new triangles made from edges of the removed triangles and the new point
+		for(auto& [edge, count] : edge_counts){
+			if(count == 1){ // outer edge of removed surface
+				new_polytope.emplace_back(edge.A, edge.B, new_point) ;
+			}
+		}
+		polytope = new_polytope ;
+		new_polytope.clear();
+		edge_counts.clear();
+
+	}
+	iterations++;
 }

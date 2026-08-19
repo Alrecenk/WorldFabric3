@@ -4,6 +4,7 @@
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
+#include "Utilities.h" // used for glm::vec3 hash
 
 class CollisionTestApp : public MachineState {
 
@@ -93,6 +94,15 @@ public:
 		glm::vec3 x ;
 		// hold onto points on shapes for use in subsequent steps
 		glm::vec3 a, b ;
+
+		//Overload linear operators to allow manipulation in barycentric coordinates
+		SupportPoint operator*(const float& scale){
+			return {x*scale, a*scale, b*scale} ;
+		}
+
+		SupportPoint operator+(const SupportPoint& o) {
+			return { x +o.x, a + o.a, b +o.b };
+		}
 	};
 
 	//A triangle in monkowski space with a set winding order
@@ -110,8 +120,7 @@ public:
 
 		float signedDistance(const glm::vec3& p){
 			return glm::dot(normal, p) + d ;
-		}
-			
+		}	
 	};
 
 
@@ -120,7 +129,13 @@ public:
 	struct SupportEdge{
 		SupportPoint A;
 		SupportPoint B;
+		bool operator==(const SupportEdge& o) const {
+			return (A.x + B.x) == (o.A.x+o.B.x) ;
+		}
 	};
+
+	
+	
 
 	//Find the support point of the minkowski difference of two shapes
 	//Saves the points on the shapes for later reconstruction
@@ -135,12 +150,14 @@ public:
 	std::vector<SupportTriangle> detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B);
 
 
-	// Given a support triangle and a point on it, this returns a point in real space representing that point
-	glm::vec3 getRealPoint(const SupportTriangle& triangle, const glm::vec3& x);
+
+	//Adds an edge froemd by the two support points to an edge count map (used in getPenetration)
+	void countEdge(const SupportPoint& A, const SupportPoint& B, std::unordered_map<SupportEdge, int>& edge_counts);
+
 
 	//Uses expanding polytope algorithm on result of detectCollision
-	// Returns a pair containing the deepest collision point followed by a penetration vector to move B out of A
-	std::pair<glm::vec3, glm::vec3> getPenetration(std::vector<SupportTriangle>& collision_result, std::shared_ptr<CollisionShape> A, std::shared_ptr<CollisionShape> B) ;
+	// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
+	SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A,const std::shared_ptr<CollisionShape>& B) ;
 
 
 
@@ -195,4 +212,21 @@ private:
 	float mouse_wheel_y_previous = 0.0f;
 
 };
+
+
+
+// Overriding std::hash allows data types to be used as keys in unordered maps and sets
+template<>
+struct std::hash<CollisionTestApp::SupportEdge>
+{
+	std::size_t operator()(const CollisionTestApp::SupportEdge& p) const noexcept
+	{
+		std::size_t h1 = std::hash<float>{}(p.A.x.x + p.B.x.x);
+		std::size_t h2 = std::hash<float>{}(p.A.x.y + p.B.x.y); // hash on center of edge
+		std::size_t h3 = std::hash<float>{}(p.A.x.z + p.B.x.z);
+		return h1 ^ (h2 << 1) ^ (h3 << 2) ;
+	}
+};
+
+
 #endif // #ifndef _COLLISION_TEST_APP_H_
