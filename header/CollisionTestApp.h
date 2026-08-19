@@ -88,7 +88,7 @@ public:
 	void updateCamera();
 
 
-	static inline const int MAX_GJK_ITERATIONS = 20;
+	static inline const int MAX_GJK_ITERATIONS = 50;
 	//Point in minkowski difference space
 	struct SupportPoint{
 		glm::vec3 x ;
@@ -130,7 +130,7 @@ public:
 		SupportPoint A;
 		SupportPoint B;
 		bool operator==(const SupportEdge& o) const {
-			return glm::length2((A.x + B.x) - (o.A.x+o.B.x)) < 0.000001f ;
+			return glm::length((A.x + B.x) - (o.A.x+o.B.x)) < 0.0003f ;
 		}
 	};
 
@@ -221,9 +221,9 @@ struct std::hash<CollisionTestApp::SupportEdge>
 {
 	std::size_t operator()(const CollisionTestApp::SupportEdge& p) const noexcept
 	{
-		std::size_t h1 = std::hash<int>{}((int)((p.A.x.x + p.B.x.x)*10000));
-		std::size_t h2 = std::hash<int>{}((int)((p.A.x.y + p.B.x.y)*10000)); // hash on center of edge
-		std::size_t h3 = std::hash<int>{}((int)((p.A.x.z + p.B.x.z)*10000));
+		std::size_t h1 = std::hash<int>{}((int)((p.A.x.x + p.B.x.x)*3000));
+		std::size_t h2 = std::hash<int>{}((int)((p.A.x.y + p.B.x.y)*3000)); // hash on center of edge
+		std::size_t h3 = std::hash<int>{}((int)((p.A.x.z + p.B.x.z)*3000));
 		return h1 ^ (h2 << 1) ^ (h3 << 2) ;
 	}
 };

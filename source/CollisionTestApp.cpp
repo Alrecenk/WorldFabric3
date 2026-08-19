@@ -515,7 +515,7 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 		SupportPoint new_point = findSupportPoint(active_face.normal,A, B) ;
 
 		//Expansion didn't expand means we've reached closest surface face
-		if(active_face.signedDistance(new_point.x) < 0.0001f || iterations == MAX_GJK_ITERATIONS){
+		if(active_face.signedDistance(new_point.x) < 0.003f || iterations == MAX_GJK_ITERATIONS){
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
 			//Get barycentric coordinates via area method
 			glm::vec3 v0 = closest_x - active_face.A.x;
