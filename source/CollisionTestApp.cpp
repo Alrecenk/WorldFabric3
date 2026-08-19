@@ -275,6 +275,7 @@ void CollisionTestApp::run() {
 		for(int j=0;j<k;j++){
 			auto result = detectCollision(instances[k].world_shape, instances[j].world_shape);
 			if(result.size() > 0){
+				/*
 				glm::vec3 O(0,0,0) ;
 				glm::vec3 A  = result[0].A.x ;
 				glm::vec3 AB = result[0].B.x - result[0].A.x;
@@ -295,9 +296,13 @@ void CollisionTestApp::run() {
 
 				glm::vec3 p = (p1 + p2)*0.5f ;
 				printf("Found collision: %f, %f ,%f == %f,%f,%f\n", p1.x, p1.y, p1.z, p2.x,p2.y,p2.z);
+				*/
+
+				SupportPoint collision = getPenetration(result, instances[k].world_shape, instances[j].world_shape) ;
+
 				int p_id = particles->createParticle(0);
 				glm::mat4 particle_pose = glm::mat4(1.0f);
-				particle_pose = glm::translate(particle_pose, p);
+				particle_pose = glm::translate(particle_pose, (collision.a+ collision.b)*0.5f);
 				particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
 				particles->setPose(p_id, particle_pose);
 				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
@@ -481,14 +486,23 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 
 		//Expansion didn't expand means we've reached closest surface face
 		if(active_face.signedDistance(new_point.x) < 0.0001f || iterations == MAX_GJK_ITERATIONS){
+			
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
+			printf("cloestes_x: %f,%f,%f\n", closest_x.x, closest_x.y, closest_x.z);
 			glm::mat2x3 Mt (active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x) ;
-			glm::mat3x2 M = glm::transpose(M); // linear least squares to solve for barycentric coordinates
-			glm::vec2 bc = glm::inverse((Mt*M)) * (Mt * (closest_x - active_face.A.x)) ;
+			glm::mat3x2 M = glm::transpose(Mt); // linear least squares to solve for barycentric coordinates
+			printf("Mt: %f,%f,%f,%f,%f,%f\n", Mt[0][0], Mt[0][1], Mt[0][2], Mt[1][0], Mt[1][1], Mt[1][2]) ;
+			glm::mat2 mtm = Mt * M ;
+			printf("mtm: %f,%f,%f,%f\n", mtm[0][0], mtm[1][0], mtm[0][1], mtm[1][1]);
+			glm::mat2 inv = glm::inverse(Mt * M) ;
+			printf("inv: %f,%f,%f,%f\n", inv[0][0], inv[1][0], inv[0][1], inv[1][1]);
+			glm::vec2 bc = inv * (Mt * (closest_x - active_face.A.x)) ;
+			
 			float b = bc.x;
 			float c = bc.y;
 			float a = 1.0f -b - c ;
 			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c ;
+			printf("a:%f, b:%f, c:%f\n", a,b,c) ;
 			printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
 			return collision_point ;
 		}
@@ -513,7 +527,7 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 		polytope = new_polytope ;
 		new_polytope.clear();
 		edge_counts.clear();
-
+		iterations++;
 	}
-	iterations++;
+	
 }
