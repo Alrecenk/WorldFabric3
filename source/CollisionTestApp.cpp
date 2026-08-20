@@ -160,9 +160,9 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(0.1,0.1,0.1)));
-	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.1), glm::vec3(0.1, 0, 0),glm::vec3(0, 0.1, 0),glm::vec3(0, 0, 0))) ;
-	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.1), glm::vec3(0, 0, -0.1), 0.05f, 8)) ;
+	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(0.2,0.2,0.2)));
+	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.2), glm::vec3(0.2, 0, 0),glm::vec3(0, 0.2, 0),glm::vec3(0, 0, 0))) ;
+	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.2), glm::vec3(0, 0, -0.2), 0.1f, 8)) ;
 
 	int c = 0 ;
 	for(auto& [name, base] : base_shape){

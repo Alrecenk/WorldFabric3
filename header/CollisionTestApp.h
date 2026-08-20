@@ -173,15 +173,15 @@ private:
 
 
 	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
-	std::vector<glm::vec3> positions = { {0,0.6-0.0553f,-0.098}, {0,0.6,0},{0,0.6-0.0553f,0.098} };
+	std::vector<glm::vec3> positions = { {0,0.6-0.1,-0.2}, {0,0.6,0},{0,0.6-0.1,0.2} };
 	float particle_size = 0.003f ;
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
-	glm::vec3 min = { -2,0,-2};
-	glm::vec3 max = { 2,3,2 };
+	glm::vec3 min = { -1.5,0,-1.5};
+	glm::vec3 max = { 1.5,2.5,1.5 };
 	int room_instance_id  = -1 ;
 
 	bool show_grid = false;
@@ -204,7 +204,7 @@ private:
 	float camera_down_thi = 0.0f;
 	float camera_x_speed = 0.002f;
 	float camera_y_speed = 0.002f;
-	float zoom = 1.0f;
+	float zoom = 2.5f;
 	float light_zoom = 2.0f;
 	float light_fov = 1.0f;
 	float light_theta = 0.4f;
