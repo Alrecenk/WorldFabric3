@@ -435,7 +435,7 @@ int exampleMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str());
 
-	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
+	SteamworksPlugin::enabled = true; // can turn this on when you've got your own steam app id you want to boot
 	OpenXRPlugin::ENABLED = false; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
@@ -467,7 +467,7 @@ int exampleMain(int argc, char* argv[]) {
 	setupGameStates();
 
 	printf("Starting main loop...\n");
-	bool display_profile = false;
+	bool display_profile = true;
 
 
 
@@ -502,7 +502,7 @@ int exampleMain(int argc, char* argv[]) {
 	//Run main loop until told to stop
 	while (flag_set->getInt(AsyncPlugin::SHUTDOWN_FLAG) == 0) {
 		auto sync_start = now();
-		AsyncPlugin::runPlugins(plugins);
+		bool ran = AsyncPlugin::runPlugins(plugins);
 		long sync_time = microsBetween(sync_start, now());
 		//Stagger the start of the plugins over the first third of the frame time
 		//This makes the ideal execution order amd lowest input lag most likely, but they can still overlap if they need to to maintain fps
@@ -513,12 +513,11 @@ int exampleMain(int argc, char* argv[]) {
 		stagger_step  = 0 ;
 		int stagger = 0;
 		for (auto& p : plugins) {
-			
 			p->stagger_micros = stagger;
 			stagger += stagger_step;
 		}
 
-		if (display_profile) {
+		if (display_profile && ran) {
 			frames++;
 			std::shared_ptr<CSVLog>& log = VulkanPlugin::timing_log;
 			int micros = microsBetween(last_second_time, now());

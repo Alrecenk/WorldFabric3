@@ -53,7 +53,7 @@ public:
 	static void stopPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins);
 
 	// Run all plugins for a frame
-	static void runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins);
+	static bool runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins);
 
 	static inline const std::string SHUTDOWN_FLAG = "shut_down" ;
 

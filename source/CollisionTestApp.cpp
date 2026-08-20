@@ -436,6 +436,7 @@ CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec
 //Build a support simplex from a triangle facing a point
 std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D){
 	std::vector<CollisionTestApp::SupportTriangle> simplex ; 
+	simplex.reserve(4) ;
 	simplex.emplace_back(triangle.B, triangle.A, triangle.C) ; // flip initial triangle as outside is now inside
 	simplex.emplace_back(D, triangle.B, triangle.C);
 	simplex.emplace_back(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
