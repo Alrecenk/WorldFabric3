@@ -114,17 +114,8 @@ public:
 		float d = 0 ; // normal * x + d > 0 means in front of the plane
 
 		SupportTriangle(const SupportPoint& a,const  SupportPoint& b,const  SupportPoint& c) : A(a), B(b), C(c){
-			glm::vec3 n = glm::cross(B.x - A.x, C.x - A.x) ;
-			
 			normal = glm::normalize(glm::cross(B.x-A.x, C.x-A.x)) ;
 			d = -glm::dot(normal,A.x);
-
-
-			/*
-			if(fabs(glm::dot(normal,A.x) + d) > 1e-4f || fabs(glm::dot(normal, B.x) + d) > 1e-4f || fabs(glm::dot(normal, C.x) + d) > 1e-4f){
-				printf("Triangle does not contain its points\n");
-			}
-*/
 		}
 
 		float signedDistance(const glm::vec3& p){
@@ -149,7 +140,10 @@ public:
 	SupportPoint findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B) ;
 
 	//Build a support simplex from a triangle facing a point
-	std::vector<CollisionTestApp::SupportTriangle> buildSUpportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D);
+	std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D);
+
+	void buildSupportSimplex(const CollisionTestApp::SupportTriangle triangle, const CollisionTestApp::SupportPoint& D, std::vector<CollisionTestApp::SupportTriangle>& into);
+
 
 	//Uses GJK to detect whether two convex shapes collide
 	//If they collide this returns a simplex in Minkowski diference space enclosing the collision point

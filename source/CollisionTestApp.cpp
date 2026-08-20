@@ -292,7 +292,7 @@ void CollisionTestApp::run() {
 	last_display_particles = display_particles ;
 	display_particles.clear();
 
-	for(int iteration = 0 ; iteration < 10000; iteration++){ // iterationa bunch of to measure performance
+	for(int iteration = 0 ; iteration < 1; iteration++){ // iterate a bunch to measure performance
 	for(int k=1;k<instances.size();k++){
 		for(int j=0;j<k;j++){
 			auto result = detectCollision(instances[k].world_shape, instances[j].world_shape);
@@ -434,7 +434,7 @@ CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec
 
 
 //Build a support simplex from a triangle facing a point
-std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D){
+std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D){
 	std::vector<CollisionTestApp::SupportTriangle> simplex ; 
 	simplex.reserve(4) ;
 	simplex.emplace_back(triangle.B, triangle.A, triangle.C) ; // flip initial triangle as outside is now inside
@@ -442,6 +442,13 @@ std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const Collisi
 	simplex.emplace_back(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
 	simplex.emplace_back(triangle.A, triangle.B, D);
 	return simplex ;
+}
+
+void CollisionTestApp::buildSupportSimplex(const CollisionTestApp::SupportTriangle triangle, const CollisionTestApp::SupportPoint& D, std::vector<CollisionTestApp::SupportTriangle>& simplex){
+	simplex[0] = SupportTriangle(triangle.B, triangle.A, triangle.C); // flip initial triangle as outside is now inside
+	simplex[1] = SupportTriangle(D, triangle.B, triangle.C);
+	simplex[2] = SupportTriangle(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
+	simplex[3] = SupportTriangle(triangle.A, triangle.B, D);
 }
 
 //Uses GJK to detect whether two convex shapes collide
@@ -489,7 +496,8 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 				if (glm::dot(new_point.x, simplex[k].normal) <= 0) {
 					return {}; // No collision
 				}
-				simplex = buildSupportSimplex(simplex[k], new_point) ;
+				//simplex = buildSupportSimplex(simplex[k], new_point) ;
+				buildSupportSimplex(simplex[k], new_point, simplex);
 				found_triangle = true ;
 				break ;
 			}
