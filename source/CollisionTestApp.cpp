@@ -242,7 +242,7 @@ void CollisionTestApp::run() {
 	if(! window->keyDown(SDLK_SPACE) && !OpenXRPlugin::ENABLED){
 		for(auto& inst : instances){
 			glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
-			pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
+			pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1, c * 0.001f)) ;
 			inst.setPose(pose);
 			c++;
 		}
@@ -502,7 +502,8 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list) {
 	for (auto& edge2 : edge_list) {
 		//order would be reversed on a duplicate
-		if (glm::distance2(edge2.A.x, B.x) < 1e-8f && glm::distance2(edge2.B.x, A.x) < 1e-8f) {
+		if (glm::distance2(edge2.A.x, B.x) < 1e-7f && glm::distance2(edge2.B.x, A.x) < 1e-7f) {
+		//if(edge2.A.x == B.x && edge2.B.x == A.x){
 			// edge occurs twice, don't build a new triangle
 			edge2.disabled = true ;
 			return; 
@@ -526,26 +527,34 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 		int selected_triangle = -1 ;
 		float selected_distance = FLT_MAX;
 		for(int k=0;k<polytope.size();k++){
-			if(fabs(polytope[k].d) < selected_distance){
+			if(-polytope[k].d < selected_distance){
 				selected_triangle = k ;
-				selected_distance = fabs(polytope[k].d) ;
+				selected_distance = -polytope[k].d ;
 			}
+
 		}
 		SupportTriangle& active_face = polytope[selected_triangle] ;
 		//use it's normal to expand to a new point
 		SupportPoint new_point = findSupportPoint(active_face.normal,A, B) ;
 
+		float signed_distance = active_face.signedDistance(new_point.x) ;
+		//printf("D:%f\n", selected_distance) ;
 		//Expansion didn't expand means we've reached closest surface face
-		if(active_face.signedDistance(new_point.x) < 1e-4f || iterations == MAX_GJK_ITERATIONS){
+		if(signed_distance < 1e-4f || iterations == MAX_GJK_ITERATIONS){
+			/*if(iterations ==MAX_GJK_ITERATIONS){
+				printf("Hit max iterations in EPA!\n");
+			}*/
+			//printf("Finals SD:%f\n", signed_distance) ;
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
 			//Get barycentric coordinates via area method
 			glm::vec3 v0 = closest_x - active_face.A.x;
 			glm::vec3 v1 = closest_x - active_face.B.x;
 			glm::vec3 v2 = closest_x - active_face.C.x;
 			float area_tot = glm::length(glm::cross(active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x));
-			float a = glm::length(glm::cross(v1, v2)) / area_tot; // TODO extra sqrt in this 3 lines
-			float b = glm::length(glm::cross(v2, v0)) / area_tot;
+			float a = glm::dot(glm::cross(v1, v2), active_face.normal) / area_tot;
+			float b = glm::dot(glm::cross(v2, v0), active_face.normal) / area_tot;
 			float c = 1.0f - a - b;
+
 			//printf("a:%f, b:%f, c:%f\n", a,b,c) ;
 			//printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
 			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c;
@@ -554,7 +563,7 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 
 		//Remove all triangles facing the new point and collect their edges
 		for(int k=0;k<polytope.size(); k++){
-			if(polytope[k].signedDistance(new_point.x) > 1e-4f){
+			if(polytope[k].signedDistance(new_point.x) > 1e-6f){
 				countEdge(polytope[k].A, polytope[k].B, edge_list);
 				countEdge(polytope[k].B, polytope[k].C, edge_list);
 				countEdge(polytope[k].C, polytope[k].A, edge_list);// Order of points matters here to make sure new triangles face outward
@@ -567,7 +576,13 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 		//Add edges not duplicated
 		for (auto& edge : edge_list) {
 			if (!edge.disabled) {
-				new_polytope.emplace_back(edge.A, edge.B, new_point);
+				SupportTriangle t(edge.A, edge.B, new_point) ;
+				if(t.d < 0){
+					new_polytope.push_back(t);
+				}else{
+					printf("Got a flipped triangle in EPA!?\n");
+					//new_polytope.emplace_back(edge.B, edge.A, new_point) ;
+				}
 			}
 		}
 		
