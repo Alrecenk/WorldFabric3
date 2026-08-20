@@ -447,7 +447,7 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 
 	SupportTriangle first_triangle(p0, p1,p2) ;
 	//Search along normal of triangle toward origin
-	if(first_triangle.signedDistance(origin) < 0){ // facing wrong way to start
+	if(first_triangle.d < 0){ // facing wrong way to start
 		first_triangle = SupportTriangle(p1, p0, p2); // flip winding order
 	}
 
@@ -500,7 +500,6 @@ void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, s
 CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
 	std::vector<SupportTriangle> polytope = collision_result;
 	std::vector<SupportTriangle>new_polytope;
-
 	std::vector<SupportEdge> edge_list ;
 
 	int iterations = 0 ;
