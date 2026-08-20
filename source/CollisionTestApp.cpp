@@ -461,7 +461,7 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 
 	for(int iter = 0; iter < MAX_GJK_ITERATIONS; iter++){
 		bool found_triangle = false;
-		for(int k=0; k < 4; k++){
+		for(int k=1; k < 4; k++){ // First triangle always what simpex was built from andwill always face out
 			if(simplex[k].signedDistance(origin) > 0){
 				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, B);
 				//New point could not get past zero in search direction
@@ -481,22 +481,27 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 
 }
 
-void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::unordered_map<SupportEdge, int>& edge_counts){
-	SupportEdge edge = {A,B} ;
-	auto iter = edge_counts.find(edge);
-	if(iter == edge_counts.end()){
-		edge_counts[edge] = 1 ;
-	}else{
-		iter->second++;
+
+void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list) {
+	for (auto& edge2 : edge_list) {
+		//order would be reversed on a duplicate
+		if (glm::distance2(edge2.A.x, B.x) < 1e-8f && glm::distance2(edge2.B.x, A.x) < 1e-8f) {
+			// edge occurs twice, don't build a new triangle
+			edge2.disabled = true ;
+			return; 
+		}
 	}
+	edge_list.emplace_back(A, B);
 }
+
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
 CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
 	std::vector<SupportTriangle> polytope = collision_result;
-	std::unordered_map<SupportEdge, int> edge_counts ;
 	std::vector<SupportTriangle>new_polytope;
+
+	std::vector<SupportEdge> edge_list ;
 
 	int iterations = 0 ;
 	while(true){
@@ -515,43 +520,44 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 		SupportPoint new_point = findSupportPoint(active_face.normal,A, B) ;
 
 		//Expansion didn't expand means we've reached closest surface face
-		if(active_face.signedDistance(new_point.x) < 0.003f || iterations == MAX_GJK_ITERATIONS){
+		if(active_face.signedDistance(new_point.x) < 1e-4f || iterations == MAX_GJK_ITERATIONS){
 			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
 			//Get barycentric coordinates via area method
 			glm::vec3 v0 = closest_x - active_face.A.x;
 			glm::vec3 v1 = closest_x - active_face.B.x;
 			glm::vec3 v2 = closest_x - active_face.C.x;
 			float area_tot = glm::length(glm::cross(active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x));
-			float a = glm::length(glm::cross(v1, v2)) / area_tot;
+			float a = glm::length(glm::cross(v1, v2)) / area_tot; // TODO extra sqrt in this 3 lines
 			float b = glm::length(glm::cross(v2, v0)) / area_tot;
 			float c = 1.0f - a - b;
-
-			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c ;
 			//printf("a:%f, b:%f, c:%f\n", a,b,c) ;
 			//printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
+			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c;
 			return collision_point ;
 		}
 
 		//Remove all triangles facing the new point and collect their edges
 		for(int k=0;k<polytope.size(); k++){
-			if(polytope[k].signedDistance(new_point.x) > 0){
-				countEdge(polytope[k].A, polytope[k].B, edge_counts) ;
-				countEdge(polytope[k].B, polytope[k].C, edge_counts) ; 
-				countEdge(polytope[k].C, polytope[k].A, edge_counts) ;// Order of points matters here to make sure new triangles face outward
+			if(polytope[k].signedDistance(new_point.x) > 1e-4f){
+				countEdge(polytope[k].A, polytope[k].B, edge_list);
+				countEdge(polytope[k].B, polytope[k].C, edge_list);
+				countEdge(polytope[k].C, polytope[k].A, edge_list);// Order of points matters here to make sure new triangles face outward
 			}else{
 				// triangles not facing new point are carried into new polytope
 				new_polytope.push_back(polytope[k]) ; 
 			}
 		}
-		//Add new triangles made from edges of the removed triangles and the new point
-		for(auto& [edge, count] : edge_counts){
-			if(count == 1){ // outer edge of removed surface
-				new_polytope.emplace_back(edge.A, edge.B, new_point) ;
+
+		//Add edges not duplicated
+		for (auto& edge : edge_list) {
+			if (!edge.disabled) {
+				new_polytope.emplace_back(edge.A, edge.B, new_point);
 			}
 		}
-		polytope = new_polytope ;
+		
+		polytope = new_polytope ; // TODO avoid this copy and do it in place
 		new_polytope.clear();
-		edge_counts.clear();
+		edge_list.clear();
 		iterations++;
 	}
 	

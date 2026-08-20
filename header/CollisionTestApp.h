@@ -88,7 +88,7 @@ public:
 	void updateCamera();
 
 
-	static inline const int MAX_GJK_ITERATIONS = 50;
+	static inline const int MAX_GJK_ITERATIONS = 10;
 	//Point in minkowski difference space
 	struct SupportPoint{
 		glm::vec3 x ;
@@ -129,9 +129,7 @@ public:
 	struct SupportEdge{
 		SupportPoint A;
 		SupportPoint B;
-		bool operator==(const SupportEdge& o) const {
-			return glm::length((A.x + B.x) - (o.A.x+o.B.x)) < 0.0003f ;
-		}
+		bool disabled = false;
 	};
 
 	
@@ -151,8 +149,8 @@ public:
 
 
 
-	//Adds an edge froemd by the two support points to an edge count map (used in getPenetration)
-	void countEdge(const SupportPoint& A, const SupportPoint& B, std::unordered_map<SupportEdge, int>& edge_counts);
+	//Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
+	void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 
 	//Uses expanding polytope algorithm on result of detectCollision
@@ -191,7 +189,7 @@ private:
 	std::vector<int> last_display_particles;
 
 	// Csmera control stuff
-	glm::vec3 look_at = glm::vec3(0, 0, 0);
+	glm::vec3 look_at = glm::vec3(0, 0.6f, 0);
 	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
 	float fov = 1.0f;
 	float camera_theta = 0.5f;
@@ -212,21 +210,5 @@ private:
 	float mouse_wheel_y_previous = 0.0f;
 
 };
-
-
-
-// Overriding std::hash allows data types to be used as keys in unordered maps and sets
-template<>
-struct std::hash<CollisionTestApp::SupportEdge>
-{
-	std::size_t operator()(const CollisionTestApp::SupportEdge& p) const noexcept
-	{
-		std::size_t h1 = std::hash<int>{}((int)((p.A.x.x + p.B.x.x)*3000));
-		std::size_t h2 = std::hash<int>{}((int)((p.A.x.y + p.B.x.y)*3000)); // hash on center of edge
-		std::size_t h3 = std::hash<int>{}((int)((p.A.x.z + p.B.x.z)*3000));
-		return h1 ^ (h2 << 1) ^ (h3 << 2) ;
-	}
-};
-
 
 #endif // #ifndef _COLLISION_TEST_APP_H_
