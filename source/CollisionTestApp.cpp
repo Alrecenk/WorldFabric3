@@ -292,7 +292,7 @@ void CollisionTestApp::run() {
 	last_display_particles = display_particles ;
 	display_particles.clear();
 
-
+	for(int iteration = 0 ; iteration < 10000; iteration++){ // iterationa bunch of to measure performance
 	for(int k=1;k<instances.size();k++){
 		for(int j=0;j<k;j++){
 			auto result = detectCollision(instances[k].world_shape, instances[j].world_shape);
@@ -325,38 +325,41 @@ void CollisionTestApp::run() {
 
 				SupportPoint collision = getPenetration(result, instances[k].world_shape, instances[j].world_shape) ;
 
-				int p_id = particles->createParticle(0);
-				glm::mat4 particle_pose = glm::mat4(1.0f);
-				particle_pose = glm::translate(particle_pose, collision.a);
-				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
-				particles->setPose(p_id, particle_pose);
-				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
-				display_particles.push_back(p_id);
+				if(iteration == 0 ){ // only update visual on first iteration
+					int p_id = particles->createParticle(0);
+					glm::mat4 particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, collision.a);
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
 
-				p_id = particles->createParticle(0);
-				particle_pose = glm::mat4(1.0f);
-				particle_pose = glm::translate(particle_pose, collision.b);
-				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
-				particles->setPose(p_id, particle_pose);
-				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
-				display_particles.push_back(p_id);
+					p_id = particles->createParticle(0);
+					particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, collision.b);
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
 
 				
-				p_id = particles->createParticle(0);
-				glm::mat4 look = glm::lookAt(collision.a, collision.b, glm::vec3(0, 1, 0));
-				float length = glm::distance(collision.a, collision.b) ;
-				particle_pose = glm::mat4(1.0f);
-				particle_pose = glm::translate(particle_pose, glm::vec3(0,0,-length/2));
-				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.5f, particle_size*0.5f, length/2 + particle_size*0.5f));
-				particle_pose = glm::inverse(look) * particle_pose ;
+					p_id = particles->createParticle(0);
+					glm::mat4 look = glm::lookAt(collision.a, collision.b, glm::vec3(0, 1, 0));
+					float length = glm::distance(collision.a, collision.b) ;
+					particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, glm::vec3(0,0,-length/2));
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.5f, particle_size*0.5f, length/2 + particle_size*0.5f));
+					particle_pose = glm::inverse(look) * particle_pose ;
 
-				particles->setPose(p_id, particle_pose);
-				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
-				display_particles.push_back(p_id);
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
+				}
 				
 			}
 
 		}
+	}
 	}
 
 
@@ -502,8 +505,8 @@ std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision
 void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list) {
 	for (auto& edge2 : edge_list) {
 		//order would be reversed on a duplicate
-		if (glm::distance2(edge2.A.x, B.x) < 1e-7f && glm::distance2(edge2.B.x, A.x) < 1e-7f) {
-		//if(edge2.A.x == B.x && edge2.B.x == A.x){
+		//if (glm::distance2(edge2.A.x, B.x) < 1e-7f && glm::distance2(edge2.B.x, A.x) < 1e-7f) {
+		if(edge2.A.x == B.x && edge2.B.x == A.x){
 			// edge occurs twice, don't build a new triangle
 			edge2.disabled = true ;
 			return; 
@@ -516,10 +519,10 @@ void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, s
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
 CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
-	std::vector<SupportTriangle> polytope = collision_result;
-	std::vector<SupportTriangle>new_polytope;
-	std::vector<SupportEdge> edge_list ;
-
+	static std::vector<SupportTriangle> polytope ;
+	static std::vector<SupportEdge> edge_list ;
+	polytope = collision_result ;
+	edge_list.clear();
 	int iterations = 0 ;
 	while(true){
 		
@@ -567,27 +570,23 @@ CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<Supp
 				countEdge(polytope[k].A, polytope[k].B, edge_list);
 				countEdge(polytope[k].B, polytope[k].C, edge_list);
 				countEdge(polytope[k].C, polytope[k].A, edge_list);// Order of points matters here to make sure new triangles face outward
-			}else{
-				// triangles not facing new point are carried into new polytope
-				new_polytope.push_back(polytope[k]) ; 
+			
+				//Remove it
+				if(k!=polytope.size()-1){ // swap with final slot
+					polytope[k] = polytope[polytope.size() - 1];
+				}
+				polytope.pop_back(); // remove final slot
+				k--; // look at this slot again since we just moved something else into it
 			}
 		}
 
 		//Add edges not duplicated
 		for (auto& edge : edge_list) {
 			if (!edge.disabled) {
-				SupportTriangle t(edge.A, edge.B, new_point) ;
-				if(t.d < 0){
-					new_polytope.push_back(t);
-				}else{
-					printf("Got a flipped triangle in EPA!?\n");
-					//new_polytope.emplace_back(edge.B, edge.A, new_point) ;
-				}
+				polytope.emplace_back(edge.A, edge.B, new_point);
 			}
 		}
 		
-		polytope = new_polytope ; // TODO avoid this copy and do it in place
-		new_polytope.clear();
 		edge_list.clear();
 		iterations++;
 	}
