@@ -320,6 +320,9 @@ void CollisionTestApp::run() {
 				printf("Found collision: %f, %f ,%f == %f,%f,%f\n", p1.x, p1.y, p1.z, p2.x,p2.y,p2.z);
 				*/
 
+
+				
+
 				SupportPoint collision = getPenetration(result, instances[k].world_shape, instances[j].world_shape) ;
 
 				int p_id = particles->createParticle(0);
@@ -337,6 +340,20 @@ void CollisionTestApp::run() {
 				particles->setPose(p_id, particle_pose);
 				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
 				display_particles.push_back(p_id);
+
+				
+				p_id = particles->createParticle(0);
+				glm::mat4 look = glm::lookAt(collision.a, collision.b, glm::vec3(0, 1, 0));
+				float length = glm::distance(collision.a, collision.b) ;
+				particle_pose = glm::mat4(1.0f);
+				particle_pose = glm::translate(particle_pose, glm::vec3(0,0,-length/2));
+				particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.5f, particle_size*0.5f, length/2 + particle_size*0.5f));
+				particle_pose = glm::inverse(look) * particle_pose ;
+
+				particles->setPose(p_id, particle_pose);
+				particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+				display_particles.push_back(p_id);
+				
 			}
 
 		}

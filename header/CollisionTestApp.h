@@ -172,7 +172,7 @@ private:
 
 	std::vector<glm::vec4> colors = { {1,0,0,0.3}, {0,1,0,0.3},{0,0,1,0.3} };
 	std::vector<glm::vec3> positions = { {0,0.6-0.1,-0.2}, {0,0.6,0},{0,0.6-0.1,0.2} };
-	float particle_size = 0.003f ;
+	float particle_size = 0.005f ;
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
 	std::chrono::high_resolution_clock::time_point last_run_time;
