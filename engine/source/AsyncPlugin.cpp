@@ -70,7 +70,7 @@ void AsyncPlugin::stopPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins
 	}
 }
 
-void AsyncPlugin::runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins) {
+bool AsyncPlugin::runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins) {
 	// Join everything from the last frame
 	bool any_active = false;
 	for (auto& p : plugins) {
@@ -80,7 +80,7 @@ void AsyncPlugin::runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins)
 	if(any_active){
 		//printf("Skipping run because last frame didn't finish!\n");
 		std::this_thread::sleep_for(std::chrono::microseconds(500));
-		return ; // TODO wait and try again?
+		return false;; // TODO wait and try again?
 	}
 
 	//Spawn threads for the run functions or just run them depending on async setting
@@ -97,6 +97,7 @@ void AsyncPlugin::runPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins)
 			p->runTimed();
 		}
 	}
+	return true ;
 }
 
 // call to start an input chain

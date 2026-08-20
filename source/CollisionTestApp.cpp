@@ -160,9 +160,9 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(1,1,1)));
-	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 1), glm::vec3(1, 0, 0),glm::vec3(0, 1, 0),glm::vec3(0, 0, 0))) ;
-	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1), 0.5f, 8)) ;
+	base_shape["box"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(0.2,0.2,0.2)));
+	base_shape["tetra"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.2), glm::vec3(0.2, 0, 0),glm::vec3(0, 0.2, 0),glm::vec3(0, 0, 0))) ;
+	base_shape["cylinder"] = std::make_shared<ConvexPolyhedron>(ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.2), glm::vec3(0, 0, -0.2), 0.1f, 8)) ;
 
 	int c = 0 ;
 	for(auto& [name, base] : base_shape){
@@ -183,6 +183,23 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	room_instance_id = scene->createInstance("room", glm::mat4(1.0f));
 
 
+	if(show_grid){
+		glm::vec3 pmin = min*0.5f;
+		glm::vec3 pmax = max*0.5f;
+		float step = 0.25f ;
+		for(float x = pmin.x ; x <= pmax.x; x+= step){
+		for (float y = pmin.y; y <= pmax.y; y += step) {
+		for (float z = pmin.z; z <= pmax.z; z += step) {
+			std::shared_ptr<Point> p = std::make_shared<Point>(glm::vec3(x + randomFloat() * 0.0001f,y+randomFloat()*0.0001f,z + randomFloat() * 0.0001f)) ;
+			p->particle_id = particles->createParticle(0);
+			glm::mat4 particle_pose = glm::mat4(1.0f);
+			particle_pose = glm::translate(particle_pose, p->x);
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+			particles->setPose(p->particle_id, particle_pose);
+			particles->setColor(p->particle_id, glm::vec4(0,0,0,1)) ;
+			points.emplace_back(p);
+		}}}
+	}
 }
 
 //Called every frame while the state is active
@@ -217,17 +234,134 @@ void CollisionTestApp::run() {
 	}
 	glm::mat4 particle_pose = glm::mat4(1.0f);
 	particle_pose = glm::translate(particle_pose, mouse_position);
-	particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
+	particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
 	particles->setPose(mouse_particle_id, particle_pose);
 
 
 	int c = 0 ;
-	for(auto& inst : instances){
-		glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
-		pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1,0)) ;
-		inst.setPose(pose);
-		c++;
+	if(! window->keyDown(SDLK_SPACE) && !OpenXRPlugin::ENABLED){
+		for(auto& inst : instances){
+			glm::mat4 pose = glm::translate(glm::mat4(1.0f), positions[c]);
+			pose = glm::rotate(pose,timeMilliseconds()/1000.0f, glm::vec3(0,1, c * 0.001f)) ;
+			inst.setPose(pose);
+			c++;
+		}
 	}
+
+	if(OpenXRPlugin::ENABLED){
+		OpenXRPlugin* controls = getTool<OpenXRPlugin>();
+		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
+		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
+		int c=0 ;
+		for (auto& inst : instances) {
+			glm::mat4 hand_pose ;
+			if(c == 0){
+				hand_pose = current_left_hand_pose ;
+			}else if(c == 1){
+				hand_pose = current_right_hand_pose;
+			}else{
+				break ;
+			}
+
+			inst.setPose(hand_pose);
+			c++;
+		}
+	}
+
+
+	for(auto& point : points){
+		bool hit = false;
+		for (auto& inst : instances) {
+			hit |= detectCollision(inst.world_shape, point).size() != 0 ;
+		}
+		glm::mat4 particle_pose = glm::mat4(1.0f);
+		particle_pose = glm::translate(particle_pose, point->x);
+		if(hit){
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+		}else{
+			particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.3f, particle_size * 0.3f, particle_size * 0.3f));
+		}
+		particles->setPose(point->particle_id, particle_pose);
+	}
+
+
+
+	for(auto& id : last_display_particles){
+		particles->destroyParticle(id);
+	}
+	last_display_particles = display_particles ;
+	display_particles.clear();
+
+	for(int iteration = 0 ; iteration < 1; iteration++){ // iterate a bunch to measure performance
+	for(int k=1;k<instances.size();k++){
+		for(int j=0;j<k;j++){
+			auto result = detectCollision(instances[k].world_shape, instances[j].world_shape);
+			if(result.size() > 0){
+				/*
+				glm::vec3 O(0,0,0) ;
+				glm::vec3 A  = result[0].A.x ;
+				glm::vec3 AB = result[0].B.x - result[0].A.x;
+				glm::vec3 AC = result[0].C.x - result[0].A.x;
+				glm::vec3 AD = result[1].A.x - result[0].A.x;
+				glm::mat3 M(AB,AC,AD) ;
+				M = glm::inverse(M) ;
+				glm::vec3 bcd = M * (O-A) ;
+				float b = bcd.x ;
+				float c = bcd.y ;
+				float d = bcd.z ;
+				float a = 1 - b - c -d ;
+
+				glm::vec3 check = a * A + b * result[0].B.x + c * result[0].C.x + d * result[1].A.x;
+				printf("Check: %f, %f ,%f \n", check.x, check.y, check.z);
+				glm::vec3 p1 = a * result[0].A.a + b * result[0].B.a + c * result[0].C.a + d * result[1].A.a ;
+				glm::vec3 p2 = a * result[0].A.b + b * result[0].B.b + c * result[0].C.b + d * result[1].A.b ;
+
+				glm::vec3 p = (p1 + p2)*0.5f ;
+				printf("Found collision: %f, %f ,%f == %f,%f,%f\n", p1.x, p1.y, p1.z, p2.x,p2.y,p2.z);
+				*/
+
+
+				
+
+				SupportPoint collision = getPenetration(result, instances[k].world_shape, instances[j].world_shape) ;
+
+				if(iteration == 0 ){ // only update visual on first iteration
+					int p_id = particles->createParticle(0);
+					glm::mat4 particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, collision.a);
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
+
+					p_id = particles->createParticle(0);
+					particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, collision.b);
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size, particle_size, particle_size));
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
+
+				
+					p_id = particles->createParticle(0);
+					glm::mat4 look = glm::lookAt(collision.a, collision.b, glm::vec3(0, 1, 0));
+					float length = glm::distance(collision.a, collision.b) ;
+					particle_pose = glm::mat4(1.0f);
+					particle_pose = glm::translate(particle_pose, glm::vec3(0,0,-length/2));
+					particle_pose = glm::scale(particle_pose, glm::vec3(particle_size*0.5f, particle_size*0.5f, length/2 + particle_size*0.5f));
+					particle_pose = glm::inverse(look) * particle_pose ;
+
+					particles->setPose(p_id, particle_pose);
+					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
+					display_particles.push_back(p_id);
+				}
+				
+			}
+
+		}
+	}
+	}
+
 
 	updateCamera();
 
@@ -274,8 +408,8 @@ void CollisionTestApp::updateCamera() {
 		zoom /= 0.95f;
 	}
 
-	if (zoom < 1.0f) {
-		zoom = 1.0f;
+	if (zoom < 0.05f) {
+		zoom = 0.05f ;
 	}
 	mouse_wheel_y_previous = window->getMouseWheelPosition().y;
 
@@ -285,4 +419,185 @@ void CollisionTestApp::updateCamera() {
 	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
 
 	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 30);
+}
+
+
+//Find the support point of the minkowski difference of two shapes
+//Saves the points on the shapes for later reconstruction
+CollisionTestApp::SupportPoint CollisionTestApp::findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	SupportPoint sp ;
+	sp.a = A->support(direction);
+	sp.b = B->support(-direction) ;
+	sp.x = sp.a - sp.b ;
+	return sp ;
+}
+
+
+//Build a support simplex from a triangle facing a point
+std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D){
+	std::vector<CollisionTestApp::SupportTriangle> simplex ; 
+	simplex.reserve(4) ;
+	simplex.emplace_back(triangle.B, triangle.A, triangle.C) ; // flip initial triangle as outside is now inside
+	simplex.emplace_back(D, triangle.B, triangle.C);
+	simplex.emplace_back(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
+	simplex.emplace_back(triangle.A, triangle.B, D);
+	return simplex ;
+}
+
+void CollisionTestApp::buildSupportSimplex(const CollisionTestApp::SupportTriangle triangle, const CollisionTestApp::SupportPoint& D, std::vector<CollisionTestApp::SupportTriangle>& simplex){
+	simplex[0] = SupportTriangle(triangle.B, triangle.A, triangle.C); // flip initial triangle as outside is now inside
+	simplex[1] = SupportTriangle(D, triangle.B, triangle.C);
+	simplex[2] = SupportTriangle(triangle.A, D, triangle.C); // New triangles incorporating point and facing outward
+	simplex[3] = SupportTriangle(triangle.A, triangle.B, D);
+}
+
+//Uses GJK to detect whether two convex shapes collide
+//If they collide this returns a simplex in Minkowski diference space enclosing the collision point
+//If they do not collide, this returns an empty vector
+std::vector<CollisionTestApp::SupportTriangle> CollisionTestApp::detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	// arbitrary first direction
+	glm::vec3 search_direction = glm::vec3(1, 0, 0);
+	const glm::vec3 origin(0,0,0) ;
+	//std::vector<SupportPoint> p;
+	SupportPoint p0 = findSupportPoint(search_direction, A , B) ;
+	search_direction = origin-p0.x ; // From p0 to origin
+	SupportPoint p1 = findSupportPoint(search_direction, A, B);
+	//New point could not get past zero in search direction
+	if (glm::dot(p1.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+	//Search perpendicular to p0 to p1 segment, toward origin
+	search_direction = glm::cross(cross(p1.x- p0.x,search_direction), p1.x - p0.x) ;
+	SupportPoint p2 = findSupportPoint(search_direction, A, B) ;
+	if (glm::dot(p2.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+
+	SupportTriangle first_triangle(p0, p1,p2) ;
+	//Search along normal of triangle toward origin
+	if(first_triangle.d < 0){ // facing wrong way to start
+		first_triangle = SupportTriangle(p1, p0, p2); // flip winding order
+	}
+
+	search_direction = first_triangle.normal ;
+	SupportPoint p3 = findSupportPoint(search_direction, A, B);
+	if (glm::dot(p3.x, search_direction) <= 0) {
+		return {}; // No collision
+	}
+	
+	std::vector<CollisionTestApp::SupportTriangle> simplex = buildSupportSimplex(first_triangle, p3);
+
+	for(int iter = 0; iter < MAX_GJK_ITERATIONS; iter++){
+		bool found_triangle = false;
+		for(int k=1; k < 4; k++){ // First triangle always what simpex was built from andwill always face out
+			if(simplex[k].signedDistance(origin) > 0){
+				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, B);
+				//New point could not get past zero in search direction
+				if (glm::dot(new_point.x, simplex[k].normal) <= 0) {
+					return {}; // No collision
+				}
+				//simplex = buildSupportSimplex(simplex[k], new_point) ;
+				buildSupportSimplex(simplex[k], new_point, simplex);
+				found_triangle = true ;
+				break ;
+			}
+		}
+		if(!found_triangle){ // origin was insdide all faces
+			return simplex ; // collision detected
+		}
+	}
+	return {} ;
+
+}
+
+
+void CollisionTestApp::countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list) {
+	for (auto& edge2 : edge_list) {
+		//order would be reversed on a duplicate
+		//if (glm::distance2(edge2.A.x, B.x) < 1e-7f && glm::distance2(edge2.B.x, A.x) < 1e-7f) {
+		if(edge2.A.x == B.x && edge2.B.x == A.x){
+			// edge occurs twice, don't build a new triangle
+			edge2.disabled = true ;
+			return; 
+		}
+	}
+	edge_list.emplace_back(A, B);
+}
+
+
+//Uses expanding polytope algorithm on result of detectCollision
+// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
+CollisionTestApp::SupportPoint CollisionTestApp::getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B){
+	static std::vector<SupportTriangle> polytope ;
+	static std::vector<SupportEdge> edge_list ;
+	polytope = collision_result ;
+	edge_list.clear();
+	int iterations = 0 ;
+	while(true){
+		
+		//Find the nearest triangle on the polytope to the origin
+		int selected_triangle = -1 ;
+		float selected_distance = FLT_MAX;
+		for(int k=0;k<polytope.size();k++){
+			if(-polytope[k].d < selected_distance){
+				selected_triangle = k ;
+				selected_distance = -polytope[k].d ;
+			}
+
+		}
+		SupportTriangle& active_face = polytope[selected_triangle] ;
+		//use it's normal to expand to a new point
+		SupportPoint new_point = findSupportPoint(active_face.normal,A, B) ;
+
+		float signed_distance = active_face.signedDistance(new_point.x) ;
+		//printf("D:%f\n", selected_distance) ;
+		//Expansion didn't expand means we've reached closest surface face
+		if(signed_distance < 1e-4f || iterations == MAX_GJK_ITERATIONS){
+			/*if(iterations ==MAX_GJK_ITERATIONS){
+				printf("Hit max iterations in EPA!\n");
+			}*/
+			//printf("Finals SD:%f\n", signed_distance) ;
+			glm::vec3 closest_x = active_face.normal * (-active_face.d) ; // closest point in minkowski space on plane
+			//Get barycentric coordinates via area method
+			glm::vec3 v0 = closest_x - active_face.A.x;
+			glm::vec3 v1 = closest_x - active_face.B.x;
+			glm::vec3 v2 = closest_x - active_face.C.x;
+			float area_tot = glm::length(glm::cross(active_face.B.x - active_face.A.x, active_face.C.x - active_face.A.x));
+			float a = glm::dot(glm::cross(v1, v2), active_face.normal) / area_tot;
+			float b = glm::dot(glm::cross(v2, v0), active_face.normal) / area_tot;
+			float c = 1.0f - a - b;
+
+			//printf("a:%f, b:%f, c:%f\n", a,b,c) ;
+			//printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
+			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c;
+			return collision_point ;
+		}
+
+		//Remove all triangles facing the new point and collect their edges
+		for(int k=0;k<polytope.size(); k++){
+			if(polytope[k].signedDistance(new_point.x) > 1e-6f){
+				countEdge(polytope[k].A, polytope[k].B, edge_list);
+				countEdge(polytope[k].B, polytope[k].C, edge_list);
+				countEdge(polytope[k].C, polytope[k].A, edge_list);// Order of points matters here to make sure new triangles face outward
+			
+				//Remove it
+				if(k!=polytope.size()-1){ // swap with final slot
+					polytope[k] = polytope[polytope.size() - 1];
+				}
+				polytope.pop_back(); // remove final slot
+				k--; // look at this slot again since we just moved something else into it
+			}
+		}
+
+		//Add edges not duplicated
+		for (auto& edge : edge_list) {
+			if (!edge.disabled) {
+				polytope.emplace_back(edge.A, edge.B, new_point);
+			}
+		}
+		
+		edge_list.clear();
+		iterations++;
+	}
+	
 }
