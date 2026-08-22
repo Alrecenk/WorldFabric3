@@ -130,10 +130,163 @@ ConvexPolyhedron ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3
 
 
 
+int64_t Collision::getHash() const {
+	return hashBytes(serialize(id1, id2, CONSTRAINT_TYPE));
+}
+bool Collision::updateConstraint(PhysicsContainer* cell){
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	float velocity_against_normal = glm::dot(body_1->velocity - body_2->velocity, normal);
+
+	float restitution_bias = 0.0f; // inelastic
+	if (velocity_against_normal > min_velocity_for_elastic) {
+		float e = (body_1->elasticity + body_2->elasticity) * 0.5f;
+		restitution_bias = e * velocity_against_normal; // elastic
+	}
+
+	//Bias against penetration with spring force
+	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, glm::length(penetration.x) - allowed_collision_depth);
+
+	target = restitution_bias + penetration_bias;
+}
+void Collision::applyWarmingImpulse(PhysicsContainer* cell){
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	body_1->velocity -= warm_impulse * body_1->shape->inv_mass;
+	body_2->velocity += warm_impulse * body_2->shape->inv_mass;
+}
+void Collision::applyConstraint(PhysicsContainer* cell){
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+
+
+	glm::vec3 contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	glm::vec3 relative_velocity = contact_velocity_2 - contact_velocity_1;
+	float velocity_along_normal = glm::dot(relative_velocity, normal);
+
+	//calculate effective mass
+	float rot_term1 = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
+	float rot_term2 = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, normal), r2), normal);
+	float effective_mass_n = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1 + rot_term2;
+	if (effective_mass_n == 0.0f) {
+		return;
+	}
+
+	//Calculate current change needed based on already applied
+	float impulse_mag_n = (target - velocity_along_normal) / effective_mass_n;
+	float old_accumulated_n = glm::dot(warm_impulse, normal);
+	float new_accumulated_n = std::max(0.0f, old_accumulated_n + impulse_mag_n);
+	float current_impulse_n = new_accumulated_n - old_accumulated_n;
+	glm::vec3 impulse_vec_n = normal * current_impulse_n;
+
+	//Apply normal impulse
+	body_1->velocity -= impulse_vec_n * body_1->shape->inv_mass;
+	body_2->velocity += impulse_vec_n * body_2->shape->inv_mass;
+	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
+	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, impulse_vec_n);
+
+	//update warm impulse
+	warm_impulse += impulse_vec_n;
+
+	// Recalculate velocities at point after normal impulse
+	contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	relative_velocity = contact_velocity_2 - contact_velocity_1;
+
+	glm::vec3 tangent = relative_velocity - (glm::dot(relative_velocity, normal) * normal);
+	float velocity_along_tangent = glm::length(tangent);
+
+	if (velocity_along_tangent > 0.0001f) {
+		tangent *= 1.0f / velocity_along_tangent; // normalize
+
+		// Effective mass for tangent direction
+		float rot_term1_t = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, tangent), r1), tangent);
+		float rot_term2_t = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, tangent), r2), tangent); // TODO inertia needs to be rotated based on pose of rigid body
+		float effective_mass_t = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1_t + rot_term2_t;
+
+		//Compute maximum tangent velocity ot be lost
+		float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
+
+		//Calculate current change needed based on already applied and clamp to fricton coefficient
+		float max_friction = friction_coefficient * new_accumulated_n;
+		float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
+		float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
+		float current_impulse_t = new_accumulated_t - old_accumulated_t;
+		glm::vec3 impulse_vec_t = tangent * current_impulse_t;
+
+		// Apply Tangent Impulse
+		body_1->velocity -= impulse_vec_t * body_1->shape->inv_mass;
+		body_2->velocity += impulse_vec_t * body_2->shape->inv_mass;
+		body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, impulse_vec_t);
+		body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, impulse_vec_t);// TODO inertia needs to be rotated based on pose of rigid body
+
+		//update warm impulse
+		warm_tangent_impulse += impulse_vec_t;
+	}
+}
+
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t SinglePointCollision::getHash() const{
+	return hashBytes(serialize(point.id1, point.id2, Collision::CONSTRAINT_TYPE));
+}
+
+//Add a constraint to this set
+void SinglePointCollision::addConstraint(const Constraint& new_constraint){
+	point = static_cast<const Collision&>(new_constraint) ;
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+bool SinglePointCollision::updateConstraints(PhysicsContainer* cell){
+	point.updateConstraint(cell);
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void SinglePointCollision::applyWarmingImpulses(PhysicsContainer* cell){
+	point.applyWarmingImpulse(cell);
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void SinglePointCollision::applyConstraints(PhysicsContainer* cell){
+	point.applyConstraint(cell);
+}
+
+
+Sphere::Sphere(float r, float m){
+	radius = r ;
+	inv_mass = 1.0f/ m ;
+	inv_moment = glm::mat3(1.0f/ ( 0.4f * m * r * r)) ;
+}
+
+//Returns the point on the shape furthest in the given direction
+glm::vec3 Sphere::support(const glm::vec3& direction) const{
+	return glm::normalize(direction) * radius ;
+}
+
+//Returns the t for closest intersection on the ray p + v*t
+//Returns a negative number if the ray does not intersect
+float Sphere::rayTrace(const glm::vec3& p, const glm::vec3& v) const{
+	return -1.0f ; // TODO
+}
+
+//Returns an axis aligned bounding box for the shape if it had the given pose
+//First element is min values, second is max values
+std::pair<glm::vec3, glm::vec3> Sphere::getAABB(const glm::mat4& pose) const {
+	return std::pair<glm::vec3, glm::vec3>();//TODO
+}
+
+
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
 SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B) {
-
 	SupportPoint sp;
 	sp.a = A->pose * glm::vec4( A->shape->support(A->inv_pose* glm::vec4(direction,0)), 1);
 	sp.b = B->pose * glm::vec4(B->shape->support(B->inv_pose * glm::vec4(-direction, 0)), 1);

@@ -60,7 +60,7 @@ public:
 
 };
 
-/*
+
 class Sphere : public ConvexShape {
 public:
 	float radius ;
@@ -80,53 +80,6 @@ public:
 } ;
 
 
-class Collision : public Constraint {
-public:
-	int64_t id1 = -1;
-	int64_t id2 = -1;
-	glm::vec3 warm_impulse;
-	glm::vec3 warm_tangent_impulse;
-
-	glm::vec3 point; // middle point of collision
-	glm::vec3 normal; // normal points from ball 1 to ball 2
-	float target = 0;
-
-	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.15f;
-	static inline float min_velocity_for_elastic = 0.05f;
-	static inline const int CONSTRAINT_TYPE = 1;
-	static inline const float friction_coefficient = 0.6f;
-
-	int64_t getHash() const override;
-	bool updateConstraint(PhysicsContainer* cell) override;
-	void applyWarmingImpulse(PhysicsContainer* cell) override;
-	void applyConstraint(PhysicsContainer* cell) override;
-};
-
-//A simple collision that uses a single point and does not maintain a manifold
-class SinglePointCollision : public ConstraintSet {
-	Collision point ;
-
-	//Returns an identifying hash that can be used to group constraints into this set
-	int64_t getHash() const override;
-
-	//Add a constraint to this set
-	void addConstraint(const Constraint& new_constraint) override;
-
-	//Update the constraint targets based on information at the start of the frame
-	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
-
-	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	void applyWarmingImpulses(PhysicsContainer* cell) override;
-
-	//Applies impulses to velocity of involved bodies to satisfy these constraints
-	void applyConstraints(PhysicsContainer* cell) override;
-
-};
-*/
-
-
 class RigidBody {
 public:
 	int64_t id ;
@@ -137,11 +90,17 @@ public:
 	glm::mat4 pose;
 	glm::mat4 inv_pose;
 	std::shared_ptr<ConvexPolyhedron> shape ; // TODO add support for non-convex shapes by compounding
+	float elasticity = 0.6f;
 
 	RigidBody(const std::shared_ptr<ConvexPolyhedron>& s){
 		shape = s ;
 	}
 
+	void integrateVelocity(float dt);
+
+	void integrateAcceleration(float dt);
+
+	//Only for debugging, will be overwritten if physics is actualyl happening
 	void setPose(const glm::mat4& p){
 		pose = p ;
 		inv_pose = glm::inverse(p);
@@ -150,7 +109,7 @@ public:
 
 
 class PhysicsContainer{
-
+public:
 	virtual RigidBody* getBody(int64_t id) = 0 ;
 };
 
@@ -193,8 +152,6 @@ public:
 };
 
 
-
-static inline const int MAX_GJK_ITERATIONS = 10;
 //Point in minkowski difference space
 struct SupportPoint {
 	glm::vec3 x;
@@ -235,6 +192,55 @@ struct SupportEdge {
 	SupportPoint B;
 	bool disabled = false;
 };
+
+
+class Collision : public Constraint {
+public:
+	int64_t id1 = -1;
+	int64_t id2 = -1;
+	glm::vec3 warm_impulse;
+	glm::vec3 warm_tangent_impulse;
+
+	glm::vec3 point; // middle point of collision
+	glm::vec3 normal; // normal points from ball 1 to ball 2
+	float target = 0;
+	SupportPoint penetration ;
+
+	static inline const int CONSTRAINT_TYPE = 1 ;
+	static inline float penetration_spring_coefficient = 10.0f;
+	static inline float allowed_collision_depth = 0.15f;
+	static inline float min_velocity_for_elastic = 0.05f;
+	static inline const float friction_coefficient = 0.6f;
+
+	int64_t getHash() const override;
+	bool updateConstraint(PhysicsContainer* cell) override;
+	void applyWarmingImpulse(PhysicsContainer* cell) override;
+	void applyConstraint(PhysicsContainer* cell) override;
+};
+
+//A simple collision that uses a single point and does not maintain a manifold
+class SinglePointCollision : public ConstraintSet {
+	Collision point;
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	int64_t getHash() const override;
+
+	//Add a constraint to this set
+	void addConstraint(const Constraint& new_constraint) override;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	bool updateConstraints(PhysicsContainer* cell) override;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	void applyWarmingImpulses(PhysicsContainer* cell) override;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	void applyConstraints(PhysicsContainer* cell) override;
+
+};
+
+static inline const int MAX_GJK_ITERATIONS = 10;
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
