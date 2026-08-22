@@ -88,11 +88,19 @@ public:
 	glm::vec3 angular_velocity; 
 	glm::mat4 pose;
 	glm::mat4 inv_pose;
-	std::shared_ptr<ConvexPolyhedron> shape ; // TODO add support for non-convex shapes by compounding
+	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 
-	RigidBody(const std::shared_ptr<ConvexPolyhedron>& s){
+	RigidBody(const std::shared_ptr<ConvexShape>& s){
 		shape = s ;
+	}
+
+	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w) {
+		shape = s;
+		id = i ;
+		position = p ;
+		velocity = v ;
+		angular_velocity = w ;
 	}
 
 	void integrateVelocity(float dt);

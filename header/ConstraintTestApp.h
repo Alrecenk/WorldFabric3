@@ -4,125 +4,45 @@
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
+#include "Physics.h"
 
 class ConstraintTestApp : public MachineState {
 
 public:
 
-	class PhysicsCell ;
 
-	class Ball {
-	public:
-		int64_t id = -1 ;
-		glm::vec3 position;
-		glm::vec3 velocity;
-		glm::vec3 acceleration ;
-		float radius = 0.5f;
-		float inv_mass = 1.0f; // inverse mass
-		float elasticity = 0.6f ; // 0 = inelastic, 1 = full elastic
-
-		glm::quat orientation ;
-		glm::vec3 angular_velocity ;
-		glm::mat3 inv_inertia = glm::mat3(10.0f) ; // inverse moment of inertia
-
-		// used for rendering
-		int instance_id = -1 ;
-		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb" ;
-
-		Ball(int64_t my_id, const glm::vec3& pos , const glm::vec3& vel, const glm::vec3& acc);
-
-		void integrateVelocity(float dt);
-
-		void integrateAcceleration(float dt);
-
-		void updateGraphics();
-
-		//Custom destructor cleans up scene instance
-		~Ball();
-
-	};
-
-	class Constraint {
-	public:
-		//Update the constraint terget based on velocity at the start of the rame
-		virtual void updateConstraintTarget(PhysicsCell* cell) = 0;
-
-		//Apply a starting impulse carried over if this constraint has existed ofr mutliple frames in a row
-		virtual void applyWarmingImpulse(PhysicsCell* cell) = 0;
-
-		//Applies impulse to velocity of involved bodies to satisfy this constraint
-		virtual void applyConstraint(PhysicsCell* cell) = 0;
-	};
-
-	class BallCollision : public Constraint {
-	public:
-		int64_t id1 = -1;
-		int64_t id2 = -1;
-		glm::vec3 warm_impulse;
-		glm::vec3 warm_tangent_impulse ;
-
-		glm::vec3 point ; // middle point of collision
-		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
-		float target = 0 ;
-
-		static inline float penetration_spring_coefficient = 10.0f;
-		static inline float allowed_collision_depth = 0.15f;
-		static inline float min_velocity_for_elastic = 0.05f;
-		static inline const int CONSTRAINT_TYPE = 1 ;
-		static inline const float friction_coefficient = 0.6f ;
-
-		void updateConstraintTarget(PhysicsCell* cell) override;
-		void applyWarmingImpulse(PhysicsCell* cell) override;
-		void applyConstraint(PhysicsCell* cell) override;
-	};
-
-	class BallWallCollision : public Constraint {
-	public:
-		int64_t id ; // id of ball
-		glm::vec3 warm_impulse;
-		glm::vec3 warm_tangent_impulse;
-		glm::vec3 point ; // point on wall ball is touching
-		glm::vec3 normal ; // normal of wall
-		float target = 0 ;
-
-		static inline float penetration_spring_coefficient = 10.0f;
-		static inline float min_velocity_for_elastic = 0.05f ;
-		static inline float allowed_collision_depth = 0.15f;
-		static inline const int CONSTRAINT_TYPE = 2;
-		static inline const float friction_coefficient = 0.6f;
-
-		void updateConstraintTarget(PhysicsCell* cell) override;
-		void applyWarmingImpulse(PhysicsCell* cell) override;
-		void applyConstraint(PhysicsCell* cell) override;
-	};
-		
-
-	class PhysicsCell {
+	class PhysicsCell : Physics::PhysicsContainer {
 	public:
 		//Bounding box of cell
 		glm::vec3 min;
 		glm::vec3 max;
-
+		glm::vec3 acceleration ;
+		
 		//Contents of cell
-		std::unordered_map<int64_t, std::shared_ptr<Ball>> balls ;
-		std::unordered_map<int64_t, std::shared_ptr<Constraint>> constraints;
+		std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies ;
+		std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
+
+		std::unordered_map<int64_t, int> ball_instance ;
 		
 		int next_ball_id = 1 ;
 		int instance_id = -1; // for scene
 		static inline const std::string BOX_MODEL = "box" ;
+		float ball_radius = 0.5f;
+		std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius,1.0f);
+		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
 
 		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
 
 		//Custom destructor cleans up scene instance
 		~PhysicsCell();
 
-		int64_t addBall(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& acc) ;
+		int64_t add(const std::shared_ptr<Physics::ConvexShape>& shape, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) ;
 
 		//Ball ids are allocated one after another and are always positive
-		std::shared_ptr<Ball> getBall(int64_t id);
+		Physics::RigidBody* getBody(int64_t id) override;
 
 		//Constraint id is a hash generated with getConstraintID
-		std::shared_ptr<Constraint> getConstraint(int64_t id);
+		Physics::Constraint* getConstraint(int64_t id);
 
 		int64_t getConstraintID(int64_t id1, int64_t id2, int constraint_type){
 			return hashBytes(serialize(id1, id2, constraint_type)) ;

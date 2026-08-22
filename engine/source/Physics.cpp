@@ -163,6 +163,7 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, glm::length(penetration.x) - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
+	return true ; // TODO compute if still relevant
 }
 void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
