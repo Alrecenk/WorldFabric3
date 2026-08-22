@@ -1548,6 +1548,9 @@
     <ClInclude Include="engine\header\local_ptr_test.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="engine\header\Physics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2156,6 +2159,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\CollisionTestApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\source\Physics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
