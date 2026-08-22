@@ -2,17 +2,31 @@
 
 namespace Physics{
 
+
+
+void RigidBody::integrateVelocity(float dt){
+	position += velocity * dt;
+	// Update orientation quaternion
+	// dq/dt = 0.5 * omega * q
+	glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
+	orientation += (omega_quat * orientation) * (0.5f * dt);
+	orientation = glm::normalize(orientation);
+
+	pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, position);
+	pose = pose * glm::mat4_cast(orientation);
+	inv_pose = glm::inverse(pose);
+}
+
+void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
+	velocity += acceleration * dt;
+}
+
+
 ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) {
 	vertex = vertices;
 	face = faces;
-}
-
-ConvexPolyhedron::ConvexPolyhedron(std::shared_ptr<ConvexPolyhedron> base, const glm::mat4& pose) {
-	vertex = base->vertex;
-	face = base->face;
-	for (auto& v : vertex) {
-		v = pose * glm::vec4(v, 1.0f);
-	}
+	// TODO compute moment and mass n creation
 }
 
 // Returns a shape for an axis aligned bounding box

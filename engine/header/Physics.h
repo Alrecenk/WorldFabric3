@@ -8,7 +8,7 @@ namespace Physics {
 class ConvexShape{
 public:
 	float inv_mass = 0;
-	glm::mat3 inv_moment;
+	glm::mat3 inv_moment ;
 
 	//Returns the point on the shape furthest in the given direction
 	virtual glm::vec3 support(const glm::vec3& direction) const = 0;
@@ -29,11 +29,10 @@ public:
 	std::vector<glm::vec3> vertex;
 	std::vector<std::vector<int>> face;
 
-	ConvexPolyhedron() {}
+	ConvexPolyhedron() {} 
 
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces);
 
-	ConvexPolyhedron(std::shared_ptr<ConvexPolyhedron> base, const glm::mat4& pose);
 
 	//Returns the point on the shape furthest in the given direction
 	glm::vec3 support(const glm::vec3& direction) const override;
@@ -98,7 +97,7 @@ public:
 
 	void integrateVelocity(float dt);
 
-	void integrateAcceleration(float dt);
+	void integrateAcceleration(const glm::vec3& acceleration, float dt);
 
 	//Only for debugging, will be overwritten if physics is actualyl happening
 	void setPose(const glm::mat4& p){

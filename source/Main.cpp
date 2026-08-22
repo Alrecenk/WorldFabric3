@@ -416,11 +416,11 @@ void setupGameStates() {
 	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
 	//app->setState(TraceApp::state_name);
 
-	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
-	app->setState(ConstraintTestApp::state_name);
+	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	//app->setState(ConstraintTestApp::state_name);
 
-	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
-	//app->setState(CollisionTestApp::state_name);
+	app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
+	app->setState(CollisionTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {

@@ -33,6 +33,8 @@ void ConstraintTestApp::Ball::integrateVelocity(float dt) {
 	glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
 	orientation += (omega_quat * orientation) * (0.5f * dt);
 	orientation = glm::normalize(orientation);
+
+
 }
 
 void ConstraintTestApp::Ball::integrateAcceleration(float dt) {
