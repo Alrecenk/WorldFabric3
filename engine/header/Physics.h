@@ -3,6 +3,7 @@
 
 #include "local_ptr.h"
 
+namespace Physics {
 
 class ConvexShape{
 public:
@@ -19,62 +20,6 @@ public:
 	//Returns an axis aligned bounding box for the shape if it had the given pose
 	//First element is min values, second is max values
 	virtual std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const = 0;
-
-};
-
-
-class RigidBody {
-	int64_t id ;
-	glm::vec3 position ;
-	glm::vec3 velocity ;
-	glm::quat orientation ;
-	glm::vec3 angular_velocity; 
-	glm::mat4 pose;
-	glm::mat4 inv_pose;
-	local_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
-};
-
-
-class PhysicsContainer{
-
-	virtual RigidBody* getBody(int64_t id) = 0 ;
-};
-
-class Constraint {
-public:
-
-	//Returns an identifying hash that can be used to group this constraint into a set
-	virtual int64_t getHash() const = 0;
-
-	//Update the constraint target based on information at the start of the frame
-	//Returns if the constraint is active at all
-	virtual bool updateConstraint(PhysicsContainer* cell) = 0;
-
-	//Apply a starting impulse carried over if this constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulse(PhysicsContainer* cell) = 0;
-
-	//Applies impulse to velocity of involved bodies to satisfy this constraint
-	virtual void applyConstraint(PhysicsContainer* cell) = 0;
-};
-
-class ConstraintSet{
-public:
-
-	//Returns an identifying hash that can be used to group constraints into this set
-	virtual int64_t getHash() const = 0 ;
-	
-	//Add a constraint to this set
-	virtual void addConstraint(const Constraint& new_constraint) = 0 ;
-
-	//Update the constraint targets based on information at the start of the frame
-	//Returns if any of the constraints are active at all
-	virtual bool updateConstraints(PhysicsContainer* cell) = 0;
-
-	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulses(PhysicsContainer* cell) = 0;
-
-	//Applies impulses to velocity of involved bodies to satisfy these constraints
-	virtual void applyConstraints(PhysicsContainer* cell) = 0;
 
 };
 
@@ -115,6 +60,7 @@ public:
 
 };
 
+/*
 class Sphere : public ConvexShape {
 public:
 	float radius ;
@@ -178,6 +124,74 @@ class SinglePointCollision : public ConstraintSet {
 	void applyConstraints(PhysicsContainer* cell) override;
 
 };
+*/
+
+
+class RigidBody {
+public:
+	int64_t id ;
+	glm::vec3 position ;
+	glm::vec3 velocity ;
+	glm::quat orientation ;
+	glm::vec3 angular_velocity; 
+	glm::mat4 pose;
+	glm::mat4 inv_pose;
+	std::shared_ptr<ConvexPolyhedron> shape ; // TODO add support for non-convex shapes by compounding
+
+	RigidBody(const std::shared_ptr<ConvexPolyhedron>& s){
+		shape = s ;
+	}
+
+	void setPose(const glm::mat4& p){
+		pose = p ;
+		inv_pose = glm::inverse(p);
+	}
+};
+
+
+class PhysicsContainer{
+
+	virtual RigidBody* getBody(int64_t id) = 0 ;
+};
+
+class Constraint {
+public:
+
+	//Returns an identifying hash that can be used to group this constraint into a set
+	virtual int64_t getHash() const = 0;
+
+	//Update the constraint target based on information at the start of the frame
+	//Returns if the constraint is active at all
+	virtual bool updateConstraint(PhysicsContainer* cell) = 0;
+
+	//Apply a starting impulse carried over if this constraint has existed for multiple frames in a row
+	virtual void applyWarmingImpulse(PhysicsContainer* cell) = 0;
+
+	//Applies impulse to velocity of involved bodies to satisfy this constraint
+	virtual void applyConstraint(PhysicsContainer* cell) = 0;
+};
+
+class ConstraintSet{
+public:
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	virtual int64_t getHash() const = 0 ;
+	
+	//Add a constraint to this set
+	virtual void addConstraint(const Constraint& new_constraint) = 0 ;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	virtual bool updateConstraints(PhysicsContainer* cell) = 0;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	virtual void applyWarmingImpulses(PhysicsContainer* cell) = 0;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	virtual void applyConstraints(PhysicsContainer* cell) = 0;
+
+};
+
 
 
 static inline const int MAX_GJK_ITERATIONS = 10;
@@ -224,7 +238,7 @@ struct SupportEdge {
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const std::shared_ptr<RigidBody>& A, const std::shared_ptr<RigidBody>& B);
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B);
 
 //Build a support simplex from a triangle facing a point
 std::vector<SupportTriangle> buildSupportSimplex(const SupportTriangle& triangle, const SupportPoint& D);
@@ -234,15 +248,15 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const std::shared_ptr<RigidBody>& A, const std::shared_ptr<RigidBody>& B);
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B);
 
 //Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
 void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const std::shared_ptr<RigidBody>& A, const std::shared_ptr<RigidBody>& B);
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B);
 
-
+} // end namespace physics
 
 #endif // #ifndef _PHYSICS_H_

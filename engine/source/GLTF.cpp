@@ -1680,13 +1680,13 @@ void GLTF::setBoundingBoxModel(const glm::vec3& min, const glm::vec3& max, const
 }
 
 // Sets the model to a polyhedron of the given color (Can be used to generate visuals for ConvexShape objects)
-void GLTF::setPolyhedronModel(std::vector<glm::vec3>& vertices, std::vector<std::vector<int>>& faces, glm::vec4 color){
+void GLTF::setPolyhedronModel(const std::vector<glm::vec3>& vertices,const std::vector<std::vector<int>>& faces, glm::vec4 color){
     vector<Vertex> v ;
     vector<Triangle> t;
-    for(vector<int>& face : faces){
-        vec3& A = vertices[face[0]] ;
-        vec3& B = vertices[face[1]] ;
-        vec3& C = vertices[face[2]] ;
+    for(const vector<int>& face : faces){
+        const vec3& A = vertices.at(face.at(0)) ;
+        const vec3& B = vertices.at(face.at(1)) ;
+        const vec3& C = vertices.at(face.at(2)) ;
         vec3 normal = glm::normalize(glm::cross(B - A, C - A));
         vector<int> new_face ;
         for(int k=0;k<face.size();k++){ // duplicate vertices by face so as not to smooth normals

@@ -5,72 +5,12 @@
 #include "MachineState.h"
 #include "Registry.h"
 #include "Utilities.h" // used for glm::vec3 hash
+#include "Physics.h"
 
 class CollisionTestApp : public MachineState {
 
 public:
 
-	class CollisionShape {
-	public:
-		virtual glm::vec3 support(const glm::vec3& direction)  = 0;
-
-	};
-
-	class Point : public CollisionShape {
-	public:
-		glm::vec3 x ;
-		int particle_id = -1 ;
-		Point(const glm::vec3& p): x(p) {}
-
-		glm::vec3 support(const glm::vec3& direction) override{
-			return x ;
-		}
-	};
-
-	class ConvexPolyhedron : public CollisionShape{
-	public:
-		std::vector<glm::vec3> vertex;
-		std::vector<std::vector<int>> face;
-
-		ConvexPolyhedron(){}
-
-		ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) ;
-
-		ConvexPolyhedron(std::shared_ptr<ConvexPolyhedron> base, const glm::mat4& pose) ;
-
-		glm::vec3 support(const glm::vec3& direction) override ;
-
-		// Returns an axis aligned bounding box
-		static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 min, glm::vec3 max);
-
-		//Alternate form of box that always centers on the origin
-		static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 size);
-
-		// Returns a shape for a cylinder with center of ends A and B and the given radius and side count
-		static ConvexPolyhedron makeCylinder(glm::vec3 A, glm::vec3 B, float radius, int sides);
-
-		// Returns a shape for a Tetrahedron with the given points
-		static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D);
-
-	};
-
-	class PolyInstance{
-	public:
-		std::shared_ptr<ConvexPolyhedron> base_shape ;
-		std::shared_ptr<ConvexPolyhedron> world_shape;
-		
-		int scene_id  = -1 ;
-		glm::mat4 pose ;
-
-		PolyInstance()  = default ;
-
-
-		PolyInstance(std::string model, std::shared_ptr<ConvexPolyhedron> base);
-
-		void setPose(glm::mat4& p);
-		
-		
-	};
 
 	static inline const std::string state_name = "collision_test_state";
 
@@ -87,88 +27,14 @@ public:
 
 	void updateCamera();
 
-
-	static inline const int MAX_GJK_ITERATIONS = 10;
-	//Point in minkowski difference space
-	struct SupportPoint{
-		glm::vec3 x ;
-		// hold onto points on shapes for use in subsequent steps
-		glm::vec3 a, b ;
-
-		//Overload linear operators to allow manipulation in barycentric coordinates
-		SupportPoint operator*(const float& scale){
-			return {x*scale, a*scale, b*scale} ;
-		}
-
-		SupportPoint operator+(const SupportPoint& o) {
-			return { x +o.x, a + o.a, b +o.b };
-		}
-	};
-
-	//A triangle in monkowski space with a set winding order
-	struct SupportTriangle{
-		SupportPoint A ;
-		SupportPoint B ;
-		SupportPoint C ;
-		glm::vec3 normal; // normal should be normalize(cross(B - A, C - A))
-		float d = 0 ; // normal * x + d > 0 means in front of the plane
-
-		SupportTriangle(const SupportPoint& a,const  SupportPoint& b,const  SupportPoint& c) : A(a), B(b), C(c){
-			normal = glm::normalize(glm::cross(B.x-A.x, C.x-A.x)) ;
-			d = -glm::dot(normal,A.x);
-		}
-
-		float signedDistance(const glm::vec3& p){
-			return glm::dot(normal, p) + d ;
-		}	
-	};
-
-
-	
-	//We use edges to build out expanding polytope as points are added
-	struct SupportEdge{
-		SupportPoint A;
-		SupportPoint B;
-		bool disabled = false;
-	};
-
-	
-	
-
-	//Find the support point of the minkowski difference of two shapes
-	//Saves the points on the shapes for later reconstruction
-	SupportPoint findSupportPoint(const glm::vec3 direction, const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B) ;
-
-	//Build a support simplex from a triangle facing a point
-	std::vector<CollisionTestApp::SupportTriangle> buildSupportSimplex(const CollisionTestApp::SupportTriangle& triangle, const CollisionTestApp::SupportPoint& D);
-
-	void buildSupportSimplex(const CollisionTestApp::SupportTriangle triangle, const CollisionTestApp::SupportPoint& D, std::vector<CollisionTestApp::SupportTriangle>& into);
-
-
-	//Uses GJK to detect whether two convex shapes collide
-	//If they collide this returns a simplex in Minkowski diference space enclosing the collision point
-	//If they do not collide, this returns an empty vector
-	std::vector<SupportTriangle> detectCollision(const std::shared_ptr<CollisionShape>& A, const std::shared_ptr<CollisionShape>& B);
-
-
-
-	//Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
-	void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
-
-
-	//Uses expanding polytope algorithm on result of detectCollision
-	// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-	SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result,const std::shared_ptr<CollisionShape>& A,const std::shared_ptr<CollisionShape>& B) ;
-
-
-
 	
 
 private:
 
-	std::map<std::string, std::shared_ptr<ConvexPolyhedron>> base_shape ;
-
-	std::vector<PolyInstance> instances; // maps scene instance to transform of base shape
+	std::map<std::string, std::shared_ptr<Physics::ConvexPolyhedron>> base_shape;
+	std::vector<Physics::RigidBody> instances; // maps scene instance to transform of base shape
+	std::vector<int> scene_ids ;
+	double time = 0 ;
 
 	
 
@@ -184,9 +50,6 @@ private:
 	glm::vec3 min = { -1.5,0,-1.5};
 	glm::vec3 max = { 1.5,2.5,1.5 };
 	int room_instance_id  = -1 ;
-
-	bool show_grid = false;
-	std::vector<std::shared_ptr<Point>> points;
 
 	std::vector<int> display_particles;
 	std::vector<int> last_display_particles;
