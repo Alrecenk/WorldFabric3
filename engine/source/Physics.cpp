@@ -19,6 +19,9 @@ void RigidBody::integrateVelocity(float dt){
 }
 
 void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
+	if (shape->inv_mass <= 0) { // don't accelerate objects with infinite mass
+		return;
+	}
 	velocity += acceleration * dt;
 }
 

@@ -7,6 +7,25 @@
 ConstraintTestApp::PhysicsCell::PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max){
 	min = box_min ;
 	max = box_max ;
+
+	
+
+
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
+	wall->setBoundingBoxModel(glm::vec3(-wall_size*0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
+
+	scene->createModelSet(WALL_MODEL, wall,false, false);
+
+
+	glm::vec3 mid = (min + max) * 0.5f;
+
+	bodies[-1] = std::make_shared<Physics::RigidBody>(wall_shape, -1, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z), glm::vec3(), glm::vec3());
+	bodies[-2] = std::make_shared<Physics::RigidBody>(wall_shape, -2, glm::vec3(max.x + wall_size*0.5f, min.y - wall_size * 0.23f, mid.z), glm::vec3(), glm::vec3());
+	bodies[-3] = std::make_shared<Physics::RigidBody>(wall_shape, -3, glm::vec3(min.x - wall_size * 0.5f, min.y - wall_size * 0.22f, mid.z), glm::vec3(), glm::vec3());
+	bodies[-4] = std::make_shared<Physics::RigidBody>(wall_shape, -4, glm::vec3(mid.x, min.y - wall_size * 0.21f, min.z - wall_size * 0.5f), glm::vec3(), glm::vec3());
+	bodies[-5] = std::make_shared<Physics::RigidBody>(wall_shape, -5, glm::vec3(mid.x, min.y - wall_size * 0.2f, max.z + wall_size * 0.5f), glm::vec3(), glm::vec3());
+
 }
 
 //Custom destructor cleans up scene instance
@@ -49,7 +68,7 @@ void ConstraintTestApp::PhysicsCell::updateCollisions(){
 	for(auto& [id1,body_1] : bodies){
 		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
-			if(id1 < id2){ // only check each once
+			if(id1 < id2 && (body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0)){ // only check each once
 
 				auto simplex = Physics::detectCollision(body_1.get(), body_2.get()) ;
 				if(simplex.size() > 0){
@@ -122,28 +141,33 @@ void ConstraintTestApp::PhysicsCell::runPhysicsFrame(float dt, int constraints_i
 void ConstraintTestApp::PhysicsCell::updateGraphics(){
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	for(auto& [id,ball] : bodies){
+
 		if(id > 0){ // it's a ball
-			auto iter = ball_instance.find(id);
+			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, ball->position);
-			float radius = ball_radius ;
-			pose = glm::scale(pose, glm::vec3(radius, radius, radius));
+			pose = glm::scale(pose, glm::vec3(ball_radius,ball_radius,ball_radius));
 			pose = pose * glm::mat4_cast(ball->orientation);
-			if(iter == ball_instance.end()){
-				ball_instance[id] = scene->createInstance(BALL_MODEL, pose);
+			if(iter == instance.end()){
+				instance[id] = scene->createInstance(BALL_MODEL, pose);
 			}else{
-				scene->setPose(ball_instance[id], pose);
+				scene->setPose(instance[id], pose);
 			}
 		}
 
-	}
-	if(instance_id == -1){
-		ScenePlugin* scene = getTool<ScenePlugin>();
-		std::shared_ptr<GLTF> box = std::make_shared<GLTF>() ;
-		box->setBoundingBoxModel(min,max, glm::vec4(1,1,1,1));
-		box = box->createMirrorImage() ; // Flips winding order inside out
-		scene->createModelSet(BOX_MODEL,box) ;
-		instance_id = scene->createInstance(BOX_MODEL,glm::mat4(1.0f) );
+		if (id < 0) { // it's a wall
+			auto iter = instance.find(id);
+			glm::mat4 pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, ball->position);
+			pose = pose * glm::mat4_cast(ball->orientation);
+			if (iter == instance.end()) {
+				instance[id] = scene->createInstance(WALL_MODEL, pose);
+			}
+			else {
+				scene->setPose(instance[id], pose);
+			}
+		}
+
 	}
 }
 

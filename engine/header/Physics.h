@@ -8,7 +8,7 @@ namespace Physics {
 class ConvexShape{
 public:
 	float inv_mass = 0;
-	glm::mat3 inv_moment ;
+	glm::mat3 inv_moment = glm::mat3(0) ;
 
 	//Returns the point on the shape furthest in the given direction
 	virtual glm::vec3 support(const glm::vec3& direction) const = 0;

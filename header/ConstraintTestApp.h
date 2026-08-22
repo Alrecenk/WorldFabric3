@@ -16,13 +16,13 @@ public:
 		//Bounding box of cell
 		glm::vec3 min;
 		glm::vec3 max;
-		glm::vec3 acceleration ;
+		glm::vec3 acceleration = glm::vec3(0,-10,0);
 		
 		//Contents of cell
 		std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies ;
 		std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
 
-		std::unordered_map<int64_t, int> ball_instance ;
+		std::unordered_map<int64_t, int> instance ;
 		
 		int next_ball_id = 1 ;
 		int instance_id = -1; // for scene
@@ -30,6 +30,10 @@ public:
 		float ball_radius = 0.5f;
 		std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius,1.0f);
 		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
+
+		float wall_size = 10;
+		std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
+		static inline const std::string WALL_MODEL = "wall";
 
 		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
 
