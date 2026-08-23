@@ -13,36 +13,35 @@ public:
 
 	class PhysicsCell : Physics::PhysicsContainer {
 	public:
+
+		class ObjectType{
+		public:
+			std::shared_ptr<Physics::ConvexShape> shape ;
+			std::string model ;
+			float render_scale = 1.0f ;
+		};
+
 		//Bounding box of cell
-		glm::vec3 min;
-		glm::vec3 max;
 		glm::vec3 acceleration = glm::vec3(0,-10,0);
 		
 		//Contents of cell
 		std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies ;
 		std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
+		std::unordered_map<int,ObjectType> types ;
 
-		std::unordered_map<int64_t, int> instance ;
+		std::unordered_map<int64_t, std::pair<int,int>> instance ; // maps physics objects to type and scene instance
 		
-		int next_ball_id = 1 ;
-		int instance_id = -1; // for scene
-		static inline const std::string BOX_MODEL = "box" ;
-		float box_size = 0.95f ;
-		std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size)));
-		float ball_radius = 0.5f;
-		std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius,1.0f);
-		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
+		int next_object_id = 1 ;
+		int next_type_id  = 1 ;
 
-		float wall_size = 10;
-		std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-		static inline const std::string WALL_MODEL = "wall";
-
-		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
+		PhysicsCell() ;
 
 		//Custom destructor cleans up scene instance
 		~PhysicsCell();
 
-		int64_t add(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) ;
+		int addType(std::shared_ptr<Physics::ConvexShape> shape,const std::string& model, float render_scale) ;
+
+		int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0)) ;
 
 		//Ball ids are allocated one after another and are always positive
 		Physics::RigidBody* getBody(int64_t id) override;
@@ -126,5 +125,10 @@ private:
 	float light_theta = 0.4f;
 	float light_thi = 1.2f ;
 	float mouse_wheel_y_previous = 0.0f;
+
+	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
+	int box_type=-1 ;
+	int ball_type = -1;
+	int wall_type = -1;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_

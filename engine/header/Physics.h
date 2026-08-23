@@ -216,10 +216,10 @@ public:
 	SupportPoint penetration ;
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
-	static inline float penetration_spring_coefficient = 5.0f;
-	static inline float allowed_collision_depth = 0.05f;
+	static inline float penetration_spring_coefficient = 10.0f;
+	static inline float allowed_collision_depth = 0.01f;
 	static inline float min_velocity_for_elastic = 0.1f;
-	static inline const float friction_coefficient = 0.6f;
+	static inline const float friction_coefficient = 0.7f;
 
 	int64_t getHash() const override;
 	bool updateConstraint(PhysicsContainer* cell) override;

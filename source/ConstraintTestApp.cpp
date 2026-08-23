@@ -4,47 +4,31 @@
 #include "FlagSet.h"
 
 
-ConstraintTestApp::PhysicsCell::PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max){
-	min = box_min ;
-	max = box_max ;
+ConstraintTestApp::PhysicsCell::PhysicsCell(){
 
-	
-
-
-	ScenePlugin* scene = getTool<ScenePlugin>();
-	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
-	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
-	scene->createModelSet(BOX_MODEL, box, false, false);
-	box_shape->inv_mass = ball_shape->inv_mass;
-	box_shape->inv_moment = ball_shape->inv_moment;
-
-	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
-	wall->setBoundingBoxModel(glm::vec3(-wall_size*0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
-	scene->createModelSet(WALL_MODEL, wall,false, false);
-
-
-	glm::vec3 mid = (min + max) * 0.5f;
-
-	bodies[-1] = std::make_shared<Physics::RigidBody>(wall_shape, -1, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z), glm::vec3(), glm::vec3());
-	bodies[-2] = std::make_shared<Physics::RigidBody>(wall_shape, -2, glm::vec3(max.x + wall_size*0.5f, mid.y, mid.z), glm::vec3(), glm::vec3());
-	bodies[-3] = std::make_shared<Physics::RigidBody>(wall_shape, -3, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z), glm::vec3(), glm::vec3());
-	bodies[-4] = std::make_shared<Physics::RigidBody>(wall_shape, -4, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f), glm::vec3(), glm::vec3());
-	bodies[-5] = std::make_shared<Physics::RigidBody>(wall_shape, -5, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f), glm::vec3(), glm::vec3());
 
 }
 
 //Custom destructor cleans up scene instance
 ConstraintTestApp::PhysicsCell::~PhysicsCell(){
-	getTool<ScenePlugin>()->deleteInstance(instance_id);
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for(auto& [ id, type_sceneid] : instance){
+		scene->deleteInstance(type_sceneid.second) ;
+	}
 }
 
-int64_t ConstraintTestApp::PhysicsCell::add(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel){
-	int64_t id = next_ball_id++;
-	if(id%2 == 0){
-		bodies[id] = std::make_shared<Physics::RigidBody>(ball_shape, id, pos,vel,a_vel);
-	}else{
-		bodies[id] = std::make_shared<Physics::RigidBody>(box_shape, id, pos, vel, a_vel);
-	}
+int ConstraintTestApp::PhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, float render_scale){
+	int id = next_type_id ;
+	next_type_id++;
+	types[id] = {shape, model, render_scale} ;
+	return id ;
+}
+
+int64_t ConstraintTestApp::PhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel){
+	int64_t id = next_object_id++;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	instance[id] = {type, scene->createInstance(types[type].model, glm::mat4(0))};
+	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
 	return id ;
 }
 
@@ -151,39 +135,15 @@ void ConstraintTestApp::PhysicsCell::runPhysicsFrame(float dt, int constraints_i
 void ConstraintTestApp::PhysicsCell::updateGraphics(){
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	for(auto& [id,ball] : bodies){
-
 		if(id > 0){ // it's a ball
 			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, ball->position);
-			if(id%2 == 0){
-				pose = glm::scale(pose, glm::vec3(ball_radius,ball_radius,ball_radius));
-			}
+			float scale= types[iter->second.first].render_scale ;
+			pose = glm::scale(pose, glm::vec3(scale,scale,scale));
 			pose = pose * glm::mat4_cast(ball->orientation);
-			if(iter == instance.end()){
-				if(id%2 == 0){
-					instance[id] = scene->createInstance(BALL_MODEL, pose);
-				}else{
-					instance[id] = scene->createInstance(BOX_MODEL, pose);
-				}
-			}else{
-				scene->setPose(instance[id], pose);
-			}
+			scene->setPose(instance[id].second, pose);
 		}
-
-		if (id < 0) { // it's a wall
-			auto iter = instance.find(id);
-			glm::mat4 pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, ball->position);
-			pose = pose * glm::mat4_cast(ball->orientation);
-			if (iter == instance.end()) {
-				instance[id] = scene->createInstance(WALL_MODEL, pose);
-			}
-			else {
-				scene->setPose(instance[id], pose);
-			}
-		}
-
 	}
 }
 
@@ -195,8 +155,8 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 
-	//Load the pawn model
-	scene->createModelSet(PhysicsCell::BALL_MODEL, PhysicsCell::BALL_MODEL, true);
+	
+	
 
 	// Make a particle for the mouse
 	mouse_particle_id = particles->createParticle(0);
@@ -217,19 +177,39 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	cell = std::make_shared<PhysicsCell>(min,max) ;
+	cell = std::make_shared<PhysicsCell>() ;
 
+	float ball_radius = 0.5f ;
+	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, 1.0f);
+	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
+	ball_type = cell->addType(ball_shape, BALL_MODEL,ball_radius) ;
 
-	/*
-	float start_speed = 0.02f ;
-	float gravity = 2.0f ;
-	for(int k=0;k<20;k++){
-		glm::vec3 pos = {min.x + (0.2f + randomFloat()*0.6f) * (max.x-min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y),min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) } ;
-		glm::vec3 vel = { (randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed,(randomFloat() - 0.5f) * start_speed };
-		glm::vec3 acc = {0,-gravity,0} ;
-		cell->addBall(pos,vel,acc);
-	}
-*/
+	
+	float box_size = 0.9f ;
+	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size)));
+	box_shape->inv_mass = ball_shape->inv_mass;
+	box_shape->inv_moment = ball_shape->inv_moment; // TODo shouldbe compuited correctly autmatically
+	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
+	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
+	scene->createModelSet("box", box, false, false);
+	box_type = cell->addType(box_shape, "box", 1.0f);
+
+	float wall_size = 10.0f ;
+	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
+	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
+	scene->createModelSet("wall", wall, false, false);
+	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
+	wall_shape->inv_mass = 0; // infinite mass makes walls immovable
+	wall_shape->inv_moment = glm::mat3(0);
+	wall_type = cell->addType(wall_shape, "wall", 1.0f);
+
+	glm::vec3 mid = (min + max) * 0.5f;
+	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
+	cell->add(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z));
+	cell->add(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z));
+	cell->add(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f));
+	cell->add(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f));
+
 }
 
 //Called every frame while the state is active
@@ -270,15 +250,15 @@ void ConstraintTestApp::run() {
 
 
 	updateCamera();
-	cell->runPhysicsFrame(dt, 10);
+	cell->runPhysicsFrame(dt, 20);
 	cell->updateGraphics();
 
 
 	if(millisBetween(last_ball_time,current_time) > millis_between_balls && cell->bodies.size() < max_balls){
 		last_ball_time = current_time ;
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),max.y-1.0f,min.z + 0.5f };
-		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,randomFloat() * 5.0f};
-		auto id = cell->add( pos, vel, glm::vec3(3, 0, 0));
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f+randomFloat() * 4.0f};
+		auto id = cell->add(ball_type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 
 
