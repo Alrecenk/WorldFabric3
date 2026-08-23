@@ -196,6 +196,15 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
 	RigidBody* body_2 = cell->getBody(id2);
 
+	warm_tangent_impulse -= normal * glm::dot(normal,warm_tangent_impulse) ;
+	warm_impulse = normal * glm::dot(normal, warm_impulse) ;
+
+	tangents.clear();
+	glm::vec3 ref = (std::abs(normal.y) < 0.8f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
+	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
+
+
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse ;
 
 	body_1->velocity -= impulse * body_1->shape->inv_mass;
@@ -224,7 +233,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	float rot_term1 = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
 	float rot_term2 = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, normal), r2), normal);
 	float effective_mass_n = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1 + rot_term2;
-	if (effective_mass_n == 0.0f) {
+	if (effective_mass_n <= 1e-6f) {
 		return; // two immovable objects
 	}
 
@@ -249,44 +258,48 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
 	relative_velocity = contact_velocity_2 - contact_velocity_1;
 
-	//glm::vec3 tangent = relative_velocity - (glm::dot(relative_velocity, normal) * normal);
 	
-
-
-	std::vector<glm::vec3> tangents ;
-	tangents.push_back(glm::normalize(glm::cross(normal,glm::vec3(1.0f,1.04f,-0.3f)))) ;
-	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
+	glm::vec3 tangent_impulse(0) ;
 	for(auto& tangent : tangents){
-			float velocity_along_tangent = glm::dot(tangent,relative_velocity); 
+		float velocity_along_tangent = glm::dot(tangent,relative_velocity); 
 
-			// Effective mass for tangent direction
-			float rot_term1_t = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, tangent), r1), tangent);
-			float rot_term2_t = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, tangent), r2), tangent); // TODO inertia needs to be rotated based on pose of rigid body
-			float effective_mass_t = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1_t + rot_term2_t;
-
-			//Compute maximum tangent velocity ot be lost
-			float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
-
-			//Calculate current change needed based on already applied and clamp to fricton coefficient
-			float max_friction = (body_1->friction + body_2->friction) * 0.5f * new_accumulated_n;
-			float old_accumulated_t = glm::dot(warm_tangent_impulse, tangent);
-			float new_accumulated_t = std::min(std::max(old_accumulated_t + impulse_mag_t, -max_friction), max_friction);
-			float current_impulse_t = new_accumulated_t - old_accumulated_t;
-			glm::vec3 impulse_vec_t = tangent * current_impulse_t;
-
-			// Apply Tangent Impulse
-			body_1->velocity -= impulse_vec_t * body_1->shape->inv_mass;
-			body_2->velocity += impulse_vec_t * body_2->shape->inv_mass;
-			body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, impulse_vec_t);
-			body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, impulse_vec_t);// TODO inertia needs to be rotated based on pose of rigid body
-
-			//update warm impulse
-			warm_tangent_impulse += impulse_vec_t;
+		// Effective mass for tangent direction
+		float rot_term1_t = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, tangent), r1), tangent);
+		float rot_term2_t = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, tangent), r2), tangent); // TODO inertia needs to be rotated based on pose of rigid body
+		float effective_mass_t = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1_t + rot_term2_t;
+		if(effective_mass_t < 1e-6f){
+			continue ;
+		}
+		//Compute maximum tangent velocity ot be lost
+		float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
+		tangent_impulse += tangent * impulse_mag_t; ;		
 	}
 
-
+	glm::vec3 accumulated_friction = tangent_impulse + warm_tangent_impulse ;
+	float friction_magnitude = glm::length(accumulated_friction);
+	if(friction_magnitude < 1e-6f){
+		accumulated_friction = glm::vec3(0,0,0);
+	}else{
+		float max_friction = (body_1->friction + body_2->friction) * 0.5f * new_accumulated_n;
+		float clamped_magnitude = std::min(friction_magnitude, max_friction);
+		accumulated_friction *= clamped_magnitude/friction_magnitude;
+	}
+	tangent_impulse = accumulated_friction - warm_tangent_impulse ;
 	
+
+	// Apply Tangent Impulse
+	body_1->velocity -= tangent_impulse * body_1->shape->inv_mass;
+	body_2->velocity += tangent_impulse * body_2->shape->inv_mass;
+	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, tangent_impulse);
+	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, tangent_impulse);// TODO inertia needs to be rotated based on pose of rigid body
+
+
+	//update warm impulse
+	warm_tangent_impulse = accumulated_friction;
+
 }
+
+
 
 
 //Returns an identifying hash that can be used to group constraints into this set

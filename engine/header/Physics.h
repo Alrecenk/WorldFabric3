@@ -210,13 +210,14 @@ public:
 	int64_t id2 = -1;
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
-
+	std::vector<glm::vec3> tangents;
 	glm::vec3 point; // middle point of collision
 	glm::vec3 normal; // normal points from ball 1 to ball 2
 	
 
 	float target = 0;
 	SupportPoint penetration ;
+	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
 	static inline float penetration_spring_coefficient = 10.0f;
