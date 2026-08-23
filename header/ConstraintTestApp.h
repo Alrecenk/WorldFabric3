@@ -103,7 +103,7 @@ private:
 	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
 	int millis_between_balls = 300;
-	int max_balls = 150 ;
+	int max_balls = 100 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -3, 0);

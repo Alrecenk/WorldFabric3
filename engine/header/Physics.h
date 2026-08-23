@@ -90,8 +90,9 @@ public:
 	glm::mat4 inv_pose;
 	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
-	float drag = 1.0f ;
-	float angular_drag = 1.0f ;
+	float friction = 0.6f ;
+	float drag = 0.00f ;
+	float angular_drag = 0.00f ;
 
 	RigidBody(const std::shared_ptr<ConvexShape>& s){
 		shape = s ;
@@ -212,14 +213,15 @@ public:
 
 	glm::vec3 point; // middle point of collision
 	glm::vec3 normal; // normal points from ball 1 to ball 2
+	
+
 	float target = 0;
 	SupportPoint penetration ;
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
 	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.01f;
+	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
-	static inline const float friction_coefficient = 0.7f;
 
 	int64_t getHash() const override;
 	bool updateConstraint(PhysicsContainer* cell) override;
