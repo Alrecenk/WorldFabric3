@@ -5,6 +5,13 @@ namespace Physics{
 
 
 void RigidBody::integrateVelocity(float dt){
+	if(shape->inv_mass == 0 && (glm::length(velocity) > 0 || glm::length(angular_velocity) > 0)){
+		printf("Immovable is moving!\n");
+	}
+	if(dt <= 0){
+		printf("Incorrect dt: %f\n", dt);
+	}
+
 	position += velocity * dt;
 	// Update orientation quaternion
 	// dq/dt = 0.5 * omega * q
@@ -23,6 +30,23 @@ void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
 		return;
 	}
 	velocity += acceleration * dt;
+
+	
+	float speed = glm::length(velocity);
+	if(speed < drag*dt){
+		velocity = glm::vec3(0,0,0) ;
+	}else{
+		velocity *= (speed-drag*dt)/speed ;
+	}
+
+	float angular_speed = glm::length(angular_velocity);
+	if (angular_speed < angular_drag*dt) {
+		angular_velocity = glm::vec3(0, 0, 0);
+	}
+	else {
+		angular_velocity *= (angular_speed - angular_drag*dt) / angular_speed;
+	}
+	
 }
 
 
@@ -194,7 +218,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	float rot_term2 = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, normal), r2), normal);
 	float effective_mass_n = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1 + rot_term2;
 	if (effective_mass_n == 0.0f) {
-		return;
+		return; // two immovable objects
 	}
 
 	//Calculate current change needed based on already applied
@@ -248,6 +272,11 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 		//update warm impulse
 		warm_tangent_impulse += impulse_vec_t;
 	}
+
+	if(std::isnan(glm::length(body_1->velocity)) || std::isnan(glm::length(body_1->angular_velocity)) || std::isnan(glm::length(body_2->velocity)) || std::isnan(glm::length(body_2->angular_velocity))){
+		printf("nan in constraint!\n");
+	}
+	
 }
 
 

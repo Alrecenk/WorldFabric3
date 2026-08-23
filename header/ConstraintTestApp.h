@@ -27,11 +27,13 @@ public:
 		int next_ball_id = 1 ;
 		int instance_id = -1; // for scene
 		static inline const std::string BOX_MODEL = "box" ;
+		float box_size = 0.85f ;
+		std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size)));
 		float ball_radius = 0.5f;
 		std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius,1.0f);
 		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
 
-		float wall_size = 10;
+		float wall_size = 8;
 		std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
 		static inline const std::string WALL_MODEL = "wall";
 
@@ -40,7 +42,7 @@ public:
 		//Custom destructor cleans up scene instance
 		~PhysicsCell();
 
-		int64_t add(const std::shared_ptr<Physics::ConvexShape>& shape, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) ;
+		int64_t add(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) ;
 
 		//Ball ids are allocated one after another and are always positive
 		Physics::RigidBody* getBody(int64_t id) override;
@@ -98,11 +100,11 @@ private:
 
 
 
-	glm::vec3 min = { -3,-4,-3 };
-	glm::vec3 max = { 3,4,3 };
+	glm::vec3 min = { -4,-4,-4 };
+	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
-	int millis_between_balls = 600;
-	int max_balls = 250 ;
+	int millis_between_balls = 300;
+	int max_balls = 20 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -3, 0);

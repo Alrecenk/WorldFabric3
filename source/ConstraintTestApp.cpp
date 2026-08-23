@@ -12,19 +12,24 @@ ConstraintTestApp::PhysicsCell::PhysicsCell(const glm::vec3& box_min, const glm:
 
 
 	ScenePlugin* scene = getTool<ScenePlugin>();
+	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
+	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
+	scene->createModelSet(BOX_MODEL, box, false, false);
+	box_shape->inv_mass = ball_shape->inv_mass;
+	box_shape->inv_moment = ball_shape->inv_moment;
+
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size*0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
-
 	scene->createModelSet(WALL_MODEL, wall,false, false);
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
 
 	bodies[-1] = std::make_shared<Physics::RigidBody>(wall_shape, -1, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z), glm::vec3(), glm::vec3());
-	bodies[-2] = std::make_shared<Physics::RigidBody>(wall_shape, -2, glm::vec3(max.x + wall_size*0.5f, min.y - wall_size * 0.23f, mid.z), glm::vec3(), glm::vec3());
-	bodies[-3] = std::make_shared<Physics::RigidBody>(wall_shape, -3, glm::vec3(min.x - wall_size * 0.5f, min.y - wall_size * 0.22f, mid.z), glm::vec3(), glm::vec3());
-	bodies[-4] = std::make_shared<Physics::RigidBody>(wall_shape, -4, glm::vec3(mid.x, min.y - wall_size * 0.21f, min.z - wall_size * 0.5f), glm::vec3(), glm::vec3());
-	bodies[-5] = std::make_shared<Physics::RigidBody>(wall_shape, -5, glm::vec3(mid.x, min.y - wall_size * 0.2f, max.z + wall_size * 0.5f), glm::vec3(), glm::vec3());
+	bodies[-2] = std::make_shared<Physics::RigidBody>(wall_shape, -2, glm::vec3(max.x + wall_size*0.5f, mid.y, mid.z), glm::vec3(), glm::vec3());
+	bodies[-3] = std::make_shared<Physics::RigidBody>(wall_shape, -3, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z), glm::vec3(), glm::vec3());
+	bodies[-4] = std::make_shared<Physics::RigidBody>(wall_shape, -4, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f), glm::vec3(), glm::vec3());
+	bodies[-5] = std::make_shared<Physics::RigidBody>(wall_shape, -5, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f), glm::vec3(), glm::vec3());
 
 }
 
@@ -33,9 +38,13 @@ ConstraintTestApp::PhysicsCell::~PhysicsCell(){
 	getTool<ScenePlugin>()->deleteInstance(instance_id);
 }
 
-int64_t ConstraintTestApp::PhysicsCell::add(const std::shared_ptr<Physics::ConvexShape>& shape, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel){
+int64_t ConstraintTestApp::PhysicsCell::add(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel){
 	int64_t id = next_ball_id++;
-	bodies[id] = std::make_shared<Physics::RigidBody>(shape, id, pos,vel,a_vel);
+	if(id%2 == 0){
+		bodies[id] = std::make_shared<Physics::RigidBody>(ball_shape, id, pos,vel,a_vel);
+	}else{
+		bodies[id] = std::make_shared<Physics::RigidBody>(box_shape, id, pos, vel, a_vel);
+	}
 	return id ;
 }
 
@@ -74,28 +83,29 @@ void ConstraintTestApp::PhysicsCell::updateCollisions(){
 				if(simplex.size() > 0){
 
 					Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_2.get()) ;
+					if(glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f){
+						glm::vec3 point = (sp.a+sp.b)*0.5f;
+						glm::vec3 normal = glm::normalize(sp.x) ;
 
-					glm::vec3 point = (sp.a+sp.b)*0.5f;
-					glm::vec3 normal = glm::normalize(sp.x) ;
-
-					normal = glm::normalize(normal) ;
-					int64_t constraint_id = getConstraintID(id1,id2,Physics::Collision::CONSTRAINT_TYPE) ;
-					found_constraints.insert(constraint_id); // track found so we can remove not found
-					auto iter = constraints.find(constraint_id) ;
-					std::shared_ptr<Physics::Collision> constraint ;
-					//Add constraint if it doesn't exist already
-					if(iter == constraints.end()){
-						constraint = std::make_shared<Physics::Collision>();
-						constraints[constraint_id] = constraint ;
-					}else{
-						constraint = static_pointer_cast<Physics::Collision>(iter->second) ;
+						normal = glm::normalize(normal) ;
+						int64_t constraint_id = getConstraintID(id1,id2,Physics::Collision::CONSTRAINT_TYPE) ;
+						found_constraints.insert(constraint_id); // track found so we can remove not found
+						auto iter = constraints.find(constraint_id) ;
+						std::shared_ptr<Physics::Collision> constraint ;
+						//Add constraint if it doesn't exist already
+						if(iter == constraints.end()){
+							constraint = std::make_shared<Physics::Collision>();
+							constraints[constraint_id] = constraint ;
+						}else{
+							constraint = static_pointer_cast<Physics::Collision>(iter->second) ;
+						}
+						//update constraint data
+						constraint->id1= id1 ;
+						constraint->id2 = id2 ;
+						constraint->point = point;
+						constraint->normal = normal;
+						constraint->penetration = sp ;
 					}
-					//update constraint data
-					constraint->id1= id1 ;
-					constraint->id2 = id2 ;
-					constraint->point = point;
-					constraint->normal = normal;
-					constraint->penetration = sp ;
 				}
 			}
 		}
@@ -146,10 +156,16 @@ void ConstraintTestApp::PhysicsCell::updateGraphics(){
 			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, ball->position);
-			pose = glm::scale(pose, glm::vec3(ball_radius,ball_radius,ball_radius));
+			if(id%2 == 0){
+				pose = glm::scale(pose, glm::vec3(ball_radius,ball_radius,ball_radius));
+			}
 			pose = pose * glm::mat4_cast(ball->orientation);
 			if(iter == instance.end()){
-				instance[id] = scene->createInstance(BALL_MODEL, pose);
+				if(id%2 == 0){
+					instance[id] = scene->createInstance(BALL_MODEL, pose);
+				}else{
+					instance[id] = scene->createInstance(BOX_MODEL, pose);
+				}
 			}else{
 				scene->setPose(instance[id], pose);
 			}
@@ -225,8 +241,9 @@ void ConstraintTestApp::run() {
 	// Get the current time and time slice of the frame
 	current_time = now();
 	float dt = microsBetween(last_run_time, current_time) / 1000000.0f;
-	if(dt < 0 || dt > 0.5f){ 
-		dt = 0 ; // don't move on frames where something is amiss with the clock
+	
+	if(dt <= 0.001f || dt > 0.5f){ 
+		dt = 0.001f ; // don't move on frames where something is amiss with the clock
 	}
 	
 	last_run_time = current_time;
@@ -261,7 +278,7 @@ void ConstraintTestApp::run() {
 		last_ball_time = current_time ;
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),max.y-1.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,randomFloat() * 5.0f};
-		auto id = cell->add(cell->ball_shape, pos, vel, glm::vec3(3, 0, 0));
+		auto id = cell->add( pos, vel, glm::vec3(3, 0, 0));
 	}
 
 
