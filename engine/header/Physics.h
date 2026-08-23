@@ -94,6 +94,10 @@ public:
 	float drag = 0.01f ;
 	float angular_drag = 0.01f ;
 
+	//Inervse inertia and axis aligned bounding box in world space
+	glm::mat3 inv_moment ;
+	std::pair<glm::vec3, glm::vec3> AABB;
+
 	RigidBody(const std::shared_ptr<ConvexShape>& s){
 		shape = s ;
 	}
@@ -109,9 +113,6 @@ public:
 	void integrateVelocity(float dt);
 
 	void integrateAcceleration(const glm::vec3& acceleration, float dt);
-
-	//returns the inverse inertia tensor of this rigid body in world coodinates
-	glm::mat3 computeInvWorldMoment();
 
 	//Only for debugging, will be overwritten if physics is actually happening
 	void setPose(const glm::mat4& p){
