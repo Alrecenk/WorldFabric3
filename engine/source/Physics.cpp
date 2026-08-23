@@ -198,6 +198,11 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 
 	body_1->velocity -= warm_impulse * body_1->shape->inv_mass;
 	body_2->velocity += warm_impulse * body_2->shape->inv_mass;
+
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, warm_impulse);// TODO inertia needs to be rotated based on pose of rigid body
+	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, warm_impulse);
 }
 void Collision::applyConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
