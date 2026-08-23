@@ -49,6 +49,12 @@ void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
 	
 }
 
+//returns the inverse inertia tensor of this rigid body in world coodinates
+glm::mat3 RigidBody::computeInvWorldMoment(){
+	glm::mat3 r = glm::mat3_cast(orientation) ;
+	return r * shape->inv_moment * glm::transpose(r);
+}
+
 
 ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) {
 	vertex = vertices;
@@ -204,6 +210,8 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
 	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
 
+	glm::mat3 inv_moment_1 = body_1->computeInvWorldMoment();
+	glm::mat3 inv_moment_2 = body_2->computeInvWorldMoment();
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse ;
 
@@ -212,8 +220,8 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
-	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, impulse);// TODO inertia needs to be rotated based on pose of rigid body
-	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, impulse);
+	body_1->angular_velocity -= inv_moment_1 * glm::cross(r1, impulse);// TODO inertia needs to be rotated based on pose of rigid body
+	body_2->angular_velocity += inv_moment_2 * glm::cross(r2, impulse);
 }
 void Collision::applyConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -222,7 +230,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
-
+	glm::mat3 inv_moment_1 = body_1->computeInvWorldMoment();
+	glm::mat3 inv_moment_2 = body_2->computeInvWorldMoment();
 
 	glm::vec3 contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
 	glm::vec3 contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
@@ -230,8 +239,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
-	float rot_term2 = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, normal), r2), normal);
+	float rot_term1 = glm::dot(glm::cross(inv_moment_1 * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
+	float rot_term2 = glm::dot(glm::cross(inv_moment_2 * glm::cross(r2, normal), r2), normal);
 	float effective_mass_n = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
 		return; // two immovable objects
@@ -247,8 +256,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	//Apply normal impulse
 	body_1->velocity -= impulse_vec_n * body_1->shape->inv_mass;
 	body_2->velocity += impulse_vec_n * body_2->shape->inv_mass;
-	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
-	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, impulse_vec_n);
+	body_1->angular_velocity -= inv_moment_1 * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
+	body_2->angular_velocity += inv_moment_2 * glm::cross(r2, impulse_vec_n);
 
 	//update warm impulse
 	warm_impulse += impulse_vec_n;
@@ -264,8 +273,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 		float velocity_along_tangent = glm::dot(tangent,relative_velocity); 
 
 		// Effective mass for tangent direction
-		float rot_term1_t = glm::dot(glm::cross(body_1->shape->inv_moment * glm::cross(r1, tangent), r1), tangent);
-		float rot_term2_t = glm::dot(glm::cross(body_2->shape->inv_moment * glm::cross(r2, tangent), r2), tangent); // TODO inertia needs to be rotated based on pose of rigid body
+		float rot_term1_t = glm::dot(glm::cross(inv_moment_1 * glm::cross(r1, tangent), r1), tangent);
+		float rot_term2_t = glm::dot(glm::cross(inv_moment_2 * glm::cross(r2, tangent), r2), tangent);
 		float effective_mass_t = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1_t + rot_term2_t;
 		if(effective_mass_t < 1e-6f){
 			continue ;
@@ -290,8 +299,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	// Apply Tangent Impulse
 	body_1->velocity -= tangent_impulse * body_1->shape->inv_mass;
 	body_2->velocity += tangent_impulse * body_2->shape->inv_mass;
-	body_1->angular_velocity -= body_1->shape->inv_moment * glm::cross(r1, tangent_impulse);
-	body_2->angular_velocity += body_2->shape->inv_moment * glm::cross(r2, tangent_impulse);// TODO inertia needs to be rotated based on pose of rigid body
+	body_1->angular_velocity -= inv_moment_1 * glm::cross(r1, tangent_impulse);
+	body_2->angular_velocity += inv_moment_2 * glm::cross(r2, tangent_impulse);
 
 
 	//update warm impulse

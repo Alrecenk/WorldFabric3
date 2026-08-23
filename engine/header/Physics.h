@@ -110,7 +110,10 @@ public:
 
 	void integrateAcceleration(const glm::vec3& acceleration, float dt);
 
-	//Only for debugging, will be overwritten if physics is actualyl happening
+	//returns the inverse inertia tensor of this rigid body in world coodinates
+	glm::mat3 computeInvWorldMoment();
+
+	//Only for debugging, will be overwritten if physics is actually happening
 	void setPose(const glm::mat4& p){
 		pose = p ;
 		inv_pose = glm::inverse(p);
