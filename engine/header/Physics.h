@@ -91,8 +91,8 @@ public:
 	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
-	float drag = 0.00f ;
-	float angular_drag = 0.00f ;
+	float drag = 0.01f ;
+	float angular_drag = 0.01f ;
 
 	RigidBody(const std::shared_ptr<ConvexShape>& s){
 		shape = s ;

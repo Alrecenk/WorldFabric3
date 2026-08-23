@@ -258,7 +258,8 @@ void ConstraintTestApp::run() {
 		last_ball_time = current_time ;
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),max.y-1.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f+randomFloat() * 4.0f};
-		auto id = cell->add(ball_type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
+		int type = randomFloat()<0.2f ? box_type : ball_type ;
+		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 
 
