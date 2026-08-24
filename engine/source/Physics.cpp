@@ -72,6 +72,17 @@ ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const
 	inv_moment = glm::inverse(computeInertia(mass)) ;
 }
 
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass) {
+	vertex = base.vertex;
+	for(auto& v : vertex){
+		 v = pose * glm::vec4(v,1.0f) ;
+	}
+
+	face = base.face;
+	inv_mass = 1.0f / mass;
+	inv_moment = glm::inverse(computeInertia(mass));
+}
+
 
 void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
 	//deduplicate the points to match reduced shape format
@@ -422,7 +433,7 @@ ConvexPolyhedron ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3
 ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces, int detail_level){
 	std::vector<glm::dvec3> points ;
 	for(auto& v : model->vertices){
-		points.emplace_back(v.position) ;
+		points.emplace_back(v.transformed_position) ;
 	}
 	std::vector<Polygon> poly = Polygon::buildApproximateHull(points,hull_faces,detail_level) ;
 	return ConvexPolyhedron(poly,mass) ;
@@ -440,7 +451,7 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 
 	float restitution_bias = 0.0f; // inelastic
 	if (velocity_against_normal > min_velocity_for_elastic) {
-		float e = (body_1->elasticity + body_2->elasticity) * 0.5f;
+		float e = fmax(body_1->elasticity,body_2->elasticity);
 		restitution_bias = e * velocity_against_normal; // elastic
 	}
 

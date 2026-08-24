@@ -18,7 +18,9 @@ public:
 		public:
 			std::shared_ptr<Physics::ConvexShape> shape ;
 			std::string model ;
-			float render_scale = 1.0f ;
+			glm::mat4 render_transform ;
+			float elasticity ;
+			float friction ;
 		};
 
 		//Bounding box of cell
@@ -39,7 +41,7 @@ public:
 		//Custom destructor cleans up scene instance
 		~PhysicsCell();
 
-		int addType(std::shared_ptr<Physics::ConvexShape> shape,const std::string& model, float render_scale) ;
+		int addType(std::shared_ptr<Physics::ConvexShape> shape,const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f) ;
 
 		int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0)) ;
 

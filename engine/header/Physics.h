@@ -37,6 +37,9 @@ public:
 
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass);
 
+	// Mak a new polyhedron by reposing and/or changing the mass of an existing polyhedron
+	ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass);
+
 	void buildFromPolygons(std::vector<Polygon>& polygons);
 
 	// If mass is not specified then the object has infinite mass and is immoveable
@@ -92,7 +95,7 @@ public:
 
 	// Builds an approximate convex hull of the given model with up to the given number of faces
 	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
-	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=10, int detail_level = 4) ;
+	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level = 4) ;
 
 };
 

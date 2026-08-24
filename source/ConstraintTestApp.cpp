@@ -17,10 +17,10 @@ ConstraintTestApp::PhysicsCell::~PhysicsCell(){
 	}
 }
 
-int ConstraintTestApp::PhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, float render_scale){
+int ConstraintTestApp::PhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& transform,float elasticity , float friction ){
 	int id = next_type_id ;
 	next_type_id++;
-	types[id] = {shape, model, render_scale} ;
+	types[id] = {shape, model, transform, elasticity, friction} ;
 	return id ;
 }
 
@@ -29,6 +29,8 @@ int64_t ConstraintTestApp::PhysicsCell::add(int type, const glm::vec3& pos, cons
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	instance[id] = {type, scene->createInstance(types[type].model, glm::mat4(0))};
 	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
+	bodies[id]->elasticity = types[type].elasticity ;
+	bodies[id]->friction = types[type].friction;
 	return id ;
 }
 
@@ -139,9 +141,8 @@ void ConstraintTestApp::PhysicsCell::updateGraphics(){
 			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, ball->position);
-			float scale= types[iter->second.first].render_scale ;
-			pose = glm::scale(pose, glm::vec3(scale,scale,scale));
 			pose = pose * glm::mat4_cast(ball->orientation);
+			pose = pose * types[iter->second.first].render_transform ;
 			scene->setPose(instance[id].second, pose);
 		}
 	}
@@ -155,8 +156,6 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 
-	
-	
 
 	// Make a particle for the mouse
 	mouse_particle_id = particles->createParticle(0);
@@ -183,7 +182,8 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	float ball_mass = 1.0f ;
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
-	ball_type = cell->addType(ball_shape, BALL_MODEL,ball_radius) ;
+	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius)) ;
+	ball_type = cell->addType(ball_shape, BALL_MODEL,transform, 0.6f, 0.6f) ;
 
 	
 	float box_size = 1.0f ;
@@ -192,29 +192,35 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
-	box_type = cell->addType(box_shape, "box", 1.0f);
+	transform = glm::mat4(1.0f);
+	box_type = cell->addType(box_shape, "box", transform,0.4f,0.6f );
 
 	float wall_size = 30.0f ;
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_type = cell->addType(wall_shape, "wall", 1.0f);
+	wall_type = cell->addType(wall_shape, "wall", transform,0.6f,0.6f);
 
 	float rod_mass = 2.0f ;
 	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
-	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.0f,0.5f,0.0f,0.5f));
+	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f,0.1f,0.5f,0.5f));
 	scene->createModelSet("rod", model, false, true);
-	rod_type = cell->addType(rod_shape, "rod", 1.0f);
+	rod_type = cell->addType(rod_shape, "rod", transform, 0.4f,0.2f);
 
 
 	float jar_mass = 2.0f;
-	float jar_scale = 1.0f ;
+	float jar_scale = 0.6f ;
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(jar_scale, jar_scale, jar_scale));
 	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
 	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
 	std::shared_ptr<Physics::ConvexPolyhedron> jar_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeApproximateHull(jar_model, jar_mass));
-	jar_type = cell->addType(jar_shape, JAR_MODEL, jar_scale);
+	jar_shape = std::make_shared<Physics::ConvexPolyhedron>(*(jar_shape.get()),transform, jar_mass) ;
+	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
+	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
+	//scene->createModelSet("jar", model2, false, true);
+	jar_type = cell->addType(jar_shape, JAR_MODEL, transform, 0.1f,0.6f);
 	
 
 	// Add the container blocks
@@ -278,12 +284,13 @@ void ConstraintTestApp::run() {
 		vel = r * glm::vec4(vel,0);
 		float rand = randomFloat() ;
 		int type = ball_type ;
-		if(rand < 0.33f){
+		if(rand < 0.2f){
 			type = box_type ;
-		}else if(rand < 0.5f){
+		}else if(rand < 0.35f){
 			type = rod_type ;
+		}else if(rand< 0.65){
+			type = jar_type ;
 		}
-		type = jar_type ;
 		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 
