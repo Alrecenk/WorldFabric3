@@ -31,8 +31,14 @@ public:
 
 	ConvexPolyhedron() {} 
 
+	// If mass is not specified then the object has infinit mass and is immoveable
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces);
 
+	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass);
+
+	float getVolume() ;
+
+	glm::mat3 computeInertia(const float mass);
 
 	//Returns the point on the shape furthest in the given direction
 	glm::vec3 support(const glm::vec3& direction) const override;
@@ -56,6 +62,18 @@ public:
 
 	// Returns a shape for a Tetrahedron with the given points
 	static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D);
+
+	// Returns an axis aligned bounding box
+	static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 min, glm::vec3 max, float mass);
+
+	//Alternate form of box that always centers on the origin
+	static ConvexPolyhedron makeAxisAlignedBox(glm::vec3 size, float mass);
+
+	// Returns a shape for a cylinder with center of ends A and B and the given radius and side count
+	static ConvexPolyhedron makeCylinder(glm::vec3 A, glm::vec3 B, float radius, int sides, float mass);
+
+	// Returns a shape for a Tetrahedron with the given points
+	static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D, float mass);
 
 };
 

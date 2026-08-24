@@ -180,15 +180,15 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	cell = std::make_shared<PhysicsCell>() ;
 
 	float ball_radius = 0.5f ;
-	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, 1.0f);
+	float ball_mass = 1.0f ;
+	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
 	ball_type = cell->addType(ball_shape, BALL_MODEL,ball_radius) ;
 
 	
-	float box_size = 0.9f ;
-	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size)));
-	box_shape->inv_mass = ball_shape->inv_mass;
-	box_shape->inv_moment = ball_shape->inv_moment; // TODo shouldbe compuited correctly autmatically
+	float box_size = 1.0f ;
+	float box_mass = 2.0f ;
+	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
@@ -199,10 +199,16 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_shape->inv_mass = 0; // infinite mass makes walls immovable
-	wall_shape->inv_moment = glm::mat3(0);
 	wall_type = cell->addType(wall_shape, "wall", 1.0f);
 
+	float rod_mass = 2.0f ;
+	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
+	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
+	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.0f,0.5f,0.0f,0.5f));
+	scene->createModelSet("rod", model, false, true);
+	rod_type = cell->addType(rod_shape, "rod", 1.0f);
+
+	// Add the container blocks
 	glm::vec3 mid = (min + max) * 0.5f;
 	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
 	cell->add(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z));
@@ -261,7 +267,13 @@ void ConstraintTestApp::run() {
 		glm::mat4 r= glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds()*0.002),glm::vec3(0,1,0)) ;
 		pos = r * glm::vec4(pos,1) ;
 		vel = r * glm::vec4(vel,0);
-		int type = randomFloat()<0.33f ? box_type : ball_type ;
+		float rand = randomFloat() ;
+		int type = ball_type ;
+		if(rand < 0.33f){
+			type = box_type ;
+		}else if(rand < 0.5f){
+			type = rod_type ;
+		}
 		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 

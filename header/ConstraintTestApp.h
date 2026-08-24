@@ -102,8 +102,8 @@ private:
 	glm::vec3 min = { -4,-4,-4 };
 	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
-	int millis_between_balls = 100;
-	int max_balls = 1000 ;
+	int millis_between_balls = 200;
+	int max_balls = 150 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -2, 0);
@@ -130,5 +130,6 @@ private:
 	int box_type=-1 ;
 	int ball_type = -1;
 	int wall_type = -1;
+	int rod_type = -1 ;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_
