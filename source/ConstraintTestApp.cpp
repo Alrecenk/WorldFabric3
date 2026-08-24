@@ -61,11 +61,11 @@ void ConstraintTestApp::PhysicsCell::updateCollisions(){
 	for(auto& [id1,body_1] : bodies){
 		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
-			if(id1 < id2 && (body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0)){ // only check each once
-
+			if(id1 < id2 && // only check each pair once
+				(body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0)  && // only check if one is moveable
+				Physics::AAABIntersect(body_1->AABB, body_2->AABB)){ // check AABBs first
 				auto simplex = Physics::detectCollision(body_1.get(), body_2.get()) ;
 				if(simplex.size() > 0){
-
 					Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_2.get()) ;
 					if(glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f){
 						glm::vec3 point = (sp.a+sp.b)*0.5f;

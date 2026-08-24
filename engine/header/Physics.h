@@ -82,12 +82,13 @@ public:
 class RigidBody {
 public:
 	int64_t id ;
-	glm::vec3 position ;
-	glm::vec3 velocity ;
-	glm::quat orientation ;
-	glm::vec3 angular_velocity; 
-	glm::mat4 pose;
-	glm::mat4 inv_pose;
+	glm::vec3 position = glm::vec3(0,0,0) ;
+	glm::vec3 velocity = glm::vec3(0, 0, 0);
+	glm::quat orientation = glm::quat(0, 0, 0, 1);
+	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
+	glm::mat4 pose = glm::mat4(1);
+	glm::mat4 inv_pose = glm::mat4(1);
+
 	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
@@ -98,17 +99,9 @@ public:
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
-	RigidBody(const std::shared_ptr<ConvexShape>& s){
-		shape = s ;
-	}
+	RigidBody(const std::shared_ptr<ConvexShape>& s);
 
-	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w) {
-		shape = s;
-		id = i ;
-		position = p ;
-		velocity = v ;
-		angular_velocity = w ;
-	}
+	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
 	void integrateVelocity(float dt);
 
@@ -255,6 +248,10 @@ class SinglePointCollision : public ConstraintSet {
 	void applyConstraints(PhysicsContainer* cell) override;
 
 };
+
+
+//Returns if two axis aligned bounding boxes intersect
+bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
 
 static inline const int MAX_GJK_ITERATIONS = 10;
 

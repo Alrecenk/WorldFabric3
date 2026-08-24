@@ -3,6 +3,17 @@
 namespace Physics{
 
 
+	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s) {
+		shape = s;
+	}
+
+	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w) {
+		shape = s;
+		id = i;
+		position = p;
+		velocity = v;
+		angular_velocity = w;
+	}
 
 void RigidBody::integrateVelocity(float dt){
 	position += velocity * dt;
@@ -49,7 +60,7 @@ void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
 ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces) {
 	vertex = vertices;
 	face = faces;
-	// TODO compute moment and mass n creation
+	// TODO compute moment and mass on creation
 }
 
 // Returns a shape for an axis aligned bounding box
@@ -103,7 +114,17 @@ float ConvexPolyhedron::rayTrace(const glm::vec3& p, const glm::vec3& v) const{
 //Returns an axis aligned bounding box for the shape if it had the given pose
 //First element is min values, second is max values
 std::pair<glm::vec3, glm::vec3> ConvexPolyhedron::getAABB(const glm::mat4& pose) const {
-	return std::pair<glm::vec3, glm::vec3>() ;//TODO
+	std::pair<glm::vec3, glm::vec3> AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX}} ;
+	for (auto& v : vertex) {
+		glm::vec3 wv = pose*glm::vec4(v,1.0f) ;
+		AABB.first.x = fmin(AABB.first.x, wv.x);
+		AABB.first.y = fmin(AABB.first.y, wv.y);
+		AABB.first.z = fmin(AABB.first.z, wv.z);
+		AABB.second.x = fmax(AABB.second.x, wv.x);
+		AABB.second.y = fmax(AABB.second.y, wv.y);
+		AABB.second.z = fmax(AABB.second.z, wv.z);
+	}
+	return AABB ;
 }
 
 // Returns a shapefor a cylinder with center of ends and A and B
@@ -294,8 +315,6 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 }
 
 
-
-
 //Returns an identifying hash that can be used to group constraints into this set
 int64_t SinglePointCollision::getHash() const{
 	return hashBytes(serialize(point.id1, point.id2, Collision::CONSTRAINT_TYPE));
@@ -343,7 +362,15 @@ float Sphere::rayTrace(const glm::vec3& p, const glm::vec3& v) const{
 //Returns an axis aligned bounding box for the shape if it had the given pose
 //First element is min values, second is max values
 std::pair<glm::vec3, glm::vec3> Sphere::getAABB(const glm::mat4& pose) const {
-	return std::pair<glm::vec3, glm::vec3>();//TODO
+	glm::vec3 wp = pose * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	std::pair<glm::vec3, glm::vec3> AABB = { {wp.x-radius,wp.y-radius,wp.z-radius},{wp.x + radius,wp.y + radius,wp.z + radius} };
+	return AABB;
+}
+
+bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
+	return A.first.x < B.second.x && B.first.x < A.second.x &&
+		A.first.y < B.second.y && B.first.y < A.second.y &&
+		A.first.z < B.second.z && B.first.z < A.second.z;
 }
 
 
