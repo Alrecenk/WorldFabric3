@@ -411,7 +411,7 @@ public:
 		}
 	}
 
-	void setToHash(const int64& new_hash){
+	void setToHash(const int64_t& new_hash){
 		reset();
 		hash = new_hash ;
 		ContentAddressedStorage::addReference<T>(hash);

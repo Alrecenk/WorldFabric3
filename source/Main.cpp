@@ -416,11 +416,11 @@ void setupGameStates() {
 	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
 	//app->setState(TraceApp::state_name);
 
-	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
-	//app->setState(ConstraintTestApp::state_name);
+	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	app->setState(ConstraintTestApp::state_name);
 
-	app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
-	app->setState(CollisionTestApp::state_name);
+	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
+	//app->setState(CollisionTestApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -435,8 +435,8 @@ int exampleMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str());
 
-	SteamworksPlugin::enabled = true; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = true; // Enable this for VR support
+	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
+	OpenXRPlugin::ENABLED = false; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;

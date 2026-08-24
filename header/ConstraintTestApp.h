@@ -4,125 +4,52 @@
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
+#include "Physics.h"
 
 class ConstraintTestApp : public MachineState {
 
 public:
 
-	class PhysicsCell ;
 
-	class Ball {
+	class PhysicsCell : Physics::PhysicsContainer {
 	public:
-		int64_t id = -1 ;
-		glm::vec3 position;
-		glm::vec3 velocity;
-		glm::vec3 acceleration ;
-		float radius = 0.5f;
-		float inv_mass = 1.0f; // inverse mass
-		float elasticity = 0.6f ; // 0 = inelastic, 1 = full elastic
 
-		glm::quat orientation ;
-		glm::vec3 angular_velocity ;
-		glm::mat3 inv_inertia = glm::mat3(10.0f) ; // inverse moment of inertia
+		class ObjectType{
+		public:
+			std::shared_ptr<Physics::ConvexShape> shape ;
+			std::string model ;
+			glm::mat4 render_transform ;
+			float elasticity ;
+			float friction ;
+		};
 
-		// used for rendering
-		int instance_id = -1 ;
-		static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb" ;
-
-		Ball(int64_t my_id, const glm::vec3& pos , const glm::vec3& vel, const glm::vec3& acc);
-
-		void integrateVelocity(float dt);
-
-		void integrateAcceleration(float dt);
-
-		void updateGraphics();
-
-		//Custom destructor cleans up scene instance
-		~Ball();
-
-	};
-
-	class Constraint {
-	public:
-		//Update the constraint terget based on velocity at the start of the rame
-		virtual void updateConstraintTarget(PhysicsCell* cell) = 0;
-
-		//Apply a starting impulse carried over if this constraint has existed ofr mutliple frames in a row
-		virtual void applyWarmingImpulse(PhysicsCell* cell) = 0;
-
-		//Applies impulse to velocity of involved bodies to satisfy this constraint
-		virtual void applyConstraint(PhysicsCell* cell) = 0;
-	};
-
-	class BallCollision : public Constraint {
-	public:
-		int64_t id1 = -1;
-		int64_t id2 = -1;
-		glm::vec3 warm_impulse;
-		glm::vec3 warm_tangent_impulse ;
-
-		glm::vec3 point ; // middle point of collision
-		glm::vec3 normal ; // normal points gfrom ball 1 to ball 2
-		float target = 0 ;
-
-		static inline float penetration_spring_coefficient = 10.0f;
-		static inline float allowed_collision_depth = 0.15f;
-		static inline float min_velocity_for_elastic = 0.05f;
-		static inline const int CONSTRAINT_TYPE = 1 ;
-		static inline const float friction_coefficient = 0.6f ;
-
-		void updateConstraintTarget(PhysicsCell* cell) override;
-		void applyWarmingImpulse(PhysicsCell* cell) override;
-		void applyConstraint(PhysicsCell* cell) override;
-	};
-
-	class BallWallCollision : public Constraint {
-	public:
-		int64_t id ; // id of ball
-		glm::vec3 warm_impulse;
-		glm::vec3 warm_tangent_impulse;
-		glm::vec3 point ; // point on wall ball is touching
-		glm::vec3 normal ; // normal of wall
-		float target = 0 ;
-
-		static inline float penetration_spring_coefficient = 10.0f;
-		static inline float min_velocity_for_elastic = 0.05f ;
-		static inline float allowed_collision_depth = 0.15f;
-		static inline const int CONSTRAINT_TYPE = 2;
-		static inline const float friction_coefficient = 0.6f;
-
-		void updateConstraintTarget(PhysicsCell* cell) override;
-		void applyWarmingImpulse(PhysicsCell* cell) override;
-		void applyConstraint(PhysicsCell* cell) override;
-	};
-		
-
-	class PhysicsCell {
-	public:
 		//Bounding box of cell
-		glm::vec3 min;
-		glm::vec3 max;
-
-		//Contents of cell
-		std::unordered_map<int64_t, std::shared_ptr<Ball>> balls ;
-		std::unordered_map<int64_t, std::shared_ptr<Constraint>> constraints;
+		glm::vec3 acceleration = glm::vec3(0,-10,0);
 		
-		int next_ball_id = 1 ;
-		int instance_id = -1; // for scene
-		static inline const std::string BOX_MODEL = "box" ;
+		//Contents of cell
+		std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies ;
+		std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
+		std::unordered_map<int,ObjectType> types ;
 
-		PhysicsCell(const glm::vec3& box_min, const glm::vec3& box_max) ;
+		std::unordered_map<int64_t, std::pair<int,int>> instance ; // maps physics objects to type and scene instance
+		
+		int next_object_id = 1 ;
+		int next_type_id  = 1 ;
+
+		PhysicsCell() ;
 
 		//Custom destructor cleans up scene instance
 		~PhysicsCell();
 
-		int64_t addBall(const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& acc) ;
+		int addType(std::shared_ptr<Physics::ConvexShape> shape,const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f) ;
+
+		int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0)) ;
 
 		//Ball ids are allocated one after another and are always positive
-		std::shared_ptr<Ball> getBall(int64_t id);
+		Physics::RigidBody* getBody(int64_t id) override;
 
 		//Constraint id is a hash generated with getConstraintID
-		std::shared_ptr<Constraint> getConstraint(int64_t id);
+		Physics::Constraint* getConstraint(int64_t id);
 
 		int64_t getConstraintID(int64_t id1, int64_t id2, int constraint_type){
 			return hashBytes(serialize(id1, id2, constraint_type)) ;
@@ -174,14 +101,14 @@ private:
 
 
 
-	glm::vec3 min = { -3,-4,-3 };
-	glm::vec3 max = { 3,4,3 };
+	glm::vec3 min = { -4,-4,-4 };
+	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
-	int millis_between_balls = 600;
-	int max_balls = 250 ;
+	int millis_between_balls = 200;
+	int max_balls = 150 ;
 
 	// Csmera control stuff
-	glm::vec3 look_at = glm::vec3(0, -3, 0);
+	glm::vec3 look_at = glm::vec3(0, -2, 0);
 	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
 	float fov = 1.0f;
 	float camera_theta = 0.5f;
@@ -195,10 +122,18 @@ private:
 	float camera_x_speed = 0.002f;
 	float camera_y_speed = 0.002f;
 	float zoom = 11.0f;
-	float light_zoom = 20.0f;
-	float light_fov = 1.0f;
+	float light_zoom = 30.0f;
+	float light_fov = 0.7f;
 	float light_theta = 0.4f;
-	float light_thi = 1.2f ;
+	float light_thi = 1.5f ;
 	float mouse_wheel_y_previous = 0.0f;
+
+	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
+	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
+	int box_type=-1 ;
+	int ball_type = -1;
+	int wall_type = -1;
+	int rod_type = -1 ;
+	int jar_type = -1 ;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_

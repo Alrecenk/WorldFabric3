@@ -16,7 +16,7 @@ class RadialVolume{
         std::vector<glm::dvec3> N; 
         std::vector<double> d;
         
-        // Creates a raidla volume representing the given sphere
+        // Creates a radial volume representing the given sphere
         RadialVolume(glm::dvec3 center, double radius, int detail);
         
         // Creates a minimal volume (for the given detail) that fully contains the proper convex hull of the given points
