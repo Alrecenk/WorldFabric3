@@ -166,7 +166,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
-	glm::vec3 light_position = glm::vec3(15, 15, -5);
+	glm::vec3 light_position = glm::vec3(15, 0.5, -0.5);
 	glm::vec3 look_at = glm::vec3(0, 0, 0);
 	lc.light_color = glm::vec4(0.5, 0.5, 0.5, 1);
 	light_id = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_position, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 2048, 0, lc);
@@ -194,7 +194,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	scene->createModelSet("box", box, false, false);
 	box_type = cell->addType(box_shape, "box", 1.0f);
 
-	float wall_size = 10.0f ;
+	float wall_size = 30.0f ;
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
 	scene->createModelSet("wall", wall, false, false);
@@ -256,9 +256,12 @@ void ConstraintTestApp::run() {
 
 	if(millisBetween(last_ball_time,current_time) > millis_between_balls && cell->bodies.size() < max_balls){
 		last_ball_time = current_time ;
-		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),max.y-1.0f,min.z + 0.5f };
+		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f+randomFloat() * 4.0f};
-		int type = randomFloat()<0.2f ? box_type : ball_type ;
+		glm::mat4 r= glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds()*0.002),glm::vec3(0,1,0)) ;
+		pos = r * glm::vec4(pos,1) ;
+		vel = r * glm::vec4(vel,0);
+		int type = randomFloat()<0.33f ? box_type : ball_type ;
 		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 
@@ -316,5 +319,5 @@ void ConstraintTestApp::updateCamera() {
 
 	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
 
-	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 30);
+	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 35);
 }

@@ -92,8 +92,8 @@ public:
 	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
-	float drag = 0.01f ;
-	float angular_drag = 0.01f ;
+	float drag = 0.03f ;
+	float angular_drag = 0.03f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	glm::mat3 inv_moment ;

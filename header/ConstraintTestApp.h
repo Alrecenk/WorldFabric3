@@ -102,11 +102,11 @@ private:
 	glm::vec3 min = { -4,-4,-4 };
 	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
-	int millis_between_balls = 300;
-	int max_balls = 200 ;
+	int millis_between_balls = 100;
+	int max_balls = 1000 ;
 
 	// Csmera control stuff
-	glm::vec3 look_at = glm::vec3(0, -3, 0);
+	glm::vec3 look_at = glm::vec3(0, -2, 0);
 	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
 	float fov = 1.0f;
 	float camera_theta = 0.5f;
@@ -120,10 +120,10 @@ private:
 	float camera_x_speed = 0.002f;
 	float camera_y_speed = 0.002f;
 	float zoom = 11.0f;
-	float light_zoom = 20.0f;
-	float light_fov = 1.0f;
+	float light_zoom = 30.0f;
+	float light_fov = 0.7f;
 	float light_theta = 0.4f;
-	float light_thi = 1.2f ;
+	float light_thi = 1.5f ;
 	float mouse_wheel_y_previous = 0.0f;
 
 	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
