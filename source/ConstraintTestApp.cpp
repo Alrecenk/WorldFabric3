@@ -208,6 +208,15 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	scene->createModelSet("rod", model, false, true);
 	rod_type = cell->addType(rod_shape, "rod", 1.0f);
 
+
+	float jar_mass = 2.0f;
+	float jar_scale = 1.0f ;
+	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
+	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
+	std::shared_ptr<Physics::ConvexPolyhedron> jar_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeApproximateHull(jar_model, jar_mass));
+	jar_type = cell->addType(jar_shape, JAR_MODEL, jar_scale);
+	
+
 	// Add the container blocks
 	glm::vec3 mid = (min + max) * 0.5f;
 	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
@@ -274,6 +283,7 @@ void ConstraintTestApp::run() {
 		}else if(rand < 0.5f){
 			type = rod_type ;
 		}
+		type = jar_type ;
 		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
 	}
 

@@ -2,6 +2,7 @@
 #define _PHYSICS_H_ 1
 
 #include "local_ptr.h"
+#include "Polygon.h"
 
 namespace Physics {
 
@@ -31,10 +32,24 @@ public:
 
 	ConvexPolyhedron() {} 
 
-	// If mass is not specified then the object has infinit mass and is immoveable
+	// If mass is not specified then the object has infinite mass and is immoveable
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces);
 
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass);
+
+	void buildFromPolygons(std::vector<Polygon>& polygons);
+
+	// If mass is not specified then the object has infinite mass and is immoveable
+	ConvexPolyhedron(std::vector<Polygon>& polygons);
+
+	ConvexPolyhedron(std::vector<Polygon>& polygons, float mass);
+
+
+	// Return the center of mass of this shape
+	glm::vec3 getCentroid();
+
+	// Moves this shape so the origin aligns with the centroid and returns the move that was made
+	glm::vec3 centerOnCentroid();
 
 	float getVolume() ;
 
@@ -74,6 +89,10 @@ public:
 
 	// Returns a shape for a Tetrahedron with the given points
 	static ConvexPolyhedron makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3 C, glm::vec3 D, float mass);
+
+	// Builds an approximate convex hull of the given model with up to the given number of faces
+	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
+	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=10, int detail_level = 4) ;
 
 };
 

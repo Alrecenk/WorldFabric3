@@ -1039,8 +1039,14 @@ void GLTF::addPrimitive(std::vector<Vertex>& vertices, std::vector<Triangle>& tr
         GLTF::Accessor ia = GLTF::access(primitive["indices"].getInt(), json, bin);
         if(ia.type == "SCALAR"){
             if(ia.component_type == 5121){
-                printf("unsigned byte indices, technically valid, but not yet implemented, aborting\n"); // TODO
-                return ;
+                //printf("unsigned byte indices, technically valid, but not yet implemented, aborting\n"); // TODO
+				//printf("unsigned short indices\n");
+				num_indices = ia.data.getArrayLength();
+				byte* bytes = ia.data.getByteArray();
+				index_data = (uint*)malloc(4 * num_indices);
+				for (int k = 0; k < num_indices; k++) {
+					index_data[k] = (unsigned char)bytes[k];
+				}
             }else if(ia.component_type == 5123){
                 //printf("unsigned short indices\n");
                 num_indices = ia.data.getArrayLength();

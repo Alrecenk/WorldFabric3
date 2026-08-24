@@ -72,6 +72,99 @@ ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const
 	inv_moment = glm::inverse(computeInertia(mass)) ;
 }
 
+
+void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
+	//deduplicate the points to match reduced shape format
+	vertex = std::vector<glm::vec3>();
+	face = std::vector<std::vector<int>>();
+	for (int k = 0; k < polygons.size(); k++) {
+		Polygon& poly = polygons[k];
+		if (poly.p.size() >= 3) {
+			std::vector<int> f;
+			for (int j = 0; j < poly.p.size(); j++) {
+				int index = -1;
+				for (int i = 0; i < vertex.size(); i++) { // TODO could make this much faster
+					if (glm::length(poly.p[j] - glm::dvec3(vertex[i])) < Polygon::EPSILON) {
+						index = i;
+						break;
+					}
+				}
+				if (index == -1) {
+					glm::vec3 v = poly.p[j];
+					vertex.push_back(v);
+					index = (int)(vertex.size() - 1);
+				}
+				f.push_back(index);
+			}
+			face.push_back(f);
+		}
+	}
+
+	//flip any faces pointing inward (Polygon doesn't have a winding oder guarantee)
+	for (int k = 0; k < face.size(); k++) {
+		//printf("fs:%d\n",(int)face.size() );
+		glm::vec3& A = vertex[face[k][0]];
+		glm::vec3& B = vertex[face[k][1]];
+		glm::vec3& C = vertex[face[k][2]];
+		//printf("ABC:%d,%d,%d, size:%d\n",face[k][0],face[k][1],face[k][2], (int)vertex.size() );
+		glm::vec3 normal = glm::normalize(glm::cross(B - A, C - A));
+		if (glm::dot(normal, A) < 0) {
+			std::vector<int> new_face;
+			for (int j = (int)(face[k].size() - 1); j >= 0; j--) {
+				new_face.push_back(face[k][j]);
+			}
+			face[k] = new_face;
+		}
+	}
+}
+
+ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons) {
+	buildFromPolygons(polygons) ;
+	inv_mass = 0;
+	inv_moment = glm::mat3(0);
+}
+
+ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons, float mass) {
+	buildFromPolygons(polygons);
+	inv_mass = 1.0f / mass;
+	inv_moment = glm::inverse(computeInertia(mass));
+}
+
+// Return the center of mass of this shape
+glm::vec3 ConvexPolyhedron::getCentroid() {
+	// Get a point on the inside
+	glm::vec3 inner_point(0, 0, 0);
+	for (const auto& v : vertex) {
+		inner_point += v;
+	}
+	inner_point /= vertex.size();
+	glm::vec3 centroid(0, 0, 0);
+	float  volume = 0;
+	for (const auto& f : face) {
+		for (int k = 1; k < f.size() - 1; k++) {
+			glm::vec3& a = vertex[f[0]];
+			glm::vec3& b = vertex[f[k]];
+			glm::vec3& c = vertex[f[k + 1]];
+			glm::vec3& d = inner_point;
+			float vol = computeTetraVolume(a, b, c, d);
+			glm::vec3 ctr = computeTetraCentroid(a, b, c, d);
+			volume += vol;
+			centroid += ctr * vol;
+		}
+	}
+	return centroid / volume;
+
+}
+
+// Moves this shape so the origin aligns with the centroid and returns the move that was made
+glm::vec3 ConvexPolyhedron::centerOnCentroid() {
+	glm::vec3 centroid = getCentroid();
+	for (glm::vec3& v : vertex) {
+		v -= centroid;
+	}
+	return -centroid;
+}
+
 float ConvexPolyhedron::getVolume() {
 	// Get a point on the inside
 	glm::vec3 inner_point(0, 0, 0);
@@ -323,6 +416,17 @@ ConvexPolyhedron ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3
 	return ConvexPolyhedron(vertices, faces, mass);
 }
 
+
+// Builds an approximate convex hull of the given model with up to the given number of faces
+	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
+ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces, int detail_level){
+	std::vector<glm::dvec3> points ;
+	for(auto& v : model->vertices){
+		points.emplace_back(v.position) ;
+	}
+	std::vector<Polygon> poly = Polygon::buildApproximateHull(points,hull_faces,detail_level) ;
+	return ConvexPolyhedron(poly,mass) ;
+}
 
 
 int64_t Collision::getHash() const {
