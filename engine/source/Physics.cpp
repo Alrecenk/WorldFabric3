@@ -374,6 +374,53 @@ bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm
 }
 
 
+// return the volume of the given tetrahedron
+float computeTetraVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d) {
+	return fabs(glm::dot(a - d, glm::cross(b - d, c - d))) / 6.0f;
+}
+
+// Returns the center of mass of the given tetrahedron
+glm::vec3 computeTetraCentroid(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d) {
+	return (a + b + c + d) / 4.0f;
+}
+
+// Returns the inertia tensor of the given tetrahedron about the origin
+glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C, const glm::vec3& D) {
+	// pulled from "Explicit Exact Formulas for the 3D tetrahedron inertia tensor in terms of vertex coordinates"
+	// by F. Tonon, Journal of Mathematics and Statistics
+
+	const double x1 = A.x, y1 = A.y, z1 = A.z;
+	const double x2 = B.x, y2 = B.y, z2 = B.z;
+	const double x3 = C.x, y3 = C.y, z3 = C.z;
+	const double x4 = D.x, y4 = D.y, z4 = D.z;
+	double mu = 6.0 * mass;
+
+	double x_group = x1 * x1 + x1 * x2 + x2 * x2 + x1 * x3 + x2 * x3 + x3 * x3 + x1 * x4 + x2 * x4 + x3 * x4 + x4 * x4;
+	double y_group = y1 * y1 + y1 * y2 + y2 * y2 + y1 * y3 + y2 * y3 + y3 * y3 + y1 * y4 + y2 * y4 + y3 * y4 + y4 * y4;
+	double z_group = z1 * z1 + z1 * z2 + z2 * z2 + z1 * z3 + z2 * z3 + z3 * z3 + z1 * z4 + z2 * z4 + z3 * z4 + z4 * z4;
+
+	double a = mu * (y_group + z_group) / 60.0;
+	double b = mu * (x_group + z_group) / 60.0;
+	double c = mu * (x_group + y_group) / 60.0;
+
+	double ap = mu * (2 * y1 * z1 + y2 * z1 + y3 * z1 + y4 * z1 + y1 * z2 + 2 * y2 * z2 + y3 * z2 + y4 * z2 + y1 * z3 + y2 * z3 + 2 * y3 * z3 + y4 * z3 + y1 * z4 + y2 * z4 + y3 * z4 + 2 * y4 * z4) / 120.0;
+	double bp = mu * (2 * x1 * z1 + x2 * z1 + x3 * z1 + x4 * z1 + x1 * z2 + 2 * x2 * z2 + x3 * z2 + x4 * z2 + x1 * z3 + x2 * z3 + 2 * x3 * z3 + x4 * z3 + x1 * z4 + x2 * z4 + x3 * z4 + 2 * x4 * z4) / 120.0;
+	double cp = mu * (2 * x1 * y1 + x2 * y1 + x3 * y1 + x4 * y1 + x1 * y2 + 2 * x2 * y2 + x3 * y2 + x4 * y2 + x1 * y3 + x2 * y3 + 2 * x3 * y3 + x4 * y3 + x1 * y4 + x2 * y4 + x3 * y4 + 2 * x4 * y4) / 120.0;
+
+	glm::mat3 J;
+	J[0][0] = (float)a;
+	J[0][1] = (float)-bp;
+	J[0][2] = (float)-cp;
+	J[1][0] = (float)-bp;
+	J[1][1] = (float)b;
+	J[1][2] = (float)-ap;
+	J[2][0] = (float)-cp;
+	J[2][1] = (float)-ap;
+	J[2][2] = (float)c;
+
+	return J;
+}
+
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
 SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B) {
@@ -406,7 +453,7 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B) {
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B, int max_iterations) {
 	// arbitrary first direction
 	glm::vec3 search_direction = glm::vec3(1, 0, 0);
 	const glm::vec3 origin(0, 0, 0);
@@ -439,7 +486,7 @@ std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody
 
 	std::vector<SupportTriangle> simplex = buildSupportSimplex(first_triangle, p3);
 
-	for (int iter = 0; iter < MAX_GJK_ITERATIONS; iter++) {
+	for (int iter = 0; iter < max_iterations; iter++) {
 		bool found_triangle = false;
 		for (int k = 1; k < 4; k++) { // First triangle always what simpex was built from andwill always face out
 			if (simplex[k].signedDistance(origin) > 0) {
@@ -479,7 +526,7 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B) {
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
 	polytope = collision_result;
@@ -504,7 +551,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 		float signed_distance = active_face.signedDistance(new_point.x);
 		//printf("D:%f\n", selected_distance) ;
 		//Expansion didn't expand means we've reached closest surface face
-		if (signed_distance < 1e-4f || iterations == MAX_GJK_ITERATIONS) {
+		if (signed_distance < 1e-4f || iterations == max_iterations) {
 			/*if(iterations ==MAX_GJK_ITERATIONS){
 				printf("Hit max iterations in EPA!\n");
 			}*/

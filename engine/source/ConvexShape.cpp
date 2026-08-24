@@ -55,7 +55,7 @@ ConvexShape::ConvexShape(std::vector<Polygon>& polygons){
         }
     }
 
-    //flip any faces pointing inward (Polygon doesn't have a winding oder gurantee)
+    //flip any faces pointing inward (Polygon doesn't have a winding oder guarantee)
     for(int k=0;k<face.size();k++){
         //printf("fs:%d\n",(int)face.size() );
         vec3& A = vertex[face[k][0]] ;

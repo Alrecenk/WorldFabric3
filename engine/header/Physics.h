@@ -249,11 +249,18 @@ class SinglePointCollision : public ConstraintSet {
 
 };
 
-
 //Returns if two axis aligned bounding boxes intersect
 bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
 
-static inline const int MAX_GJK_ITERATIONS = 10;
+// return the volume of the given tetrahedron
+float computeTetraVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);
+
+// Returns the center of mass of the given tetrahedron assuming uniform density
+glm::vec3 computeTetraCentroid(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);
+
+// Returns the inertia tensor of the given tetrahedron about the origin assuming a uniform density
+glm::mat3 computeTetraInertia(const float mass, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);
+
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
@@ -267,14 +274,14 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B);
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B, int max_iterations = 10);
 
 //Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
 void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B);
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
 
 } // end namespace physics
 
