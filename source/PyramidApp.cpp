@@ -1,12 +1,12 @@
-#include "ConstraintTestApp.h"
+#include "PyramidApp.h"
 #include "ParticlePlugin.h"
 #include "ScenePlugin.h"
 #include "FlagSet.h"
 
-ConstraintTestApp::ConstraintTestApp() {}
+PyramidApp::PyramidApp() {}
 
 // Called when switching into this state before the first time run is called
-void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
+void PyramidApp::enter(std::shared_ptr<MachineState> from) {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
@@ -31,65 +31,80 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
 
-	cell = std::make_shared<Physics::SimpleLocalPhysicsCell>() ;
+	cell = std::make_shared<Physics::SimpleLocalPhysicsCell>();
 
-	float ball_radius = 0.5f ;
-	float ball_mass = 1.0f ;
+	float ball_radius = 0.5f;
+	float ball_mass = 1.0f;
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
-	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius)) ;
-	ball_type = cell->addType(ball_shape, BALL_MODEL,transform, 0.6f, 0.6f) ;
+	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius));
+	ball_type = cell->addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
+
+	float box_mass = 2.0f;
+	float box_size = 1.0f;
 	
-	float box_size = 1.0f ;
-	float box_mass = 2.0f ;
+	scene->createModelSet(BOX_MODEL, BOX_MODEL, true);
+	std::shared_ptr<GLTF> box_model = scene->getModelController(BOX_MODEL);
+	
+	float box_scale = box_size / (box_model->max.x - box_model->min.x) ;
+	printf("box_scale: %f\n", box_scale) ;
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(box_scale, box_scale, box_scale));
 	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
-	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
-	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
-	scene->createModelSet("box", box, false, false);
-	transform = glm::mat4(1.0f);
-	box_type = cell->addType(box_shape, "box", transform,0.4f,0.6f );
+	box_type = cell->addType(box_shape, BOX_MODEL, transform, 0.1f, 0.7f);
 
-	float wall_size = 30.0f ;
+
+	float wall_size = 50.0f;
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(1, 1, 1, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_type = cell->addType(wall_shape, "wall", transform,0.6f,0.6f);
+	transform = glm::mat4(1.0f) ;
+	wall_type = cell->addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
-	float rod_mass = 2.0f ;
+	float rod_mass = 2.0f;
 	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
-	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f,0.1f,0.5f,0.5f));
+	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
 	scene->createModelSet("rod", model, false, true);
-	rod_type = cell->addType(rod_shape, "rod", transform, 0.4f,0.2f);
+	transform = glm::mat4(1.0f);
+	rod_type = cell->addType(rod_shape, "rod", transform, 0.4f, 0.2f);
 
 
 	float jar_mass = 2.0f;
-	float jar_scale = 0.6f ;
+	float jar_scale = 0.6f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(jar_scale, jar_scale, jar_scale));
 	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
 	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
 	std::shared_ptr<Physics::ConvexPolyhedron> jar_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeApproximateHull(jar_model, jar_mass));
-	jar_shape = std::make_shared<Physics::ConvexPolyhedron>(*(jar_shape.get()),transform, jar_mass) ;
-	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
-	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
-	//scene->createModelSet("jar", model2, false, true);
-	jar_type = cell->addType(jar_shape, JAR_MODEL, transform, 0.1f,0.6f);
-	
+	jar_shape = std::make_shared<Physics::ConvexPolyhedron>(*(jar_shape.get()), transform, jar_mass);
+	jar_type = cell->addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
 
-	// Add the container blocks
+
+	// Add the floor
 	glm::vec3 mid = (min + max) * 0.5f;
-	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
-	cell->add(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z));
-	cell->add(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z));
-	cell->add(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f));
-	cell->add(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f));
+	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z));
+
+
+	//Build the pyramid
+	int max_height = 10 ;
+	
+	for(int height = 0; height < max_height; height++){
+	int width = max_height- height ;
+		for(int x = 0; x < width; x++){
+		for (int z = 0; z < width; z++) {
+			glm::vec3 pos ;
+			pos.y =  height * box_size*1.01f + min.y + box_size*0.5f ;
+			pos.x = (x+ 0.5f - width*0.5f) * box_size*1.01f ;
+			pos.z = (z + 0.5f - width * 0.5f) * box_size*1.01f;
+			auto id = cell->add(box_type, pos);
+		}}
+	}
 
 }
 
 //Called every frame while the state is active
-void ConstraintTestApp::run() {
+void PyramidApp::run() {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
@@ -97,18 +112,18 @@ void ConstraintTestApp::run() {
 	// Get the current time and time slice of the frame
 	current_time = now();
 	float dt = microsBetween(last_run_time, current_time) / 1000000.0f;
-	
-	if(dt <= 0.001f || dt > 0.5f){ 
-		dt = 0.001f ; // don't move on frames where something is amiss with the clock
+
+	if (dt <= 0.001f || dt > 0.5f) {
+		dt = 0.001f; // don't move on frames where something is amiss with the clock
 	}
-	
+
 	last_run_time = current_time;
 
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
 
-	float t = -1 ; // TODO implement raytracing to make balls clickable
+	float t = -1; // TODO implement raytracing to make balls clickable
 	//Place the mouse particle
 	glm::vec3 mouse_position;
 	if (t > 0) { // collision
@@ -130,25 +145,28 @@ void ConstraintTestApp::run() {
 	cell->updateGraphics();
 
 
-	if(millisBetween(last_ball_time,current_time) > millis_between_balls && cell->bodies.size() < max_balls){
-		last_ball_time = current_time ;
+	/*
+	if (millisBetween(last_ball_time, current_time) > millis_between_balls && cell->bodies.size() < max_balls) {
+		last_ball_time = current_time;
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
-		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f+randomFloat() * 4.0f};
-		glm::mat4 r= glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds()*0.002),glm::vec3(0,1,0)) ;
-		pos = r * glm::vec4(pos,1) ;
-		vel = r * glm::vec4(vel,0);
-		float rand = randomFloat() ;
-		int type = ball_type ;
-		if(rand < 0.2f){
-			type = box_type ;
-		}else if(rand < 0.35f){
-			type = rod_type ;
-		}else if(rand< 0.65){
-			type = jar_type ;
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
+		glm::mat4 r = glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds() * 0.002), glm::vec3(0, 1, 0));
+		pos = r * glm::vec4(pos, 1);
+		vel = r * glm::vec4(vel, 0);
+		float rand = randomFloat();
+		int type = ball_type;
+		if (rand < 0.2f) {
+			type = box_type;
 		}
-		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
+		else if (rand < 0.35f) {
+			type = rod_type;
+		}
+		else if (rand < 0.65) {
+			type = jar_type;
+		}
+		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f));
 	}
-
+	*/
 
 	// Check if escape pressed to exit
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
@@ -157,13 +175,13 @@ void ConstraintTestApp::run() {
 }
 
 // Called when switching out of this state after the last time run is called
-void ConstraintTestApp::exit(std::shared_ptr<MachineState> to) {
+void PyramidApp::exit(std::shared_ptr<MachineState> to) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	particles->destroyParticle(mouse_particle_id);
 }
 
-void ConstraintTestApp::updateCamera() {
+void PyramidApp::updateCamera() {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	if (window->mouseDown(3)) { // right mouse button

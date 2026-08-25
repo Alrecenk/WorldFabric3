@@ -1,4 +1,5 @@
 #include "Physics.h"
+#include "ScenePlugin.h"
 
 namespace Physics{
 
@@ -431,6 +432,7 @@ ConvexPolyhedron ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3
 // Builds an approximate convex hull of the given model with up to the given number of faces
 	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces, int detail_level){
+	model->applyTransforms();
 	std::vector<glm::dvec3> points ;
 	for(auto& v : model->vertices){
 		points.emplace_back(v.transformed_position) ;
@@ -441,7 +443,7 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 
 
 int64_t Collision::getHash() const {
-	return hashBytes(serialize(id1, id2, CONSTRAINT_TYPE));
+	return getHash(id1, id2, CONSTRAINT_TYPE);
 }
 bool Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -456,7 +458,7 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	}
 
 	//Bias against penetration with spring force
-	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, glm::length(penetration.x) - allowed_collision_depth);
+	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
 	return true ; // TODO compute if still relevant
@@ -566,6 +568,21 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 
 }
 
+//Retargets this constraint to the objects after it has moved
+bool Collision::retargetConstraint(PhysicsContainer* cell){
+	glm::vec3 a =cell->getBody(id1)->pose * glm::vec4(local_a,1) ;
+	glm::vec3 b = cell->getBody(id2)->pose * glm::vec4(local_b, 1);
+	glm::vec3 x = a-b ;
+	float new_depth = glm::length(x);
+	glm::vec3 new_normal = x/new_depth ;
+	if(glm::dot(normal,new_normal) < retarget_normal_alignment_minimum){
+		return false ;
+	}
+	point = (a+b)*0.5f ;
+	penetration_depth = new_depth ;
+	return true ;
+}
+
 
 //Returns an identifying hash that can be used to group constraints into this set
 int64_t SinglePointCollision::getHash() const{
@@ -573,14 +590,18 @@ int64_t SinglePointCollision::getHash() const{
 }
 
 //Add a constraint to this set
-void SinglePointCollision::addConstraint(const Constraint& new_constraint){
-	point = static_cast<const Collision&>(new_constraint) ;
+void SinglePointCollision::addConstraint(PhysicsContainer* cell, Constraint& new_constraint){
+	Collision& new_point = static_cast<Collision&>(new_constraint) ;
+	new_point.warm_impulse = point.warm_impulse;
+	new_point.warm_tangent_impulse = point.warm_tangent_impulse ;
+	point = new_point ;
 }
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
 bool SinglePointCollision::updateConstraints(PhysicsContainer* cell){
-	point.updateConstraint(cell);
+	return point.updateConstraint(cell);
+	
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
@@ -592,6 +613,74 @@ void SinglePointCollision::applyWarmingImpulses(PhysicsContainer* cell){
 void SinglePointCollision::applyConstraints(PhysicsContainer* cell){
 	point.applyConstraint(cell);
 }
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t ManifoldCollision::getHash() const {
+	return hash ;
+}
+
+//Add a constraint to this set
+void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_constraint) {
+	Collision& new_point = static_cast<Collision&>(new_constraint);
+	std::vector<int> to_keep;
+	int closest = -1 ;
+	float cd2 = FLT_MAX ;
+	
+	for(int k=0;k<points.size();k++){
+		bool valid = points[k].retargetConstraint(cell);
+		if(valid){
+			to_keep.push_back(k);
+			if (glm::distance2(points[k].point, new_point.point) < cd2) {
+				closest = k ;
+			}
+		}
+	}
+
+	//Point is so close it's the same point
+	if(closest >= 0 && cd2 < squared_distance_for_match){
+		points[closest].local_a = new_point.local_a ;
+		points[closest].local_b = new_point.local_b; // overwrite with new point 
+		points[closest].point= new_point.point;
+		points[closest].normal = new_point.normal; 
+		// but carry over warm impulses
+	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision
+		points[closest] = new_point ; // overwrite with new point
+		// dont carry over warm impulses
+	}else{ //We can have a totally new point
+		to_keep.push_back((int)points.size()) ;
+		points.push_back(new_point);
+	}
+
+	std::vector<Collision> new_points;
+	for(int k : to_keep){
+		new_points.push_back(points[k]) ;
+	}
+	points = new_points ;
+	
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+bool ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.updateConstraint(cell);
+	}
+	return true ;
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void ManifoldCollision::applyWarmingImpulses(PhysicsContainer* cell) {
+	for(auto&p : points){
+		p.applyWarmingImpulse(cell);
+	}
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
+	for(auto& p : points){
+		p.applyConstraint(cell);
+	}
+}	
 
 
 Sphere::Sphere(float r, float m){
@@ -852,5 +941,148 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 	}
 
 }
+
+SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {}
+
+//Custom destructor cleans up scene instance
+SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, type_sceneid] : instance) {
+		scene->deleteInstance(type_sceneid.second);
+	}
+}
+
+int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { shape, model, transform, elasticity, friction };
+	return id;
+}
+
+int64_t SimpleLocalPhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) {
+	int64_t id = next_object_id++;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	instance[id] = { type, scene->createInstance(types[type].model, glm::mat4(0)) };
+	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
+	bodies[id]->elasticity = types[type].elasticity;
+	bodies[id]->friction = types[type].friction;
+	return id;
+}
+
+Physics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
+	auto iter = bodies.find(id);
+	if (iter != bodies.end()) {
+		return iter->second.get();
+	}
+	else {
+		return nullptr;
+	}
+}
+
+//Consraint id should be a hash of the involved bodies and the type of constraint
+Physics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
+	auto iter = constraints.find(id);
+	if (iter != constraints.end()) {
+		return iter->second.get();
+	}
+	else {
+		return nullptr;
+	}
+}
+
+//Finds all collisions of the balls with each other and the walls of the cell
+//Creates or destroys constraints so the contents of constraints matches the current collisions
+//Also sets points and normal for collisions
+void SimpleLocalPhysicsCell::updateCollisions() {
+	std::unordered_set<int64_t> found_constraints;
+	for (auto& [id1, body_1] : bodies) {
+		//Ball to ball collisions
+		for (auto& [id2, body_2] : bodies) {
+			if (id1 < id2 && // only check each pair once
+				(body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0) && // only check if one is moveable
+				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+				auto simplex = Physics::detectCollision(body_1.get(), body_2.get());
+				if (simplex.size() > 0) {
+					Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_2.get());
+					if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+						glm::vec3 point = (sp.a + sp.b) * 0.5f;
+						glm::vec3 normal = glm::normalize(sp.x);
+
+						normal = glm::normalize(normal);
+						int64_t constraint_id = Collision::getHash(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
+						found_constraints.insert(constraint_id); // track found so we can remove not found
+						
+						std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
+						constraint->id1 = id1;
+						constraint->id2 = id2;
+						constraint->point = point;
+						constraint->normal = normal;
+						constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
+						constraint->local_b = body_2->inv_pose * glm::vec4(sp.b, 1) ;
+						constraint->penetration_depth = glm::length(sp.x) ;
+
+						if(constraints.find(constraint_id) == constraints.end()){
+							constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
+							//constraints[constraint_id] = std::make_shared<SinglePointCollision>();
+						}
+
+						constraints[constraint_id]->addConstraint(this, *constraint.get()) ;
+						
+					}
+				}
+			}
+		}
+
+	}
+
+	//Delete existing constraints not found now
+	std::vector<int64_t> to_delete;
+	for (auto& [id, constraint] : constraints) {
+		if (found_constraints.find(id) == found_constraints.end()) {
+			to_delete.push_back(id);
+		}
+	}
+	for (auto& id : to_delete) {
+		constraints.erase(id);
+	}
+}
+
+//Run physics forward one frame
+void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
+	for (auto& [id, body] : bodies) {
+		body->integrateAcceleration(acceleration, dt);
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->updateConstraints(this);
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->applyWarmingImpulses(this);
+	}
+	for (int i = 0; i < constraints_iter; i++) {
+		for (auto& [id, constraint] : constraints) {
+			constraint->applyConstraints(this);
+		}
+	}
+	for (auto& [id, ball] : bodies) {
+		ball->integrateVelocity(dt);
+	}
+	updateCollisions();
+}
+
+//Uses types to render all objects with the scene plugin
+void SimpleLocalPhysicsCell::updateGraphics() {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, ball] : bodies) {
+		if (id > 0) { // it's a ball
+			auto iter = instance.find(id);
+			glm::mat4 pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, ball->position);
+			pose = pose * glm::mat4_cast(ball->orientation);
+			pose = pose * types[iter->second.first].render_transform;
+			scene->setPose(instance[id].second, pose);
+		}
+	}
+}
+
 
 } // end namespace Physics

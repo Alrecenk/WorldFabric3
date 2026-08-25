@@ -132,8 +132,8 @@ public:
 	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
-	float drag = 0.03f ;
-	float angular_drag = 0.03f ;
+	float drag = 0.05f ;
+	float angular_drag = 0.05f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	glm::mat3 inv_moment ;
@@ -184,7 +184,7 @@ public:
 	virtual int64_t getHash() const = 0 ;
 	
 	//Add a constraint to this set
-	virtual void addConstraint(const Constraint& new_constraint) = 0 ;
+	virtual void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) = 0 ;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
@@ -249,33 +249,74 @@ public:
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
 	glm::vec3 point; // middle point of collision
-	glm::vec3 normal; // normal points from ball 1 to ball 2
-	
-
+	glm::vec3 normal; // normal points from object 1 to object 2, doesn ot change
+	glm::vec3 local_a ; // point on surface of a in A's local coordinates
+	glm::vec3 local_b ; // point on surface of b in B's local coordinates
+	float penetration_depth = 0;
 	float target = 0;
-	SupportPoint penetration ;
 	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
 	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.05f;
+	static inline float allowed_collision_depth = 0.02f;
 	static inline float min_velocity_for_elastic = 0.1f;
+	static inline float retarget_normal_alignment_minimum = 0.95f ;
+
+	static int64_t getHash(int64_t id1, int64_t id2, int constraint_type) {
+		return hashBytes(serialize(id1, id2, constraint_type));
+	}
+
 
 	int64_t getHash() const override;
+
+
 	bool updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
+
+	//Retargets this constraint to the objects after they have moved
+	//Returns whether constraint is still valid
+	bool retargetConstraint(PhysicsContainer* cell) ;
 };
 
 //A simple collision that uses a single point and does not maintain a manifold
 class SinglePointCollision : public ConstraintSet {
+public:
 	Collision point;
 
 	//Returns an identifying hash that can be used to group constraints into this set
 	int64_t getHash() const override;
 
 	//Add a constraint to this set
-	void addConstraint(const Constraint& new_constraint) override;
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	bool updateConstraints(PhysicsContainer* cell) override;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	void applyWarmingImpulses(PhysicsContainer* cell) override;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	void applyConstraints(PhysicsContainer* cell) override;
+
+};
+
+//A simple collision that uses a single point and does not maintain a manifold
+class ManifoldCollision : public ConstraintSet {
+public:
+	int64_t hash ;
+	std::vector<Collision> points;
+	static inline float squared_distance_for_match = 1e-5f ;
+	static inline int max_collision_points = 4 ;
+
+	ManifoldCollision(int64_t h): hash(h){};
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	int64_t getHash() const override;
+
+	//Add a constraint to this set
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
@@ -322,6 +363,65 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
+
+class SimpleLocalPhysicsCell : PhysicsContainer {
+public:
+
+	class ObjectType {
+	public:
+		std::shared_ptr<Physics::ConvexShape> shape;
+		std::string model;
+		glm::mat4 render_transform;
+		float elasticity;
+		float friction;
+	};
+
+	//Bounding box of cell
+	glm::vec3 acceleration = glm::vec3(0, -10, 0);
+
+	//Contents of cell
+	std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies;
+	std::unordered_map<int64_t, std::shared_ptr<Physics::ConstraintSet>> constraints;
+	std::unordered_map<int, ObjectType> types;
+
+	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
+
+	int next_object_id = 1;
+	int next_type_id = 1;
+
+	SimpleLocalPhysicsCell();
+
+	//Custom destructor cleans up scene instance
+	~SimpleLocalPhysicsCell();
+
+	int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+	int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
+
+	//Ball ids are allocated one after another and are always positive
+	Physics::RigidBody* getBody(int64_t id) override;
+
+	//Constraint id is a hash generated with getConstraintID
+	Physics::ConstraintSet* getConstraintSet(int64_t id);
+
+
+	//Finds all collisions of the balls with each other and the walls of the cell
+	//Creates or destroys constraints so the contents of constraints matches the current collisions
+	//Also sets points and normal for collisions
+	void updateCollisions();
+
+	//Run physics forward one frame
+	void runPhysicsFrame(float dt, int constraints_iter);
+
+	//Uses types to render all objects with the scene plugin
+	void updateGraphics();
+
+};
+
+
+
+
+
 
 } // end namespace physics
 
