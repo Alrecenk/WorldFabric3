@@ -184,7 +184,7 @@ public:
 	virtual int64_t getHash() const = 0 ;
 	
 	//Add a constraint to this set
-	virtual void addConstraint(const Constraint& new_constraint) = 0 ;
+	virtual void addConstraint(Constraint& new_constraint) = 0 ;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
@@ -282,7 +282,7 @@ class SinglePointCollision : public ConstraintSet {
 	int64_t getHash() const override;
 
 	//Add a constraint to this set
-	void addConstraint(const Constraint& new_constraint) override;
+	void addConstraint(Constraint& new_constraint) override;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
@@ -347,7 +347,7 @@ public:
 
 	//Contents of cell
 	std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies;
-	std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
+	std::unordered_map<int64_t, std::shared_ptr<Physics::ConstraintSet>> constraints;
 	std::unordered_map<int, ObjectType> types;
 
 	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
@@ -368,7 +368,7 @@ public:
 	Physics::RigidBody* getBody(int64_t id) override;
 
 	//Constraint id is a hash generated with getConstraintID
-	Physics::Constraint* getConstraint(int64_t id);
+	Physics::ConstraintSet* getConstraintSet(int64_t id);
 
 
 	//Finds all collisions of the balls with each other and the walls of the cell

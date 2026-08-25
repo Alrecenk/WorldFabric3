@@ -575,14 +575,18 @@ int64_t SinglePointCollision::getHash() const{
 }
 
 //Add a constraint to this set
-void SinglePointCollision::addConstraint(const Constraint& new_constraint){
-	point = static_cast<const Collision&>(new_constraint) ;
+void SinglePointCollision::addConstraint(Constraint& new_constraint){
+	Collision& new_point = static_cast<Collision&>(new_constraint) ;
+	new_point.warm_impulse = point.warm_impulse;
+	new_point.warm_tangent_impulse = point.warm_tangent_impulse ;
+	point = new_point ;
 }
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
 bool SinglePointCollision::updateConstraints(PhysicsContainer* cell){
-	point.updateConstraint(cell);
+	return point.updateConstraint(cell);
+	
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
@@ -893,7 +897,7 @@ Physics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
 }
 
 //Consraint id should be a hash of the involved bodies and the type of constraint
-Physics::Constraint* SimpleLocalPhysicsCell::getConstraint(int64_t id) {
+Physics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
 	auto iter = constraints.find(id);
 	if (iter != constraints.end()) {
 		return iter->second.get();
@@ -924,22 +928,20 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 						normal = glm::normalize(normal);
 						int64_t constraint_id = Collision::getHash(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
 						found_constraints.insert(constraint_id); // track found so we can remove not found
-						auto iter = constraints.find(constraint_id);
-						std::shared_ptr<Physics::Collision> constraint;
-						//Add constraint if it doesn't exist already
-						if (iter == constraints.end()) {
-							constraint = std::make_shared<Physics::Collision>();
-							constraints[constraint_id] = constraint;
-						}
-						else {
-							constraint = static_pointer_cast<Physics::Collision>(iter->second);
-						}
-						//update constraint data
+						
+						std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
 						constraint->id1 = id1;
 						constraint->id2 = id2;
 						constraint->point = point;
 						constraint->normal = normal;
 						constraint->penetration = sp;
+
+						if(constraints.find(constraint_id) == constraints.end()){
+							constraints[constraint_id] = std::make_shared<SinglePointCollision>() ;
+						}
+
+						constraints[constraint_id]->addConstraint(*constraint.get()) ;
+						
 					}
 				}
 			}
@@ -965,14 +967,14 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 		body->integrateAcceleration(acceleration, dt);
 	}
 	for (auto& [id, constraint] : constraints) {
-		constraint->updateConstraint(this);
+		constraint->updateConstraints(this);
 	}
 	for (auto& [id, constraint] : constraints) {
-		constraint->applyWarmingImpulse(this);
+		constraint->applyWarmingImpulses(this);
 	}
 	for (int i = 0; i < constraints_iter; i++) {
 		for (auto& [id, constraint] : constraints) {
-			constraint->applyConstraint(this);
+			constraint->applyConstraints(this);
 		}
 	}
 	for (auto& [id, ball] : bodies) {
