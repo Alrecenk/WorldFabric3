@@ -184,7 +184,7 @@ public:
 	virtual int64_t getHash() const = 0 ;
 	
 	//Add a constraint to this set
-	virtual void addConstraint(Constraint& new_constraint) = 0 ;
+	virtual void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) = 0 ;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
@@ -249,17 +249,18 @@ public:
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
 	glm::vec3 point; // middle point of collision
-	glm::vec3 normal; // normal points from ball 1 to ball 2
-	
-
+	glm::vec3 normal; // normal points from object 1 to object 2, doesn ot change
+	glm::vec3 local_a ; // point on surface of a in A's local coordinates
+	glm::vec3 local_b ; // point on surface of b in B's local coordinates
+	float penetration_depth = 0;
 	float target = 0;
-	SupportPoint penetration ;
 	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
 	static inline float penetration_spring_coefficient = 10.0f;
 	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
+	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
 	static int64_t getHash(int64_t id1, int64_t id2, int constraint_type) {
 		return hashBytes(serialize(id1, id2, constraint_type));
@@ -272,17 +273,50 @@ public:
 	bool updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
+
+	//Retargets this constraint to the objects after they have moved
+	//Returns whether constraint is still valid
+	bool retargetConstraint(PhysicsContainer* cell) ;
 };
 
 //A simple collision that uses a single point and does not maintain a manifold
 class SinglePointCollision : public ConstraintSet {
+public:
 	Collision point;
 
 	//Returns an identifying hash that can be used to group constraints into this set
 	int64_t getHash() const override;
 
 	//Add a constraint to this set
-	void addConstraint(Constraint& new_constraint) override;
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	bool updateConstraints(PhysicsContainer* cell) override;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	void applyWarmingImpulses(PhysicsContainer* cell) override;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	void applyConstraints(PhysicsContainer* cell) override;
+
+};
+
+//A simple collision that uses a single point and does not maintain a manifold
+class ManifoldCollision : public ConstraintSet {
+public:
+	int64_t hash ;
+	std::vector<Collision> points;
+	static inline float squared_distance_for_match = 1e-7f ;
+	static inline int max_collision_points = 4 ;
+
+	ManifoldCollision(int64_t h): hash(h){};
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	int64_t getHash() const override;
+
+	//Add a constraint to this set
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all

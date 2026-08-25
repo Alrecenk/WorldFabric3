@@ -458,7 +458,7 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	}
 
 	//Bias against penetration with spring force
-	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, glm::length(penetration.x) - allowed_collision_depth);
+	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
 	return true ; // TODO compute if still relevant
@@ -568,6 +568,21 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 
 }
 
+//Retargets this constraint to the objects after it has moved
+bool Collision::retargetConstraint(PhysicsContainer* cell){
+	glm::vec3 a =cell->getBody(id1)->pose * glm::vec4(local_a,1) ;
+	glm::vec3 b = cell->getBody(id2)->pose * glm::vec4(local_b, 1);
+	glm::vec3 x = a-b ;
+	float new_depth = glm::length(x);
+	glm::vec3 new_normal = x/new_depth ;
+	if(glm::dot(normal,new_normal) < retarget_normal_alignment_minimum){
+		return false ;
+	}
+	point = (a+b)*0.5f ;
+	penetration_depth = new_depth ;
+	return true ;
+}
+
 
 //Returns an identifying hash that can be used to group constraints into this set
 int64_t SinglePointCollision::getHash() const{
@@ -575,7 +590,7 @@ int64_t SinglePointCollision::getHash() const{
 }
 
 //Add a constraint to this set
-void SinglePointCollision::addConstraint(Constraint& new_constraint){
+void SinglePointCollision::addConstraint(PhysicsContainer* cell, Constraint& new_constraint){
 	Collision& new_point = static_cast<Collision&>(new_constraint) ;
 	new_point.warm_impulse = point.warm_impulse;
 	new_point.warm_tangent_impulse = point.warm_tangent_impulse ;
@@ -598,6 +613,74 @@ void SinglePointCollision::applyWarmingImpulses(PhysicsContainer* cell){
 void SinglePointCollision::applyConstraints(PhysicsContainer* cell){
 	point.applyConstraint(cell);
 }
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t ManifoldCollision::getHash() const {
+	return hash ;
+}
+
+//Add a constraint to this set
+void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_constraint) {
+	Collision& new_point = static_cast<Collision&>(new_constraint);
+	std::vector<int> to_keep;
+	int closest = -1 ;
+	float cd2 = FLT_MAX ;
+	
+	for(int k=0;k<points.size();k++){
+		bool valid = points[k].retargetConstraint(cell);
+		if(valid){
+			to_keep.push_back(k);
+			if (glm::distance2(points[k].point, new_point.point) < cd2) {
+				closest = k ;
+			}
+		}
+	}
+
+	//Point is so close it's the same point
+	if(cd2 < squared_distance_for_match){
+		points[closest].local_a = new_point.local_a ;
+		points[closest].local_b = new_point.local_b; // overwrite with new point 
+		points[closest].point= new_point.point;
+		points[closest].normal = new_point.normal; 
+		// but carry over warm impulses
+	}else if(points.size() >= max_collision_points){ // Too many collision
+		points[closest] = new_point ; // overwrite with new point
+		// dont carry over warm impulses
+	}else{ //We can have a totally new point
+		to_keep.push_back((int)points.size()) ;
+		points.push_back(new_point);
+	}
+
+	std::vector<Collision> new_points;
+	for(int k : to_keep){
+		new_points.push_back(points[k]) ;
+	}
+	points = new_points ;
+	
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+bool ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.updateConstraint(cell);
+	}
+	return true ;
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void ManifoldCollision::applyWarmingImpulses(PhysicsContainer* cell) {
+	for(auto&p : points){
+		p.applyWarmingImpulse(cell);
+	}
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
+	for(auto& p : points){
+		p.applyConstraint(cell);
+	}
+}	
 
 
 Sphere::Sphere(float r, float m){
@@ -934,13 +1017,15 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 						constraint->id2 = id2;
 						constraint->point = point;
 						constraint->normal = normal;
-						constraint->penetration = sp;
+						constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
+						constraint->local_b = body_2->inv_pose * glm::vec4(sp.b, 1) ;
+						constraint->penetration_depth = glm::length(sp.x) ;
 
 						if(constraints.find(constraint_id) == constraints.end()){
-							constraints[constraint_id] = std::make_shared<SinglePointCollision>() ;
+							constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
 						}
 
-						constraints[constraint_id]->addConstraint(*constraint.get()) ;
+						constraints[constraint_id]->addConstraint(this, *constraint.get()) ;
 						
 					}
 				}
