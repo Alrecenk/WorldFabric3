@@ -442,7 +442,7 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 
 
 int64_t Collision::getHash() const {
-	return hashBytes(serialize(id1, id2, CONSTRAINT_TYPE));
+	return getHash(id1, id2, CONSTRAINT_TYPE);
 }
 bool Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -854,12 +854,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 
 }
 
-
-
-SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {
-
-
-}
+SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {}
 
 //Custom destructor cleans up scene instance
 SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
@@ -926,7 +921,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 						glm::vec3 normal = glm::normalize(sp.x);
 
 						normal = glm::normalize(normal);
-						int64_t constraint_id = getConstraintID(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
+						int64_t constraint_id = Collision::getHash(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
 						found_constraints.insert(constraint_id); // track found so we can remove not found
 						auto iter = constraints.find(constraint_id);
 						std::shared_ptr<Physics::Collision> constraint;
@@ -985,8 +980,7 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 	updateCollisions();
 }
 
-//Calls update graphics on all the balls
-//Also renders the box
+//Uses types to render all objects with the scene plugin
 void SimpleLocalPhysicsCell::updateGraphics() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	for (auto& [id, ball] : bodies) {

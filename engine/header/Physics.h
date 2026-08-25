@@ -261,7 +261,14 @@ public:
 	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 
+	static int64_t getHash(int64_t id1, int64_t id2, int constraint_type) {
+		return hashBytes(serialize(id1, id2, constraint_type));
+	}
+
+
 	int64_t getHash() const override;
+
+
 	bool updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
@@ -368,25 +375,17 @@ public:
 	//Constraint id is a hash generated with getConstraintID
 	Physics::Constraint* getConstraint(int64_t id);
 
-	int64_t getConstraintID(int64_t id1, int64_t id2, int constraint_type) {
-		return hashBytes(serialize(id1, id2, constraint_type));
-	}
 
 	//Finds all collisions of the balls with each other and the walls of the cell
 	//Creates or destroys constraints so the contents of constraints matches the current collisions
 	//Also sets points and normal for collisions
 	void updateCollisions();
 
-	//Convenience method to avoid repeatign code on all walls of the box
-	void updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints);
-
 	//Run physics forward one frame
 	void runPhysicsFrame(float dt, int constraints_iter);
 
-	//Calls update graphics on all the balls
-	//Also renders the box
+	//Uses types to render all objects with the scene plugin
 	void updateGraphics();
-
 
 };
 
