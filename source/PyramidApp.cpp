@@ -51,7 +51,7 @@ void PyramidApp::enter(std::shared_ptr<MachineState> from) {
 	printf("box_scale: %f\n", box_scale) ;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(box_scale, box_scale, box_scale));
 	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared< Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
-	box_type = cell->addType(box_shape, BOX_MODEL, transform, 0.1f, 0.6f);
+	box_type = cell->addType(box_shape, BOX_MODEL, transform, 0.1f, 0.7f);
 
 
 	float wall_size = 50.0f;

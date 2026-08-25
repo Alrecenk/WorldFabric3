@@ -637,13 +637,13 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 	}
 
 	//Point is so close it's the same point
-	if(cd2 < squared_distance_for_match){
+	if(closest >= 0 && cd2 < squared_distance_for_match){
 		points[closest].local_a = new_point.local_a ;
 		points[closest].local_b = new_point.local_b; // overwrite with new point 
 		points[closest].point= new_point.point;
 		points[closest].normal = new_point.normal; 
 		// but carry over warm impulses
-	}else if(points.size() >= max_collision_points){ // Too many collision
+	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision
 		points[closest] = new_point ; // overwrite with new point
 		// dont carry over warm impulses
 	}else{ //We can have a totally new point
@@ -1023,6 +1023,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 
 						if(constraints.find(constraint_id) == constraints.end()){
 							constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
+							//constraints[constraint_id] = std::make_shared<SinglePointCollision>();
 						}
 
 						constraints[constraint_id]->addConstraint(this, *constraint.get()) ;
