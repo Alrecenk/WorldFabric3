@@ -1551,6 +1551,9 @@
     <ClInclude Include="engine\header\Physics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="header\PyramidApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2162,6 +2165,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="engine\source\Physics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\PyramidApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

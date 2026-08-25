@@ -228,6 +228,7 @@
     <ClInclude Include="header\DevMenu.h" />
     <ClInclude Include="header\MapApp.h" />
     <ClInclude Include="header\MirrorApp.h" />
+    <ClInclude Include="header\PyramidApp.h" />
     <ClInclude Include="header\TraceApp.h" />
     <ClInclude Include="Narball\header\Ball.h" />
     <ClInclude Include="Narball\header\HighlightParticle.h" />
@@ -912,6 +913,7 @@
     <ClCompile Include="Narball\source\NarballGame.cpp" />
     <ClCompile Include="source\MirrorApp.cpp" />
     <ClCompile Include="source\PlaySong.cpp" />
+    <ClCompile Include="source\PyramidApp.cpp" />
     <ClCompile Include="source\SceneDemoApp.cpp" />
     <ClCompile Include="source\SceneDemoApp2.cpp" />
     <ClCompile Include="source\SocketTest.cpp" />

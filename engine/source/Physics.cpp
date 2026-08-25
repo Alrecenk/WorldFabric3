@@ -432,6 +432,7 @@ ConvexPolyhedron ConvexPolyhedron::makeTetra(glm::vec3 A, glm::vec3 B, glm::vec3
 // Builds an approximate convex hull of the given model with up to the given number of faces
 	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces, int detail_level){
+	model->applyTransforms();
 	std::vector<glm::dvec3> points ;
 	for(auto& v : model->vertices){
 		points.emplace_back(v.transformed_position) ;

@@ -330,11 +330,6 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
 
-
-
-
-
-
 class SimpleLocalPhysicsCell : PhysicsContainer {
 public:
 
