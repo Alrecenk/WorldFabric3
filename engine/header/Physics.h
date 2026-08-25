@@ -258,7 +258,7 @@ public:
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
 	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.01f;
+	static inline float allowed_collision_depth = 0.02f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
@@ -307,7 +307,7 @@ class ManifoldCollision : public ConstraintSet {
 public:
 	int64_t hash ;
 	std::vector<Collision> points;
-	static inline float squared_distance_for_match = 1e-6f ;
+	static inline float squared_distance_for_match = 1e-5f ;
 	static inline int max_collision_points = 4 ;
 
 	ManifoldCollision(int64_t h): hash(h){};

@@ -87,7 +87,7 @@ void PyramidApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	//Build the pyramid
-	int max_height = 6 ;
+	int max_height = 10 ;
 	
 	for(int height = 0; height < max_height; height++){
 	int width = max_height- height ;
