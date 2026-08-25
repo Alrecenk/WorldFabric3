@@ -323,6 +323,78 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
 
+
+
+
+
+
+class SimpleLocalPhysicsCell : PhysicsContainer {
+public:
+
+	class ObjectType {
+	public:
+		std::shared_ptr<Physics::ConvexShape> shape;
+		std::string model;
+		glm::mat4 render_transform;
+		float elasticity;
+		float friction;
+	};
+
+	//Bounding box of cell
+	glm::vec3 acceleration = glm::vec3(0, -10, 0);
+
+	//Contents of cell
+	std::unordered_map<int64_t, std::shared_ptr<Physics::RigidBody>> bodies;
+	std::unordered_map<int64_t, std::shared_ptr<Physics::Constraint>> constraints;
+	std::unordered_map<int, ObjectType> types;
+
+	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
+
+	int next_object_id = 1;
+	int next_type_id = 1;
+
+	SimpleLocalPhysicsCell();
+
+	//Custom destructor cleans up scene instance
+	~SimpleLocalPhysicsCell();
+
+	int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+	int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
+
+	//Ball ids are allocated one after another and are always positive
+	Physics::RigidBody* getBody(int64_t id) override;
+
+	//Constraint id is a hash generated with getConstraintID
+	Physics::Constraint* getConstraint(int64_t id);
+
+	int64_t getConstraintID(int64_t id1, int64_t id2, int constraint_type) {
+		return hashBytes(serialize(id1, id2, constraint_type));
+	}
+
+	//Finds all collisions of the balls with each other and the walls of the cell
+	//Creates or destroys constraints so the contents of constraints matches the current collisions
+	//Also sets points and normal for collisions
+	void updateCollisions();
+
+	//Convenience method to avoid repeatign code on all walls of the box
+	void updateWallCollision(int64_t ball_id, int wall_id, const glm::vec3& point, const glm::vec3& normal, std::unordered_set<int64_t>& found_constraints);
+
+	//Run physics forward one frame
+	void runPhysicsFrame(float dt, int constraints_iter);
+
+	//Calls update graphics on all the balls
+	//Also renders the box
+	void updateGraphics();
+
+
+};
+
+
+
+
+
+
 } // end namespace physics
 
 #endif // #ifndef _PHYSICS_H_

@@ -1,4 +1,5 @@
 #include "Physics.h"
+#include "ScenePlugin.h"
 
 namespace Physics{
 
@@ -852,5 +853,153 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 	}
 
 }
+
+
+
+SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {
+
+
+}
+
+//Custom destructor cleans up scene instance
+SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, type_sceneid] : instance) {
+		scene->deleteInstance(type_sceneid.second);
+	}
+}
+
+int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { shape, model, transform, elasticity, friction };
+	return id;
+}
+
+int64_t SimpleLocalPhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) {
+	int64_t id = next_object_id++;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	instance[id] = { type, scene->createInstance(types[type].model, glm::mat4(0)) };
+	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
+	bodies[id]->elasticity = types[type].elasticity;
+	bodies[id]->friction = types[type].friction;
+	return id;
+}
+
+Physics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
+	auto iter = bodies.find(id);
+	if (iter != bodies.end()) {
+		return iter->second.get();
+	}
+	else {
+		return nullptr;
+	}
+}
+
+//Consraint id should be a hash of the involved bodies and the type of constraint
+Physics::Constraint* SimpleLocalPhysicsCell::getConstraint(int64_t id) {
+	auto iter = constraints.find(id);
+	if (iter != constraints.end()) {
+		return iter->second.get();
+	}
+	else {
+		return nullptr;
+	}
+}
+
+//Finds all collisions of the balls with each other and the walls of the cell
+//Creates or destroys constraints so the contents of constraints matches the current collisions
+//Also sets points and normal for collisions
+void SimpleLocalPhysicsCell::updateCollisions() {
+	std::unordered_set<int64_t> found_constraints;
+	for (auto& [id1, body_1] : bodies) {
+		//Ball to ball collisions
+		for (auto& [id2, body_2] : bodies) {
+			if (id1 < id2 && // only check each pair once
+				(body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0) && // only check if one is moveable
+				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+				auto simplex = Physics::detectCollision(body_1.get(), body_2.get());
+				if (simplex.size() > 0) {
+					Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_2.get());
+					if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+						glm::vec3 point = (sp.a + sp.b) * 0.5f;
+						glm::vec3 normal = glm::normalize(sp.x);
+
+						normal = glm::normalize(normal);
+						int64_t constraint_id = getConstraintID(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
+						found_constraints.insert(constraint_id); // track found so we can remove not found
+						auto iter = constraints.find(constraint_id);
+						std::shared_ptr<Physics::Collision> constraint;
+						//Add constraint if it doesn't exist already
+						if (iter == constraints.end()) {
+							constraint = std::make_shared<Physics::Collision>();
+							constraints[constraint_id] = constraint;
+						}
+						else {
+							constraint = static_pointer_cast<Physics::Collision>(iter->second);
+						}
+						//update constraint data
+						constraint->id1 = id1;
+						constraint->id2 = id2;
+						constraint->point = point;
+						constraint->normal = normal;
+						constraint->penetration = sp;
+					}
+				}
+			}
+		}
+
+	}
+
+	//Delete existing constraints not found now
+	std::vector<int64_t> to_delete;
+	for (auto& [id, constraint] : constraints) {
+		if (found_constraints.find(id) == found_constraints.end()) {
+			to_delete.push_back(id);
+		}
+	}
+	for (auto& id : to_delete) {
+		constraints.erase(id);
+	}
+}
+
+//Run physics forward one frame
+void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
+	for (auto& [id, body] : bodies) {
+		body->integrateAcceleration(acceleration, dt);
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->updateConstraint(this);
+	}
+	for (auto& [id, constraint] : constraints) {
+		constraint->applyWarmingImpulse(this);
+	}
+	for (int i = 0; i < constraints_iter; i++) {
+		for (auto& [id, constraint] : constraints) {
+			constraint->applyConstraint(this);
+		}
+	}
+	for (auto& [id, ball] : bodies) {
+		ball->integrateVelocity(dt);
+	}
+	updateCollisions();
+}
+
+//Calls update graphics on all the balls
+//Also renders the box
+void SimpleLocalPhysicsCell::updateGraphics() {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, ball] : bodies) {
+		if (id > 0) { // it's a ball
+			auto iter = instance.find(id);
+			glm::mat4 pose = glm::mat4(1.0f);
+			pose = glm::translate(pose, ball->position);
+			pose = pose * glm::mat4_cast(ball->orientation);
+			pose = pose * types[iter->second.first].render_transform;
+			scene->setPose(instance[id].second, pose);
+		}
+	}
+}
+
 
 } // end namespace Physics
