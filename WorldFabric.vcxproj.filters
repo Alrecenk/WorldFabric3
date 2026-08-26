@@ -1554,6 +1554,9 @@
     <ClInclude Include="header\PyramidApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="engine\header\BSPNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2168,6 +2171,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\PyramidApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\source\BSPNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,5 +1,7 @@
 #include "Physics.h"
 #include "ScenePlugin.h"
+#include "BSPNode.h"
+#include <stack>
 
 namespace Physics{
 
@@ -82,6 +84,17 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, floa
 	face = base.face;
 	inv_mass = 1.0f / mass;
 	inv_moment = glm::inverse(computeInertia(mass));
+}
+
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose) {
+	vertex = base.vertex;
+	for (auto& v : vertex) {
+		v = pose * glm::vec4(v, 1.0f);
+	}
+
+	face = base.face;
+	inv_mass = base.inv_mass;
+	inv_moment = glm::mat3(0);
 }
 
 
@@ -440,6 +453,44 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 	std::vector<Polygon> poly = Polygon::buildApproximateHull(points,hull_faces,detail_level) ;
 	return ConvexPolyhedron(poly,mass) ;
 }
+
+//Collect the convex pieces of a model
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume){
+	std::vector<ConvexPolyhedron> result ;
+	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+	for(auto& surface : surfaces){
+		std::unique_ptr<BSPNode> root = std::make_unique<BSPNode>(surface);
+		root->computeVolumeInside();
+		std::stack<BSPNode*> nodes;
+		nodes.push(root.get());
+		int n = 0;
+		while (!nodes.empty()) {
+			BSPNode* node = nodes.top();
+			nodes.pop();
+			bool generate = false;
+			if (node == nullptr) {
+				generate = false;
+			}else if (!node->leaf) {
+				if (node->volume_outside < min_part_volume) {
+					generate = true;
+				}else if (node->volume_inside < min_part_volume) {
+					generate = false;
+				}else {
+					generate = false;
+					nodes.push(node->inner.get());
+					nodes.push(node->outer.get());
+				}
+			}else if (node->leaf_inside && node->volume_inside > min_part_volume) {
+				generate = true;
+			}
+			if (generate) {
+				result.emplace_back(node->shape);
+			}
+		}
+	}
+	return result ;
+}
+
 
 
 int64_t Collision::getHash() const {
