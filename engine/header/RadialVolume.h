@@ -36,6 +36,8 @@ public:
 
 	//Returns a set of bounding planes for an approximate convex hull computed using radial volumes
 	static std::vector<std::pair<glm::dvec3, double>> getHullPlanes(std::vector<glm::dvec3>& points, int hull_faces, int detail_level) ;
+
+	static inline double last_hull_volume = -1.0f; // volume of last hull plane object computed with getHullPlanes
 };
 
 #endif // #ifndef _RADIAL_VOLUME_H_

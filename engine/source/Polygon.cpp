@@ -496,7 +496,7 @@ std::vector<Polygon> Polygon::reduce(std::vector<Polygon> surface, int triangle_
 // Builds an approximate convex hull of the given point with up to the given number of faces
 // Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 std::vector<Polygon> Polygon::buildApproximateHull(std::vector<dvec3>& points, int hull_faces, int detail_level){
-	// Ge axis aligned bounding box of points
+	// Get axis aligned bounding box of points
 	dvec3 min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	dvec3 max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 	for (auto& x : points) {
@@ -516,6 +516,17 @@ std::vector<Polygon> Polygon::buildApproximateHull(std::vector<dvec3>& points, i
     }
     return surface ;
 }
+
+std::vector<Polygon> Polygon::buildApproximateHull(std::vector<Polygon> surface, int hull_faces, int detail_level){
+	std::vector<glm::dvec3> points ;
+	for(auto& face : surface){
+		for(auto& v : face.p){
+			points.emplace_back(v);
+		}
+	}
+	return buildApproximateHull(points, hull_faces, detail_level) ;
+}
+
 
 // splits a polyhedron in half on each axis until bo piece is larger than the given extent in any axis
 std::vector<std::vector<Polygon>> Polygon::splitToMaximumExtent(std::vector<Polygon> surface, float target_extent){

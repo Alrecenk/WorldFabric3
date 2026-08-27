@@ -94,13 +94,12 @@ RadialVolume RadialVolume::cut(std::pair<dvec3,double> absolute_plane){
     return result ;
 }
 
-//Returns a set of bounding planes for an approximate convex hull computed using radial volumes
+
 std::vector<std::pair<dvec3, double>> RadialVolume::getHullPlanes(std::vector<dvec3>& points, int hull_faces, int detail_level){
 	RadialVolume optimal(points, detail_level);
-	RadialVolume sphere(optimal.center, optimal.radius, detail_level);
+	RadialVolume sphere(optimal.center, optimal.radius * 2.0f, detail_level);
 
 	RadialVolume current = sphere;
-
 	std::vector<std::pair<dvec3, double>> planes;
 	while (planes.size() < hull_faces) {
 		RadialVolume best = current;
@@ -121,6 +120,7 @@ std::vector<std::pair<dvec3, double>> RadialVolume::getHullPlanes(std::vector<dv
 		}
 		planes.push_back(optimal.getPlane(best_plane));
 		current = best;
+		last_hull_volume = best_volume ;
 	}
 	return planes ;
 

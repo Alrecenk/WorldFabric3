@@ -1557,6 +1557,9 @@
     <ClInclude Include="engine\header\BSPNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="engine\header\VolumeNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2174,6 +2177,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="engine\source\BSPNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\source\VolumeNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

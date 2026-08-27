@@ -48,12 +48,12 @@ BSPNode::BSPNode(std::vector<Polygon>& poly){
     vec3 min(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max());
     for(Polygon& p : poly){
         for(dvec3& x : p.p){
-            max.x = fmax(max.x,x.x);
-            min.x = fmin(min.x,x.x);
-            max.y = fmax(max.y,x.y);
-            min.y = fmin(min.y,x.y);
-            max.z = fmax(max.z,x.z);
-            min.z = fmin(min.z,x.z);
+            max.x = fmax(max.x, (float)x.x);
+            min.x = fmin(min.x, (float)x.x);
+            max.y = fmax(max.y, (float)x.y);
+            min.y = fmin(min.y, (float)x.y);
+            max.z = fmax(max.z, (float)x.z);
+            min.z = fmin(min.z, (float)x.z);
         }
     }
 
