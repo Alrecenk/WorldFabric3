@@ -1,6 +1,7 @@
 #include "Physics.h"
 #include "ScenePlugin.h"
-#include "BSPNode.h"
+#include "VolumeNode.h"
+
 #include <stack>
 
 namespace Physics{
@@ -464,35 +465,14 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume){
 	std::vector<ConvexPolyhedron> result ;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+
 	printf("surfaces: %d\n", (int)surfaces.size()) ;
 	for(auto& surface : surfaces){
-		std::unique_ptr<BSPNode> root = std::make_unique<BSPNode>(surface);
-		root->computeVolumeInside();
-		std::stack<BSPNode*> nodes;
-		nodes.push(root.get());
-		int n = 0;
-		while (!nodes.empty()) {
-			BSPNode* node = nodes.top();
-			nodes.pop();
-			bool generate = false;
-			if (node == nullptr) {
-				generate = false;
-			}else if (!node->leaf) {
-				if (node->volume_inside < min_part_volume) {
-					generate = false;
-				}else if (node->volume_outside < min_part_volume) {
-					generate = true;
-				}else {
-					generate = false;
-					nodes.push(node->inner.get());
-					nodes.push(node->outer.get());
-				}
-			}else if (node->leaf_inside && node->volume_inside > min_part_volume) {
-				generate = true;
-			}
-			if (generate) {
-				result.emplace_back(node->shape);
-			}
+		std::unique_ptr<VolumeNode> root = std::make_unique<VolumeNode>(surface);
+		root->recurseToDepth(5);
+		auto hull_shapes = root->getHulls();
+		for(auto& poly : hull_shapes){
+			result.emplace_back(poly) ;
 		}
 	}
 	return result ;

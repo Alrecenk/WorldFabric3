@@ -17,7 +17,7 @@ public:
 	std::vector<Polygon> true_shape;
 	//approximate convex hull for this node
 	std::vector<Polygon> hull_shape;
-	float hull_volume = -1.0f;
+	double hull_volume = -1.0f;
 	std::vector<std::pair<glm::dvec3, double>> hull_planes ;
 
 	bool leaf = true;
@@ -31,20 +31,27 @@ public:
 	static constexpr double EPSILON = 1e-4;
 
 	// Used for hull detail of component pieces
-	static inline int hull_faces = 12 ;
-	static inline int hull_detail = 4 ;
+	static inline int hull_faces = 20 ;
+	static inline int hull_detail = 3 ;
 
 	VolumeNode();
 
 	VolumeNode(std::vector<Polygon>& poly);
 
 	// Split this node on the given plane
-	void split(glm::dvec3 normal, float d);
+	void split(glm::dvec3 normal, double d);
 
-	static int getIndex(glm::dvec3& p, std::vector<glm::dvec3>& list);
 
-	//Returns a plane through the deepest edge on the true shape whose neghboring faces point toward each other
-	std::pair<glm::dvec3, double> getDeepestConcaveBisector();
+	void recurseToDepth(int depth) ;
+
+	//Returns a plane through the deepest point within the convex hull pointing outward
+	std::pair<glm::dvec3, double> getDeepCuttingPlane() ;
+
+
+	void collectHulls(std::vector<std::vector<Polygon>>& hulls);
+
+
+	std::vector<std::vector<Polygon>> getHulls();
 
 };
 #endif // #ifndef _VOLUME_NODE_H_
