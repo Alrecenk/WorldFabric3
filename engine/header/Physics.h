@@ -101,7 +101,7 @@ public:
 	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level = 4) ;
 
 	//Collect the convex pieces of a model
-	static std::vector<ConvexPolyhedron>collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume = 1e-3f);
+	static std::vector<ConvexPolyhedron>collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume = 1e-6f);
 
 };
 

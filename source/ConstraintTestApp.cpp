@@ -80,22 +80,24 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	float bunny_scale = 1.0f;
+	float bunny_mass = 0.0f ;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(bunny_scale, bunny_scale, bunny_scale));
 	scene->createModelSet(BUNNY_MODEL, BUNNY_MODEL, true);
 	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
-	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::collectConvexPieces(bunny_model);
+	Physics::ConvexPolyhedron part = Physics::ConvexPolyhedron::makeApproximateHull(bunny_model,bunny_mass);
+	//std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::collectConvexPieces(bunny_model);
 	int k= 0 ;
-	printf("Bunny parts: %d\n", bunny_parts.size()) ;
-	for(auto& part : bunny_parts){
+	//printf("Bunny parts: %d\n",(int) bunny_parts.size()) ;
+	//for(auto& part : bunny_parts){
 		k++;
-		std::shared_ptr<Physics::ConvexPolyhedron> shape = std::make_shared<Physics::ConvexPolyhedron>(part, transform);
+		std::shared_ptr<Physics::ConvexPolyhedron> shape = std::make_shared<Physics::ConvexPolyhedron>(part, transform, bunny_mass);
 		std::string name = concat(BUNNY_MODEL, k) ;
 		std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 		model2->setPolyhedronModel(shape->vertex, shape->face, glm::vec4(0.4f, 0.3f, 0.3f, 1.0f));
 		scene->createModelSet(name, model2, false, false);
 		int type = cell->addType(shape, name, transform, 0.1f, 0.6f);
 		cell->add(type,glm::vec3(0,0,0)) ;
-	}
+	//}
 
 
 	// Add the container blocks

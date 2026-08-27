@@ -82,8 +82,10 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, floa
 	}
 
 	face = base.face;
-	inv_mass = 1.0f / mass;
-	inv_moment = glm::inverse(computeInertia(mass));
+	if (mass > 0 && mass < 1e7) {
+		inv_mass = 1.0f / mass;
+		inv_moment = glm::inverse(computeInertia(mass));
+	}
 }
 
 ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose) {
@@ -93,8 +95,6 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose) {
 	}
 
 	face = base.face;
-	inv_mass = base.inv_mass;
-	inv_moment = glm::mat3(0);
 }
 
 
@@ -151,8 +151,10 @@ ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons) {
 
 ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons, float mass) {
 	buildFromPolygons(polygons);
-	inv_mass = 1.0f / mass;
-	inv_moment = glm::inverse(computeInertia(mass));
+	if(mass > 0 && mass < 1e7){
+		inv_mass = 1.0f / mass;
+		inv_moment = glm::inverse(computeInertia(mass));
+	}
 }
 
 // Return the center of mass of this shape
@@ -451,13 +453,18 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 		points.emplace_back(v.transformed_position) ;
 	}
 	std::vector<Polygon> poly = Polygon::buildApproximateHull(points,hull_faces,detail_level) ;
-	return ConvexPolyhedron(poly,mass) ;
+	if(mass <= 0 || mass > 1e10){
+		return ConvexPolyhedron(poly);
+	}else{
+		return ConvexPolyhedron(poly,mass) ;
+	}
 }
 
 //Collect the convex pieces of a model
 std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume){
 	std::vector<ConvexPolyhedron> result ;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+	printf("surfaces: %d\n", (int)surfaces.size()) ;
 	for(auto& surface : surfaces){
 		std::unique_ptr<BSPNode> root = std::make_unique<BSPNode>(surface);
 		root->computeVolumeInside();
@@ -471,10 +478,10 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_
 			if (node == nullptr) {
 				generate = false;
 			}else if (!node->leaf) {
-				if (node->volume_outside < min_part_volume) {
-					generate = true;
-				}else if (node->volume_inside < min_part_volume) {
+				if (node->volume_inside < min_part_volume) {
 					generate = false;
+				}else if (node->volume_outside < min_part_volume) {
+					generate = true;
 				}else {
 					generate = false;
 					nodes.push(node->inner.get());
