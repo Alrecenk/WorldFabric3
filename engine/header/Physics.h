@@ -101,9 +101,11 @@ public:
 	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level = 4) ;
 
 	//Collect the convex pieces of a model
-	static std::vector<ConvexPolyhedron>collectConvexPieces(std::shared_ptr<GLTF>& model);
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByBSP(std::shared_ptr<GLTF>& model);
 
-	static std::vector<ConvexPolyhedron>collectRoughConvexPieces(std::shared_ptr<GLTF>& model, int depth);
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByRadialVolumes(std::shared_ptr<GLTF>& model, int depth);
+
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByBone(std::shared_ptr<GLTF>& model, int hull_faces = 20, int detail_level = 4, float min_weight = 0.3f, float min_bone_volume = 0);
 };
 
 

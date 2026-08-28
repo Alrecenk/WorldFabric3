@@ -467,7 +467,7 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 }
 
 //Collect the convex pieces of a model
-std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model){
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBSP(std::shared_ptr<GLTF>& model){
 	std::vector<ConvexPolyhedron> result ;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
 
@@ -490,7 +490,7 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_
 }
 
 
-std::vector<ConvexPolyhedron> ConvexPolyhedron::collectRoughConvexPieces(std::shared_ptr<GLTF>& model, int depth){
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByRadialVolumes(std::shared_ptr<GLTF>& model, int depth){
 	std::vector<ConvexPolyhedron> result;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
 
@@ -508,6 +508,68 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectRoughConvexPieces(std::sh
 	}
 
 	return result;
+}
+
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBone(std::shared_ptr<GLTF>& model, int hull_faces, int detail_level, float min_weight, float min_bone_volume){
+	std::map<int,std::vector<glm::dvec3>> bone_points;
+	model->applyTransforms();
+	for(auto& v : model->vertices){
+		if(v.weights.x >= min_weight){
+			bone_points[v.joints.x].emplace_back(v.transformed_position) ;
+		}
+		if (v.weights.y >= min_weight) {
+			bone_points[v.joints.y].emplace_back(v.transformed_position);
+		}
+		if (v.weights.z >= min_weight) {
+			bone_points[v.joints.z].emplace_back(v.transformed_position);
+		}
+		if (v.weights.w >= min_weight) {
+			bone_points[v.joints.w].emplace_back(v.transformed_position);
+		}
+	}
+
+	
+
+	std::vector<int> to_combine ;
+	for (auto& [bone, points] : bone_points) {
+		glm::dvec3 min = glm::dvec3(FLT_MAX, FLT_MAX, FLT_MAX);
+		glm::dvec3 max = glm::dvec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		for (auto& x : points) {
+			min.x = fmin(min.x, x.x);
+			min.y = fmin(min.y, x.y);
+			min.z = fmin(min.z, x.z);
+			max.x = fmax(max.x, x.x);
+			max.y = fmax(max.y, x.y);
+			max.z = fmax(max.z, x.z);
+		}
+
+		double volume = (max.x-min.x)*(max.y-min.y)*(max.z-min.z) ;
+		if(volume < min_bone_volume){
+			to_combine.push_back(bone) ;
+		}
+	}
+	
+	for(int k= 0 ; k < to_combine.size(); k++){ //TODO is this order guaranteed for roll up?
+		int bone = to_combine[k] ;
+		int parent = model->nodes[bone].parent ;
+		printf("Bone %d merging to %d\n", bone, parent) ;
+		if(parent >=0){
+			for(auto& p : bone_points[bone]){
+				bone_points[parent].push_back(p);
+			}
+		}
+		printf("Erasing bone: %d\n", bone);
+		bone_points.erase(bone) ;
+	}
+
+
+	std::vector<ConvexPolyhedron> result;
+	for(auto& [bone, points] : bone_points){
+		printf("Making bone: %d\n", bone) ;
+		std::vector<Polygon> poly = Polygon::buildApproximateHull(points, hull_faces, detail_level);
+		result.emplace_back(poly);
+	}
+	return result ;
 }
 
 

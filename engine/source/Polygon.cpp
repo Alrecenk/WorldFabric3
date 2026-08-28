@@ -510,7 +510,7 @@ std::vector<Polygon> Polygon::buildApproximateHull(std::vector<dvec3>& points, i
 	
 	// cut away from box expanded from bounding box
 	std::vector<std::pair<glm::dvec3, double>> planes = RadialVolume::getHullPlanes(points, hull_faces, detail_level) ;
-    vector<Polygon> surface = ConvexShape::makeAxisAlignedBox(min*2.0 - max, max*2.0 - min).getPolygons();
+    vector<Polygon> surface = ConvexShape::makeAxisAlignedBox(min, max).getPolygons();
     for(auto& plane : planes){
         surface = Polygon::splitOnPlane(surface, plane).first;
     }

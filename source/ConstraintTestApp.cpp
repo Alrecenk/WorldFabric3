@@ -79,26 +79,29 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	
 
 
-	float bunny_scale = 1.5f;
-	float bunny_mass = 0.0f ;
-	transform = glm::scale(glm::mat4(1.0f), glm::vec3(bunny_scale, bunny_scale, bunny_scale));
-	scene->createModelSet(BUNNY_MODEL, BUNNY_MODEL, true);
-	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
+	float fox_scale = 5.0f;
+	float fox_mass = 0.0f ;
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(fox_scale, fox_scale, fox_scale)); //TODO: why is the negative required?
+	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
+	scene->createModelSet(FOX_MODEL, FOX_MODEL, true);
+	std::shared_ptr<GLTF> fox_model = scene->getModelController(FOX_MODEL);
 	//Physics::ConvexPolyhedron part = Physics::ConvexPolyhedron::makeApproximateHull(bunny_model,bunny_mass);
-	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::collectConvexPieces(bunny_model);
+	std::vector<Physics::ConvexPolyhedron> fox_parts = Physics::ConvexPolyhedron::collectConvexPiecesByBone(fox_model,20,4,0.5f,0.001f);
 	int k= 0 ;
-	printf("Bunny parts: %d\n",(int) bunny_parts.size()) ;
-	for(auto& part : bunny_parts){
+	printf("Fox parts: %d\n",(int) fox_parts.size()) ;
+	for(auto& part : fox_parts){
 		k++;
-		std::shared_ptr<Physics::ConvexPolyhedron> shape = std::make_shared<Physics::ConvexPolyhedron>(part, transform, bunny_mass);
-		std::string name = concat(BUNNY_MODEL, k) ;
+		std::shared_ptr<Physics::ConvexPolyhedron> shape = std::make_shared<Physics::ConvexPolyhedron>(part, transform, fox_mass);
+		std::string name = concat(FOX_MODEL, k) ;
 		std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 		model2->setPolyhedronModel(shape->vertex, shape->face, glm::vec4(0.4f, 0.3f, 0.3f, 1.0f));
 		scene->createModelSet(name, model2, false, false);
-		int type = cell->addType(shape, name, transform, 0.1f, 0.6f);
+		glm::mat4 display_m = glm::mat4(0.0f) ;
+		int type = cell->addType(shape, name, display_m, 0.1f, 0.6f);
 		cell->add(type,glm::vec3(0,0,0)) ;
 	}
-
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(-fox_scale, -fox_scale, fox_scale));
+	scene->createInstance(FOX_MODEL,transform) ;
 
 	// Add the container blocks
 	glm::vec3 mid = (min + max) * 0.5f;
