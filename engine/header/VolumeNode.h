@@ -26,12 +26,13 @@ public:
 	std::pair<glm::dvec3, double> split_plane ;
 	std::unique_ptr<VolumeNode> inner, outer;
 	
-	
+	glm::dvec3 min = glm::dvec3(FLT_MAX, FLT_MAX,FLT_MAX);
+	glm::dvec3 max = glm::dvec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	
 	static constexpr double EPSILON = 1e-4;
 
 	// Used for hull detail of component pieces
-	static inline int hull_faces = 20 ;
+	static inline int hull_faces = 10 ;
 	static inline int hull_detail = 3 ;
 
 	VolumeNode();

@@ -79,7 +79,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	
 
 
-	float bunny_scale = 1.0f;
+	float bunny_scale = 1.5f;
 	float bunny_mass = 0.0f ;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(bunny_scale, bunny_scale, bunny_scale));
 	scene->createModelSet(BUNNY_MODEL, BUNNY_MODEL, true);

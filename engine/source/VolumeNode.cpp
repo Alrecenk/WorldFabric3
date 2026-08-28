@@ -1,7 +1,6 @@
 #include "VolumeNode.h"
-#include "ConvexShape.h" // TODO remove dependence on old ConvexShape
 #include "Utilities.h" // Allows hashing of pairs
-#include <limits>
+#include "ConvexShape.h"
 
 
 VolumeNode::VolumeNode(std::vector<Polygon>& poly) {
@@ -16,8 +15,7 @@ VolumeNode::VolumeNode(std::vector<Polygon>& poly) {
 	}
 
 	// Get axis aligned bounding box of points
-	glm::dvec3 min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-	glm::dvec3 max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+	
 	for (auto& x : points) {
 		min.x = fmin(min.x, x.x);
 		min.y = fmin(min.y, x.y);
@@ -26,13 +24,31 @@ VolumeNode::VolumeNode(std::vector<Polygon>& poly) {
 		max.y = fmax(max.y, x.y);
 		max.z = fmax(max.z, x.z);
 	}
+	if(max.x - min.x < EPSILON || max.y - min.y < EPSILON ||  max.z - min.z < EPSILON){
+		printf("Box with no volume!\n");
+		hull_volume = 0 ;
+	}else{
 
-	// cut away from box expanded from bounding box to build approximate convex hull
-	hull_planes = RadialVolume::getHullPlanes(points, hull_faces, hull_detail);
-	hull_volume = RadialVolume::last_hull_volume;
-	hull_shape = ConvexShape::makeAxisAlignedBox(min * 2.0 - max, max * 2.0 - min).getPolygons(); // TODO remove dependence on old ConvexShape
-	for (auto& plane : hull_planes) {
-		hull_shape = Polygon::splitOnPlane(hull_shape, plane).first;
+		// cut away from box expanded from bounding box to build approximate convex hull
+		hull_planes = RadialVolume::getHullPlanes(points, hull_faces, hull_detail);
+		hull_volume = RadialVolume::last_hull_volume;
+		hull_shape = ConvexShape::makeAxisAlignedBox(min *1.02- max*0.02, max * 1.02 - min*0.02).getPolygons(); // TODO remove dependence on old ConvexShape
+		
+		glm::dvec3 mid = (min + max)*0.5 ;
+		for(auto& face : hull_shape){
+			double dp = glm::dot(face.my_plane.first, mid) + face.my_plane.second ;
+			if(fabs(glm::length(face.my_plane.first) - 1.0) > EPSILON){
+				printf("unnormalized nomal on poly\n");
+			}
+			if( dp >= 0){
+				printf("Wrong facing face in box!\n");
+			}
+		}
+
+		for (auto& plane : hull_planes) {
+			hull_shape = Polygon::splitOnPlane(hull_shape, plane).first;
+		}
+
 	}
 
 }
@@ -62,6 +78,8 @@ void VolumeNode::split(glm::dvec3 normal, double d){
 
 //Returns a plane through the deepest point within the convex hull pointing outward
 std::pair<glm::dvec3, double> VolumeNode::getDeepCuttingPlane(){
+	
+	/*
 	glm::dvec3 best_p ;
 	glm::dvec3 best_normal ;
 	double best_score = EPSILON ;
@@ -71,9 +89,12 @@ std::pair<glm::dvec3, double> VolumeNode::getDeepCuttingPlane(){
 			glm::dvec3 p = v ;
 			double closest_face = FLT_MAX ; 
 			glm::dvec3 closest_normal;
+			double score = 0 ;
 			for(auto& h : hull_planes){
 				double distance = fabs(glm::dot(h.first, p) + h.second);
+				score += distance ;
 				if(distance < closest_face){ 
+					//score= distance ;
 					closest_face = distance ;
 					closest_normal = h.first ;
 					//printf("Closest face: %lf\n", closest_face) ;
@@ -81,10 +102,10 @@ std::pair<glm::dvec3, double> VolumeNode::getDeepCuttingPlane(){
 				
 			}
 			//best point has furthest closest distance to hull
-			if (closest_face > best_score) {
-				best_score = closest_face;
+			if (score > best_score) {
+				best_score =score;
 				best_normal = glm::normalize(glm::vec3(randomFloat()-0.5f, randomFloat() - 0.5f, randomFloat() - 0.5f)) ;
-				//best_normal = closest_normal;
+				//best_normal = glm::normalize(closest_normal);
 				best_p = p;
 				//printf("Best score: %lf\n", best_score);
 			}
@@ -98,10 +119,41 @@ std::pair<glm::dvec3, double> VolumeNode::getDeepCuttingPlane(){
 		printf("No plane found\n");
 		return { glm::dvec3(0,0,0), 0.0} ;
 	}
+	*/
+
+
+	glm::dvec3 best_normal ;
+	double best_d  = 0;
+	double best_score = FLT_MAX;
+	int tries=  10 ;
+	for(int k=0;k<tries;k++){
+		glm::dvec3 normal = glm::normalize(glm::vec3(randomFloat() - 0.5f, randomFloat() - 0.5f, randomFloat() - 0.5f));
+		//glm::dvec3 point = glm::vec3( min.x + randomFloat() *( max.x-min.x), min.y + randomFloat() * (max.y - min.y), min.z + randomFloat() * (max.z - min.z));
+		//glm::dvec3 point = (max + min)*0.5 ;
+		glm::dvec3 point = glm::vec3(min.x + (randomFloat()*0.5+0.25) * (max.x - min.x), min.y + (randomFloat() * 0.5 + 0.25) * (max.y - min.y), min.z + (randomFloat() * 0.5 + 0.25) * (max.z - min.z));
+		double d = -glm::dot(point, normal) ;
+		split(normal, d);
+		if(!leaf){ // split succeeded
+			
+			double score = inner->hull_volume + outer->hull_volume ;
+			printf("Try %d score: %f\n", k, (float)score);
+			if(score < best_score){
+				best_score = score;
+				best_d = d ;
+				best_normal = normal ;
+				
+			}
+		}
+	}
+
+	printf("Best Score : %f\n", (float)best_score);
+		//glm::dvec3 point = (min+ max)*0.5 ;
+		return { best_normal, best_d  };
+	
 }
 
 void VolumeNode::recurseToDepth(int depth){
-	if(depth == 1){
+	if(depth == 1 || hull_volume < EPSILON){
 		return ;
 	}
 	std::pair<glm::dvec3, double> plane = getDeepCuttingPlane();
@@ -116,6 +168,9 @@ void VolumeNode::recurseToDepth(int depth){
 
 
 void VolumeNode::collectHulls(std::vector<std::vector<Polygon>>& hulls){
+	if(hull_volume < EPSILON){
+		return ;
+	}
 	if(leaf){
 		hulls.push_back(hull_shape) ;
 	}else{

@@ -12,7 +12,7 @@ class Polygon{
         std::vector<glm::dvec3> p;
         std::pair<glm::dvec3, double> my_plane ;
         bool on_last_plane = false;
-        static constexpr double EPSILON = 0.0000001;
+        static constexpr double EPSILON = 1.0e-6;
 
         Polygon();
         Polygon(std::vector<glm::dvec3> np);

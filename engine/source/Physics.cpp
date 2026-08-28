@@ -1,7 +1,7 @@
 #include "Physics.h"
 #include "ScenePlugin.h"
 #include "VolumeNode.h"
-
+#include "BSPNode.h"
 #include <stack>
 
 namespace Physics{
@@ -103,6 +103,7 @@ void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
 	//deduplicate the points to match reduced shape format
 	vertex = std::vector<glm::vec3>();
 	face = std::vector<std::vector<int>>();
+	glm::dvec3 mid ;
 	for (int k = 0; k < polygons.size(); k++) {
 		Polygon& poly = polygons[k];
 		if (poly.p.size() >= 3) {
@@ -119,13 +120,15 @@ void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
 					glm::vec3 v = poly.p[j];
 					vertex.push_back(v);
 					index = (int)(vertex.size() - 1);
+					mid+= poly.p[j];
 				}
 				f.push_back(index);
 			}
 			face.push_back(f);
 		}
 	}
-
+	
+	mid/= vertex.size();
 	//flip any faces pointing inward (Polygon doesn't have a winding oder guarantee)
 	for (int k = 0; k < face.size(); k++) {
 		//printf("fs:%d\n",(int)face.size() );
@@ -134,7 +137,8 @@ void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
 		glm::vec3& C = vertex[face[k][2]];
 		//printf("ABC:%d,%d,%d, size:%d\n",face[k][0],face[k][1],face[k][2], (int)vertex.size() );
 		glm::vec3 normal = glm::normalize(glm::cross(B - A, C - A));
-		if (glm::dot(normal, A) < 0) {
+		float d= -glm::dot(normal, A) ;
+		if (glm::dot(normal, glm::vec3(mid)) + d > 0) {
 			std::vector<int> new_face;
 			for (int j = (int)(face[k].size() - 1); j >= 0; j--) {
 				new_face.push_back(face[k][j]);
@@ -142,6 +146,7 @@ void ConvexPolyhedron::buildFromPolygons(std::vector<Polygon>& polygons){
 			face[k] = new_face;
 		}
 	}
+
 }
 
 ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons) {
@@ -462,22 +467,48 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 }
 
 //Collect the convex pieces of a model
-std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model, float min_part_volume){
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPieces(std::shared_ptr<GLTF>& model){
 	std::vector<ConvexPolyhedron> result ;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
 
 	printf("surfaces: %d\n", (int)surfaces.size()) ;
 	for(auto& surface : surfaces){
-		std::unique_ptr<VolumeNode> root = std::make_unique<VolumeNode>(surface);
-		root->recurseToDepth(5);
+		
+		//std::unique_ptr<VolumeNode> root = std::make_unique<VolumeNode>(surface);
+		//root->recurseToDepth(depth);
+		std::unique_ptr<BSPNode> root = std::make_unique<BSPNode>(surface);
+		
 		auto hull_shapes = root->getHulls();
+		
+		
 		for(auto& poly : hull_shapes){
 			result.emplace_back(poly) ;
 		}
 	}
+
 	return result ;
 }
 
+
+std::vector<ConvexPolyhedron> ConvexPolyhedron::collectRoughConvexPieces(std::shared_ptr<GLTF>& model, int depth){
+	std::vector<ConvexPolyhedron> result;
+	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+
+	printf("surfaces: %d\n", (int)surfaces.size());
+	for (auto& surface : surfaces) {
+
+		std::unique_ptr<VolumeNode> root = std::make_unique<VolumeNode>(surface);
+		root->recurseToDepth(depth);
+		auto hull_shapes = root->getHulls();
+
+
+		for (auto& poly : hull_shapes) {
+			result.emplace_back(poly);
+		}
+	}
+
+	return result;
+}
 
 
 int64_t Collision::getHash() const {

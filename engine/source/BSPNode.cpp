@@ -165,3 +165,25 @@ void BSPNode::computeVolumeInside(){
         volume_outside = inner->volume_outside + outer->volume_outside;
     }
 }
+
+void BSPNode::collectHulls(std::vector<std::vector<Polygon>>& hulls) {
+	if (leaf) {
+		if(leaf_inside){
+			ConvexShape s = ConvexShape(shape);
+			double volume = s.getVolume();
+			if(volume > EPSILON){
+				hulls.push_back(shape);
+			}
+		}
+	}
+	else {
+		inner->collectHulls(hulls);
+		outer->collectHulls(hulls);
+	}
+}
+
+std::vector<std::vector<Polygon>> BSPNode::getHulls() {
+	std::vector<std::vector<Polygon>> hulls;
+	collectHulls(hulls);
+	return hulls;
+}

@@ -44,5 +44,10 @@ class BSPNode{
 
         void computeVolumeInside();   
 
+		void collectHulls(std::vector<std::vector<Polygon>>& hulls);
+
+
+		std::vector<std::vector<Polygon>> getHulls();
+
 };
 #endif // #ifndef _BSP_NODE_H_
