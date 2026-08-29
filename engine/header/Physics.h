@@ -10,6 +10,8 @@ class ConvexShape{
 public:
 	float inv_mass = 0;
 	glm::mat3 inv_moment = glm::mat3(0) ;
+	float mass = 0 ;
+	glm::mat3 moment = glm::mat3(0);
 
 	//Returns the point on the shape furthest in the given direction
 	virtual glm::vec3 support(const glm::vec3& direction) const = 0;
@@ -156,6 +158,9 @@ public:
 	RigidBody(const std::shared_ptr<ConvexShape>& s);
 
 	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
+
+
+	RigidBody(const std::vector<std::shared_ptr<ConvexShape>>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
 	void integrateVelocity(float dt);
 
@@ -386,7 +391,8 @@ public:
 
 	class ObjectType {
 	public:
-		std::shared_ptr<Physics::ConvexShape> shape;
+		//std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
+		std::shared_ptr<Physics::ConvexShape> shape ;
 		std::string model;
 		glm::mat4 render_transform;
 		float elasticity;
@@ -412,6 +418,10 @@ public:
 	~SimpleLocalPhysicsCell();
 
 	int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+
+	int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
 
 	int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
 

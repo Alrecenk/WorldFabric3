@@ -23,6 +23,24 @@ namespace Physics{
 		inv_mass = s->inv_mass ;
 	}
 
+	RigidBody::RigidBody(const std::vector<std::shared_ptr<ConvexShape>>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w){
+		shape = s ;
+		id = i;
+		position = p;
+		velocity = v;
+		angular_velocity = w;
+
+		float mass = 0;
+		glm::mat3 moment(0) ;
+		for(auto& part : shape){
+			mass+= part->mass ;
+			moment += part->moment ;
+		}
+		base_inv_moment = glm::inverse(moment);
+		inv_mass = 1.0f/ mass ;
+
+	}
+
 void RigidBody::integrateVelocity(float dt){
 	position += velocity * dt;
 	// Update orientation quaternion
@@ -85,8 +103,10 @@ ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const
 ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass) {
 	vertex = vertices;
 	face = faces;
-	inv_mass = 1.0f/mass;
-	inv_moment = glm::inverse(computeInertia(mass)) ;
+	this->mass = mass;
+	inv_mass = 1.0f / mass;
+	moment = computeInertia(mass) ;
+	inv_moment = glm::inverse(moment);
 }
 
 ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass) {
@@ -97,8 +117,10 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, floa
 
 	face = base.face;
 	if (mass > 0 && mass < 1e7) {
+		this->mass = mass;
 		inv_mass = 1.0f / mass;
-		inv_moment = glm::inverse(computeInertia(mass));
+		moment = computeInertia(mass);
+		inv_moment = glm::inverse(moment);
 	}
 }
 
@@ -171,8 +193,10 @@ ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons) {
 ConvexPolyhedron::ConvexPolyhedron(std::vector<Polygon>& polygons, float mass) {
 	buildFromPolygons(polygons);
 	if(mass > 0 && mass < 1e7){
+		this->mass =mass ;
 		inv_mass = 1.0f / mass;
-		inv_moment = glm::inverse(computeInertia(mass));
+		moment = computeInertia(mass);
+		inv_moment = glm::inverse(moment);
 	}
 }
 
@@ -1124,6 +1148,14 @@ int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape,
 	int id = next_type_id;
 	next_type_id++;
 	types[id] = { shape, model, transform, elasticity, friction };
+	return id;
+}
+
+
+int SimpleLocalPhysicsCell::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { shape[0], model, transform, elasticity, friction };
 	return id;
 }
 
