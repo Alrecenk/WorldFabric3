@@ -882,8 +882,10 @@ void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
 
 Sphere::Sphere(float r, float m){
 	radius = r ;
+	mass = m ;
 	inv_mass = 1.0f/ m ;
 	inv_moment = glm::mat3(1.0f/ ( 0.4f * m * r * r)) ;
+	moment = glm::inverse(inv_moment); // TODO not invert
 }
 
 //Returns the point on the shape furthest in the given direction
