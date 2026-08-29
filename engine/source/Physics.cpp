@@ -525,7 +525,7 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::makeApproximateSurfaceHulls(std:
 				result.emplace_back(poly);
 		}
 		else {
-			result.emplace_back(poly, mass);
+			result.emplace_back(poly, mass/surfaces.size()); // TODO distribute mass based on volume of pieces
 		}
 		
 	}
@@ -1162,6 +1162,15 @@ int SimpleLocalPhysicsCell::addType(std::vector<std::shared_ptr<Physics::ConvexS
 	next_type_id++;
 	types[id] = { shape, model, transform, elasticity, friction };
 	return id;
+}
+
+int SimpleLocalPhysicsCell::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+	std::vector<std::shared_ptr<ConvexShape>> shape ;
+	for(auto& s : raw_shape){
+		std::shared_ptr<Physics::ConvexPolyhedron> sh= std::make_shared<Physics::ConvexPolyhedron>(s, transform, s.mass);
+		shape.push_back(sh) ;
+	}
+	return addType(shape, model, transform, elasticity, friction) ;
 }
 
 int64_t SimpleLocalPhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) {

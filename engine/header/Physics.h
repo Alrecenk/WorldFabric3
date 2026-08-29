@@ -422,6 +422,8 @@ public:
 	int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 
 
+	int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& transform, float elasticity, float friction);
+
 	int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
 
 	//Ball ids are allocated one after another and are always positive

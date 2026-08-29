@@ -71,10 +71,12 @@ private:
 	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
 	static inline const std::string FOX_MODEL = "./assets/Fox2_base.glb";
 	static inline const std::string BUNNY_MODEL = "./assets/cut_bunny.glb";
+	static inline const std::string BUNNY_VISUAL_MODEL = "./assets/uncut_bunny.glb";
 	int box_type=-1 ;
 	int ball_type = -1;
 	int wall_type = -1;
 	int rod_type = -1 ;
 	int jar_type = -1 ;
+	int bunny_type = -1 ;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_
