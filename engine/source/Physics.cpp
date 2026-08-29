@@ -466,6 +466,30 @@ ConvexPolyhedron ConvexPolyhedron::makeApproximateHull(std::shared_ptr<GLTF>& mo
 	}
 }
 
+//Same as above but first separates the mesh by connected closed surfaces
+std::vector<ConvexPolyhedron> ConvexPolyhedron::makeApproximateSurfaceHulls(std::shared_ptr<GLTF>& model, float mass, int hull_faces, int detail_level) {
+	model->applyTransforms();
+	std::vector<ConvexPolyhedron> result;
+	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+	for (auto& surface : surfaces) {
+		std::vector<glm::dvec3> points;
+		for(auto& poly : surface){
+			for (auto& v : poly.p) {
+				points.emplace_back(v);
+			}
+		}
+		std::vector<Polygon> poly = Polygon::buildApproximateHull(points, hull_faces, detail_level);
+		if (mass <= 0 || mass > 1e10) {
+				result.emplace_back(poly);
+		}
+		else {
+			result.emplace_back(poly, mass);
+		}
+		
+	}
+	return result ;
+}
+
 //Collect the convex pieces of a model
 std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBSP(std::shared_ptr<GLTF>& model){
 	std::vector<ConvexPolyhedron> result ;
@@ -1215,5 +1239,15 @@ void SimpleLocalPhysicsCell::updateGraphics() {
 	}
 }
 
+
+//Sets the pose of an object
+void SimpleLocalPhysicsCell::setPose(int64_t id, const glm::mat4& pose){
+	auto iter = bodies.find(id);
+	if(iter != bodies.end()){
+		printf("Set pose\n");
+		iter->second->setPose(pose) ;
+	}
+
+}
 
 } // end namespace Physics

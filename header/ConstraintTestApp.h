@@ -70,7 +70,7 @@ private:
 	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
 	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
 	static inline const std::string FOX_MODEL = "./assets/Fox2_base.glb";
-
+	static inline const std::string BUNNY_MODEL = "./assets/cut_bunny.glb";
 	int box_type=-1 ;
 	int ball_type = -1;
 	int wall_type = -1;

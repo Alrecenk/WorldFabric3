@@ -100,6 +100,9 @@ public:
 	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level = 4) ;
 
+	//Same as above but first breaks a model into its connected pieces
+	static std::vector<ConvexPolyhedron> makeApproximateSurfaceHulls(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level=4) ;
+
 	//Collect the convex pieces of a model
 	static std::vector<ConvexPolyhedron>collectConvexPiecesByBSP(std::shared_ptr<GLTF>& model);
 
@@ -133,7 +136,7 @@ public:
 	int64_t id ;
 	glm::vec3 position = glm::vec3(0,0,0) ;
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::quat orientation = glm::quat(0, 0, 0, 1);
+	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
@@ -156,10 +159,11 @@ public:
 
 	void integrateAcceleration(const glm::vec3& acceleration, float dt);
 
-	//Only for debugging, will be overwritten if physics is actually happening
 	void setPose(const glm::mat4& p){
 		pose = p ;
 		inv_pose = glm::inverse(p);
+		orientation = glm::quat_cast(pose);
+		position = p * glm::vec4(0,0,0,1);
 	}
 };
 
@@ -424,6 +428,9 @@ public:
 
 	//Uses types to render all objects with the scene plugin
 	void updateGraphics();
+
+	//Sets the pose of an object
+	void setPose(int64_t id, const glm::mat4& pose);
 
 };
 
