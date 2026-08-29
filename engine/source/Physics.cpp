@@ -36,8 +36,13 @@ namespace Physics{
 			mass+= part->mass ;
 			moment += part->moment ;
 		}
-		base_inv_moment = glm::inverse(moment);
-		inv_mass = 1.0f/ mass ;
+		if(mass <=0){ // immobile objects have 0 mass and inv_mass
+			base_inv_moment = glm::mat3(0);
+			inv_mass = 0 ;
+		}else{
+			base_inv_moment = glm::inverse(moment);
+			inv_mass = 1.0f/ mass ;
+		}
 
 	}
 
@@ -1147,7 +1152,7 @@ SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
 int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
-	types[id] = { shape, model, transform, elasticity, friction };
+	types[id] = { {shape}, model, transform, elasticity, friction };
 	return id;
 }
 
@@ -1155,7 +1160,7 @@ int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape,
 int SimpleLocalPhysicsCell::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
-	types[id] = { shape[0], model, transform, elasticity, friction };
+	types[id] = { shape, model, transform, elasticity, friction };
 	return id;
 }
 

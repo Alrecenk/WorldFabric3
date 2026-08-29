@@ -391,8 +391,7 @@ public:
 
 	class ObjectType {
 	public:
-		//std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
-		std::shared_ptr<Physics::ConvexShape> shape ;
+		std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 		std::string model;
 		glm::mat4 render_transform;
 		float elasticity;
