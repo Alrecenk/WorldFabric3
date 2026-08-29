@@ -141,13 +141,15 @@ public:
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
+	std::vector<std::shared_ptr<ConvexShape>> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.05f ;
 	float angular_drag = 0.05f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
+	float inv_mass = 0;
+	glm::mat3 base_inv_moment ;
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
@@ -257,7 +259,9 @@ struct SupportEdge {
 class Collision : public Constraint {
 public:
 	int64_t id1 = -1;
+	int shape1 = -1 ;
 	int64_t id2 = -1;
+	int shape2 = -1 ;
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
@@ -275,8 +279,8 @@ public:
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
-	static int64_t getHash(int64_t id1, int64_t id2, int constraint_type) {
-		return hashBytes(serialize(id1, id2, constraint_type));
+	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2, int constraint_type) {
+		return hashBytes(serialize(id1,s1, id2,s2, constraint_type));
 	}
 
 
@@ -358,7 +362,7 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& a, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B);
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A,int shapeA, const RigidBody* B, int shapeB);
 
 //Build a support simplex from a triangle facing a point
 std::vector<SupportTriangle> buildSupportSimplex(const SupportTriangle& triangle, const SupportPoint& D);
@@ -368,14 +372,14 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B, int max_iterations = 10);
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
 
 //Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
 void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
 
 class SimpleLocalPhysicsCell : PhysicsContainer {
 public:

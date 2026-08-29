@@ -8,15 +8,19 @@ namespace Physics{
 
 
 	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s) {
-		shape = s;
+		shape = {s};
+		base_inv_moment = s->inv_moment;
+		inv_mass = s->inv_mass;
 	}
 
 	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w) {
-		shape = s;
+		shape = {s};
 		id = i;
 		position = p;
 		velocity = v;
 		angular_velocity = w;
+		base_inv_moment = s->inv_moment ;
+		inv_mass = s->inv_mass ;
 	}
 
 void RigidBody::integrateVelocity(float dt){
@@ -33,12 +37,21 @@ void RigidBody::integrateVelocity(float dt){
 	inv_pose = glm::inverse(pose);
 
 	glm::mat3 r = glm::mat3_cast(orientation);
-	inv_moment = r * shape->inv_moment * glm::transpose(r);
-	AABB = shape->getAABB(pose);
+	inv_moment = r * base_inv_moment * glm::transpose(r);
+	AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
+	for(auto& s : shape){
+		auto  sAABB = s->getAABB(pose);
+		AABB.first.x = fmin(AABB.first.x, sAABB.first.x) ;
+		AABB.second.x = fmax(AABB.second.x, sAABB.second.x);
+		AABB.first.y = fmin(AABB.first.y, sAABB.first.y);
+		AABB.second.y = fmax(AABB.second.y, sAABB.second.y);
+		AABB.first.z = fmin(AABB.first.z, sAABB.first.z);
+		AABB.second.z = fmax(AABB.second.z, sAABB.second.z);
+	}
 }
 
 void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
-	if (shape->inv_mass <= 0) { // don't accelerate objects with infinite mass
+	if (inv_mass <= 0) { // don't accelerate objects with infinite mass
 		return;
 	}
 	velocity += acceleration * dt;
@@ -598,7 +611,7 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBone(std::s
 
 
 int64_t Collision::getHash() const {
-	return getHash(id1, id2, CONSTRAINT_TYPE);
+	return getHash(id1,shape1, id2, shape2, CONSTRAINT_TYPE);
 }
 bool Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -632,8 +645,8 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse ;
 
-	body_1->velocity -= impulse * body_1->shape->inv_mass;
-	body_2->velocity += impulse * body_2->shape->inv_mass;
+	body_1->velocity -= impulse * body_1->inv_mass;
+	body_2->velocity += impulse * body_2->inv_mass;
 
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
@@ -656,7 +669,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	//calculate effective mass
 	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
 	float rot_term2 = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, normal), r2), normal);
-	float effective_mass_n = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1 + rot_term2;
+	float effective_mass_n = body_1->inv_mass + body_2->inv_mass + rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
 		return; // two immovable objects
 	}
@@ -669,8 +682,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	glm::vec3 impulse_vec_n = normal * current_impulse_n;
 
 	//Apply normal impulse
-	body_1->velocity -= impulse_vec_n * body_1->shape->inv_mass;
-	body_2->velocity += impulse_vec_n * body_2->shape->inv_mass;
+	body_1->velocity -= impulse_vec_n * body_1->inv_mass;
+	body_2->velocity += impulse_vec_n * body_2->inv_mass;
 	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse_vec_n);
 
@@ -690,7 +703,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 		// Effective mass for tangent direction
 		float rot_term1_t = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, tangent), r1), tangent);
 		float rot_term2_t = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, tangent), r2), tangent);
-		float effective_mass_t = body_1->shape->inv_mass + body_2->shape->inv_mass + rot_term1_t + rot_term2_t;
+		float effective_mass_t = body_1->inv_mass + body_2->inv_mass + rot_term1_t + rot_term2_t;
 		if(effective_mass_t < 1e-6f){
 			continue ;
 		}
@@ -712,8 +725,8 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	
 
 	// Apply Tangent Impulse
-	body_1->velocity -= tangent_impulse * body_1->shape->inv_mass;
-	body_2->velocity += tangent_impulse * body_2->shape->inv_mass;
+	body_1->velocity -= tangent_impulse * body_1->inv_mass;
+	body_2->velocity += tangent_impulse * body_2->inv_mass;
 	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, tangent_impulse);
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, tangent_impulse);
 
@@ -919,10 +932,10 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B) {
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const int shapeA, const RigidBody* B, const int shapeB) {
 	SupportPoint sp;
-	sp.a = A->pose * glm::vec4( A->shape->support(A->inv_pose* glm::vec4(direction,0)), 1);
-	sp.b = B->pose * glm::vec4(B->shape->support(B->inv_pose * glm::vec4(-direction, 0)), 1);
+	sp.a = A->pose * glm::vec4( A->shape[shapeA]->support(A->inv_pose* glm::vec4(direction,0)), 1);
+	sp.b = B->pose * glm::vec4(B->shape[shapeB]->support(B->inv_pose * glm::vec4(-direction, 0)), 1);
 	sp.x = sp.a - sp.b;
 	return sp;
 }
@@ -949,21 +962,21 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B, int max_iterations) {
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
 	// arbitrary first direction
 	glm::vec3 search_direction = glm::vec3(1, 0, 0);
 	const glm::vec3 origin(0, 0, 0);
 	//std::vector<SupportPoint> p;
-	SupportPoint p0 = findSupportPoint(search_direction, A, B);
+	SupportPoint p0 = findSupportPoint(search_direction, A,shapeA, B, shapeB);
 	search_direction = origin - p0.x; // From p0 to origin
-	SupportPoint p1 = findSupportPoint(search_direction, A, B);
+	SupportPoint p1 = findSupportPoint(search_direction, A, shapeA, B, shapeB);
 	//New point could not get past zero in search direction
 	if (glm::dot(p1.x, search_direction) <= 0) {
 		return {}; // No collision
 	}
 	//Search perpendicular to p0 to p1 segment, toward origin
 	search_direction = glm::cross(cross(p1.x - p0.x, search_direction), p1.x - p0.x);
-	SupportPoint p2 = findSupportPoint(search_direction, A, B);
+	SupportPoint p2 = findSupportPoint(search_direction, A, shapeA, B, shapeB);
 	if (glm::dot(p2.x, search_direction) <= 0) {
 		return {}; // No collision
 	}
@@ -975,7 +988,7 @@ std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody
 	}
 
 	search_direction = first_triangle.normal;
-	SupportPoint p3 = findSupportPoint(search_direction, A, B);
+	SupportPoint p3 = findSupportPoint(search_direction, A, shapeA, B, shapeB);
 	if (glm::dot(p3.x, search_direction) <= 0) {
 		return {}; // No collision
 	}
@@ -986,7 +999,7 @@ std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody
 		bool found_triangle = false;
 		for (int k = 1; k < 4; k++) { // First triangle always what simpex was built from andwill always face out
 			if (simplex[k].signedDistance(origin) > 0) {
-				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, B);
+				SupportPoint new_point = findSupportPoint(simplex[k].normal, A, shapeA, B, shapeB);
 				//New point could not get past zero in search direction
 				if (glm::dot(new_point.x, simplex[k].normal) <= 0) {
 					return {}; // No collision
@@ -1022,7 +1035,7 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations) {
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
 	polytope = collision_result;
@@ -1042,7 +1055,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 		}
 		SupportTriangle& active_face = polytope[selected_triangle];
 		//use it's normal to expand to a new point
-		SupportPoint new_point = findSupportPoint(active_face.normal, A, B);
+		SupportPoint new_point = findSupportPoint(active_face.normal, A, shapeA, B, shapeB);
 
 		float signed_distance = active_face.signedDistance(new_point.x);
 		//printf("D:%f\n", selected_distance) ;
@@ -1154,35 +1167,43 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
 			if (id1 < id2 && // only check each pair once
-				(body_1->shape->inv_mass > 0 || body_2->shape->inv_mass > 0) && // only check if one is moveable
+				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
 				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
-				auto simplex = Physics::detectCollision(body_1.get(), body_2.get());
-				if (simplex.size() > 0) {
-					Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_2.get());
-					if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
-						glm::vec3 point = (sp.a + sp.b) * 0.5f;
-						glm::vec3 normal = glm::normalize(sp.x);
 
-						normal = glm::normalize(normal);
-						int64_t constraint_id = Collision::getHash(id1, id2, Physics::Collision::CONSTRAINT_TYPE);
-						found_constraints.insert(constraint_id); // track found so we can remove not found
+				for(int shapeA = 0; shapeA < body_1->shape.size(); shapeA++){
+					for (int shapeB = 0; shapeB < body_2->shape.size(); shapeB++) {
+
+						auto simplex = Physics::detectCollision(body_1.get(), shapeA, body_2.get(), shapeB);
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(),shapeA,body_2.get(), shapeB);
+							if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+								glm::vec3 point = (sp.a + sp.b) * 0.5f;
+								glm::vec3 normal = glm::normalize(sp.x);
+
+								normal = glm::normalize(normal);
+								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB, Physics::Collision::CONSTRAINT_TYPE);
+								found_constraints.insert(constraint_id); // track found so we can remove not found
 						
-						std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
-						constraint->id1 = id1;
-						constraint->id2 = id2;
-						constraint->point = point;
-						constraint->normal = normal;
-						constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
-						constraint->local_b = body_2->inv_pose * glm::vec4(sp.b, 1) ;
-						constraint->penetration_depth = glm::length(sp.x) ;
+								std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
+								constraint->id1 = id1;
+								constraint->shape1 = shapeA;
+								constraint->id2 = id2;
+								constraint->shape2 = shapeB ;
+								constraint->point = point;
+								constraint->normal = normal;
+								constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
+								constraint->local_b = body_2->inv_pose * glm::vec4(sp.b, 1) ;
+								constraint->penetration_depth = glm::length(sp.x) ;
 
-						if(constraints.find(constraint_id) == constraints.end()){
-							constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
-							//constraints[constraint_id] = std::make_shared<SinglePointCollision>();
+								if(constraints.find(constraint_id) == constraints.end()){
+									constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
+									//constraints[constraint_id] = std::make_shared<SinglePointCollision>();
+								}
+
+								constraints[constraint_id]->addConstraint(this, *constraint.get()) ;
+						
+							}
 						}
-
-						constraints[constraint_id]->addConstraint(this, *constraint.get()) ;
-						
 					}
 				}
 			}
