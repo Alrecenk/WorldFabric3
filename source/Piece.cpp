@@ -21,8 +21,14 @@ void Piece::setPosition(const glm::vec3& p) {
 }
 
 bool Piece::isValidMove(const glm::vec3& destination) const {
-	// Destination is on the board
-	return fabs(destination.x) <= 4 && fabs(destination.z) <= 4 && destination != position;
+	WorldPlugin* world = getTool<WorldPlugin>();
+	auto piece = world->observe<Piece>("chess", piece_at(destination));
+	bool space_empty_or_enemy = !piece || piece->color != color;
+	auto board = world->observeNearest<Board>("chess");
+	bool colors_turn = board->turn_count % 2 != color;
+
+	// Destination is on the board and empty or enemy, and it's white/black's turn
+	return fabs(destination.x) <= 4 && fabs(destination.z) <= 4 && destination != position && space_empty_or_enemy && colors_turn;
 }
 
 void Piece::destroy() {

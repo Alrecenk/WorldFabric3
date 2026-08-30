@@ -21,6 +21,8 @@ namespace Chess {
         }
 
         bool tryingToCastle(const glm::vec3& destination) const override {
+            if (!Piece::isValidMove(destination)) return false;
+
             return fabs(destination.x - position.x) == 2.0f && fabs(position.z - destination.z) == 0;
         }
 

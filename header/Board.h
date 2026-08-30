@@ -58,8 +58,9 @@ namespace Chess {
 
 		template <typename T>
 		void addPiece(const glm::vec3& p, const Piece::COLOR& color);
-		
+
 		void setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p);
+		void promote(const glm::vec3& old_p, const glm::vec3& new_p);
 		void takePiece(const glm::vec3& p);
 		void nextTurn();
 
@@ -102,6 +103,8 @@ namespace Chess {
 		void movePiece(std::shared_ptr<const Chess::Piece>& piece, glm::vec3& destination);
 
 		void enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
+
+		void promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 	};
 
 	auto static getStructure(Board& obj) {

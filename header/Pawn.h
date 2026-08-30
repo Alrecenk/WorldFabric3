@@ -37,12 +37,23 @@ namespace Chess {
 
         // Checks self only, not enemy pawn
         bool tryingToEnPassant(const glm::vec3& destination) const override {
+            if (!Piece::isValidMove(destination)) return false;
+
             bool moved_towards_black = position.z - destination.z > 0.0f;
             bool is_white = !!color;
             bool moved_diagonal = fabs(destination.x - position.x) == 1.0f && fabs(position.z - destination.z) == 1.0f;
             bool unblocked = !piece_at(destination);
 
             return moved_diagonal && is_white == moved_towards_black && unblocked;
+        }
+
+        bool tryingToPromote(const glm::vec3& destination) const override {
+            if (!Piece::isValidMove(destination)) return false;
+
+            bool is_white = !!color;
+            float final_square_z = is_white ? -3.5f : 3.5f;
+
+            return destination.z == final_square_z;
         }
     };
 

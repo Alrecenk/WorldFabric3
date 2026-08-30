@@ -76,6 +76,29 @@ namespace Chess {
 		std::println("Moving {} from {} to {}", piece_id, old_p, new_p);
 	}
 
+	void Board::promote(const glm::vec3& old_p, const glm::vec3& new_p) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		auto maybe_piece = board_of_pieces.find(new_p);
+		int64_t piece_id = board_of_pieces.at(old_p);
+		auto piece = world->observe<Piece>("chess", piece_id);
+
+		// Take/Destroy the piece being captured
+		if (maybe_piece != board_of_pieces.end()) {
+			std::println("Piece at {} is taking {} at {}", old_p, maybe_piece->second, new_p);
+			queue(maybe_piece->second, time, &Piece::destroy);
+			board_of_pieces.erase(new_p);
+		}
+
+		// Delete the pawn
+		board_of_pieces.erase(old_p);
+		std::println("Pawn<{}> at {} is being promoted", piece_id, old_p);
+		queue(piece_id, time, &Piece::destroy);
+
+		// Create a queen on the far rank / in the captured piece's place
+		addPiece<Queen>(new_p, piece->color);
+		std::println("Promoted to Queen at {}", new_p);
+	}
+
 	void Board::takePiece(const glm::vec3& p) {
 		auto maybe_piece = board_of_pieces.find(p);
 		if (maybe_piece != board_of_pieces.end()) {
@@ -148,7 +171,6 @@ namespace Chess {
 				// Only send the network event if the position is different
 				if (piece && (piece->position.x != destination.x || piece->position.z != destination.z)) {
 					movePiece(piece, destination);
-					world->queue("chess", last_observation->id, &Board::nextTurn);
 				}
 				action->next_held_piece = -1; // drop piece
 			}
@@ -165,8 +187,11 @@ namespace Chess {
 			castle(destination, piece);
 		} else if (piece->tryingToEnPassant(destination)) {
 			enPassant(destination, piece);
+		} else if (piece->tryingToPromote(destination)) {
+			promote(destination, piece);
 		} else if (piece->isValidMove(destination)) {
 			world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, destination);
+			world->queue("chess", last_observation->id, &Board::nextTurn);
 		}
 	}
 
@@ -185,6 +210,15 @@ namespace Chess {
 		}
 	}
 
+	void BoardView::promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		bool is_white = !!pawn->color;
+		auto board = world->observeNearest<Board>("chess");
+
+		world->queue("chess", last_observation->id, &Board::promote, pawn->position, destination);
+		world->queue("chess", last_observation->id, &Board::nextTurn);
+	}
+
 	// The destination is the square the pawn is trying to end up at after en passant. Assume it's valid.
 	void BoardView::enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
 		WorldPlugin* world = getTool<WorldPlugin>();
@@ -197,6 +231,7 @@ namespace Chess {
 		if (enemy_pawn && enemy_pawn->moved_count == 1 && fabs(enemy_pawn->position.z) == 0.5f && enemy_pawn->last_moved_turn == board->turn_count - 1 && fabs(enemy_pawn->last_moved_position.z) == 2.5f) {
 			world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
 			world->queue("chess", last_observation->id, &Board::takePiece, enemy_pawn_pos);
+			world->queue("chess", last_observation->id, &Board::nextTurn);
 		}
 	}
 
@@ -215,6 +250,7 @@ namespace Chess {
 			if (can_castle) {
 				world->queue("chess", rook_id, &Rook::castle);
 				world->queue("chess", last_observation->id, &Board::setPiecePosition, king->position, destination);
+				world->queue("chess", last_observation->id, &Board::nextTurn);
 			}
 		}
 	}

@@ -51,6 +51,7 @@ public:
 	virtual bool isValidMove(const glm::vec3& destination) const = 0;
 	virtual bool tryingToCastle(const glm::vec3& destination) const { return false; }
 	virtual bool tryingToEnPassant(const glm::vec3& destination) const { return false; }
+	virtual bool tryingToPromote(const glm::vec3& destination) const { return false; }
 };
 
 
