@@ -60,6 +60,18 @@ namespace Chess {
 		board_of_pieces.emplace(p, create(std::shared_ptr<T>(new T(p, id, color)), time));
 	}
 
+	// ghetto ass win animation until we bedazzle it more
+	void Board::gameOver() {
+		WorldPlugin* world = getTool<WorldPlugin>();
+
+		for (auto& piece : board_of_pieces) {
+			auto king = world->observe<King>("chess", piece.second);
+			if (!king) {
+				queue(piece.second, time, &Piece::destroy);
+			}
+		}
+	}
+
 	void Board::setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 
@@ -72,6 +84,8 @@ namespace Chess {
 			if (king) {
 				std::println("THE KING HAS FALLEN. GAME OVER.");
 				game_over = true;
+				queue(id, time, &Board::gameOver);
+				return;
 			}
 		}
 

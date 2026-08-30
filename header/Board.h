@@ -63,6 +63,7 @@ namespace Chess {
 		void promote(const glm::vec3& old_p, const glm::vec3& new_p);
 		void takePiece(const glm::vec3& p);
 		void nextTurn();
+		void gameOver();
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template parameter to match your class
