@@ -184,6 +184,7 @@
     <ClInclude Include="engine\header\OptimizationProblem.h" />
     <ClInclude Include="engine\header\PanelPlugin.h" />
     <ClInclude Include="engine\header\ParticlePlugin.h" />
+    <ClInclude Include="engine\header\Physics.h" />
     <ClInclude Include="engine\header\Polygon.h" />
     <ClInclude Include="engine\header\RadialVolume.h" />
     <ClInclude Include="engine\header\Registry.h" />
@@ -236,6 +237,7 @@
     <ClInclude Include="header\DevMenu.h" />
     <ClInclude Include="header\MapApp.h" />
     <ClInclude Include="header\MirrorApp.h" />
+    <ClInclude Include="header\PyramidApp.h" />
     <ClInclude Include="header\Pawn.h" />
     <ClInclude Include="header\Piece.h" />
     <ClInclude Include="header\Queen.h" />
@@ -890,6 +892,7 @@
     <ClCompile Include="engine\source\OptimizationProblem.cpp" />
     <ClCompile Include="engine\source\PanelPlugin.cpp" />
     <ClCompile Include="engine\source\ParticlePlugin.cpp" />
+    <ClCompile Include="engine\source\Physics.cpp" />
     <ClCompile Include="engine\source\Polygon.cpp" />
     <ClCompile Include="engine\source\RadialVolume.cpp" />
     <ClCompile Include="engine\source\SavePlugin.cpp" />
@@ -909,6 +912,9 @@
     <ClCompile Include="engine\source\WorldPlugin.cpp" />
     <ClCompile Include="include\glm\detail\glm.cpp" />
     <ClCompile Include="include\stb_vorbis.c" />
+    <ClCompile Include="Narball\header\NarballMain.h">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll,.\Narball\header,.\Narball\source</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Narball\source\Ball.cpp" />
     <ClCompile Include="Narball\source\Nameplate.cpp" />
     <ClCompile Include="Narball\source\NarballMenu.cpp" />
@@ -926,6 +932,7 @@
     <ClCompile Include="Narball\source\NarballGame.cpp" />
     <ClCompile Include="source\MirrorApp.cpp" />
     <ClCompile Include="source\Piece.cpp" />
+    <ClCompile Include="source\PyramidApp.cpp" />
     <ClCompile Include="source\PlaySong.cpp" />
     <ClCompile Include="source\Rook.cpp" />
     <ClCompile Include="source\SceneDemoApp.cpp" />
