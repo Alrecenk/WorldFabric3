@@ -34,7 +34,7 @@ namespace Chess {
     };
 
     auto static getStructure(King& obj) {
-        return std::tie(obj.position, obj.model_name, obj.color, obj.board_id, obj.has_moved);
+        return std::tie(obj.position, obj.model_name, obj.color, obj.board_id, obj.has_moved, obj.moved_count, obj.last_moved_position, obj.last_moved_turn);
     };
 
 }

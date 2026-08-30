@@ -10,6 +10,11 @@
 namespace Chess {
 
 void Piece::setPosition(const glm::vec3& p) {
+	WorldPlugin* world = getTool<WorldPlugin>();
+	auto board = world->observe<Board>("chess", board_id);
+
+	last_moved_position = position;
+	last_moved_turn = board->turn_count;
 	position = p;
 	has_moved = true;
 	moved_count++;

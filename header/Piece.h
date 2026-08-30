@@ -25,9 +25,12 @@ public:
 	int64_t board_id;
 	bool has_moved;
 	int moved_count;
+	glm::vec3 last_moved_position;
+	int last_moved_turn;
+
 
 	Piece(const glm::vec3& position, const int64_t& board_id, const COLOR& color, const std::string& model_name)
-		: WorldObject(position), board_id(board_id), color(color), model_name(model_name), has_moved(false), moved_count(0) {};
+		: WorldObject(position), board_id(board_id), color(color), model_name(model_name), has_moved(false), moved_count(0), last_moved_turn(-1) {};
 
 	//Functions to be used as events must be void return and only const& parameters
 	// Also they're not allowed to read or write any data outside the object except through timeline functions
@@ -88,7 +91,7 @@ template <>
 struct std::formatter<Chess::Piece> {
 	auto format(const Chess::Piece& p, std::format_context& ctx) const {
 		// This is the only line that matters, the rest is boiler plate, to get std::println working
-		return std::format_to(ctx.out(), "(Piece <{}> {} {} at ({},{}), moved:{} on board <{}>)", p.id, p.color, p.model_name, p.position.x, p.position.z, p.has_moved, p.board_id, p.moved_count);
+		return std::format_to(ctx.out(), "(Piece <{}> {} {} at ({},{}), moved:{} on board <{}>)", p.id, p.color, p.model_name, p.position.x, p.position.z, p.has_moved, p.board_id);
 	}
 	constexpr auto parse(std::format_parse_context& ctx) {
 		return ctx.begin();

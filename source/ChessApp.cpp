@@ -85,6 +85,7 @@ namespace Chess {
 		world->registerMethod(&Board::setPiecePosition, "setPiecePosition");
 		world->registerMethod(&Board::printEvent, "printEvent");
 		world->registerMethod(&Board::takePiece, "takePiece");
+		world->registerMethod(&Board::nextTurn, "nextTurn");
 		world->registerClass<Glove, GloveView>("Glove");
 		world->registerMethod(&Glove::setPosition, "setPosition");
 		world->registerMethod(&Piece::destroy, "destroy");

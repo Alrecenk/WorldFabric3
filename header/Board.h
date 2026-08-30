@@ -39,7 +39,10 @@ namespace Chess {
 			return a.z < b.z;
 		})> board_of_pieces;
 
-		Board(const glm::vec3& p, const std::string& model_name_set);
+		int turn_count;
+
+		Board(const glm::vec3& p, const std::string& model_name_set)
+			: WorldObject(position), model_name(model_name_set) {};
 		void init();
 
 		void destroy();
@@ -58,6 +61,7 @@ namespace Chess {
 		
 		void setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p);
 		void takePiece(const glm::vec3& p);
+		void nextTurn();
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template parameter to match your class
@@ -101,7 +105,7 @@ namespace Chess {
 	};
 
 	auto static getStructure(Board& obj) {
-		return std::tie(obj.position, obj.model_name, obj.glove_black_id, obj.glove_white_id, obj.board_of_pieces);
+		return std::tie(obj.position, obj.model_name, obj.glove_black_id, obj.glove_white_id, obj.board_of_pieces, obj.turn_count);
 	}
 
 
@@ -111,7 +115,7 @@ template <>
 struct std::formatter<Chess::Board> {
 	auto format(const Chess::Board& p, std::format_context& ctx) const {
 		// This is the only line that matters, the rest is boiler plate, to get std::println working
-		return std::format_to(ctx.out(), "(Board <{}> {}, destroyed is {})", p.id, p.model_name, p.destroyed);
+		return std::format_to(ctx.out(), "(Board <{}> {}, destroyed is {})", p.id, p.model_name, p.destroyed, p.turn_count);
 	}
 	constexpr auto parse(std::format_parse_context& ctx) {
 		return ctx.begin();

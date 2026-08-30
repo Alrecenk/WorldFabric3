@@ -8,12 +8,6 @@
 #include <print>
 
 namespace Chess {
-
-	Board::Board(const glm::vec3& p, const std::string& model_name_set) {
-		position = p;
-		model_name = model_name_set;
-	}
-
 	void Board::destroy() {
 		destroyed = true;
 	}
@@ -41,7 +35,13 @@ namespace Chess {
 		//This is this player's hand (the hosting aka first player)
 		glove_white_id = create(std::shared_ptr<Glove>(new Glove(glm::vec3(.5, 0, 3.5), "glove")), time);
 
+		turn_count = 0;
+
 		world->queue("chess", id, &Board::printEvent);
+	}
+
+	void Board::nextTurn() {
+		turn_count++;
 	}
 
 	void Board::printEvent() {
@@ -148,6 +148,7 @@ namespace Chess {
 				// Only send the network event if the position is different
 				if (piece && (piece->position.x != destination.x || piece->position.z != destination.z)) {
 					movePiece(piece, destination);
+					world->queue("chess", last_observation->id, &Board::nextTurn);
 				}
 				action->next_held_piece = -1; // drop piece
 			}
@@ -188,11 +189,12 @@ namespace Chess {
 	void BoardView::enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		bool is_white = !!pawn->color;
-		auto enemy_pawn_pos = destination;
+		glm::vec3 enemy_pawn_pos = destination;
 		enemy_pawn_pos.z += is_white ? 1 : -1;
 		auto enemy_pawn = world->observe<Pawn>("chess", pawn->piece_at(enemy_pawn_pos));
+		auto board = world->observeNearest<Board>("chess");
 
-		if (enemy_pawn && enemy_pawn->moved_count == 1 && fabs(enemy_pawn->position.z) == 0.5f) {
+		if (enemy_pawn && enemy_pawn->moved_count == 1 && fabs(enemy_pawn->position.z) == 0.5f && enemy_pawn->last_moved_turn == board->turn_count - 1 && fabs(enemy_pawn->last_moved_position.z) == 2.5f) {
 			world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
 			world->queue("chess", last_observation->id, &Board::takePiece, enemy_pawn_pos);
 		}
