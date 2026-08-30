@@ -28,7 +28,7 @@ bool Piece::isValidMove(const glm::vec3& destination) const {
 	bool colors_turn = board->turn_count % 2 != color;
 
 	// Destination is on the board and empty or enemy, and it's white/black's turn
-	return fabs(destination.x) <= 4 && fabs(destination.z) <= 4 && destination != position && space_empty_or_enemy && colors_turn;
+	return fabs(destination.x) <= 4 && fabs(destination.z) <= 4 && destination != position && space_empty_or_enemy && colors_turn && !board->game_over;
 }
 
 void Piece::destroy() {

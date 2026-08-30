@@ -32,6 +32,8 @@ namespace Chess {
 		std::string model_name;
 		int64_t glove_white_id = -1;
 		int64_t glove_black_id = -1;
+		int turn_count;
+		bool game_over;
 		std::map<glm::vec3, int64_t, decltype([](glm::vec3 a, glm::vec3 b) {
 			// Need to compare vec3's so the map can be ordered
 			if (a.x != b.x) return a.x < b.x;
@@ -39,10 +41,8 @@ namespace Chess {
 			return a.z < b.z;
 		})> board_of_pieces;
 
-		int turn_count;
-
 		Board(const glm::vec3& p, const std::string& model_name_set)
-			: WorldObject(position), model_name(model_name_set) {};
+			: WorldObject(position), model_name(model_name_set), turn_count(0), game_over(false) {};
 		void init();
 
 		void destroy();
@@ -71,6 +71,10 @@ namespace Chess {
 		}
 
 	};
+
+	auto static getStructure(Board& obj) {
+		return std::tie(obj.position, obj.model_name, obj.glove_black_id, obj.glove_white_id, obj.board_of_pieces, obj.turn_count, obj.game_over);
+	}
 
 
 	class BoardView : public ObjectView<Board>, public virtual ActionReceiver<ChessMouseAction> {
@@ -106,10 +110,6 @@ namespace Chess {
 
 		void promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 	};
-
-	auto static getStructure(Board& obj) {
-		return std::tie(obj.position, obj.model_name, obj.glove_black_id, obj.glove_white_id, obj.board_of_pieces, obj.turn_count);
-	}
 
 
 } // end Board name space

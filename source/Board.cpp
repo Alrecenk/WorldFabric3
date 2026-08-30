@@ -36,6 +36,7 @@ namespace Chess {
 		glove_white_id = create(std::shared_ptr<Glove>(new Glove(glm::vec3(.5, 0, 3.5), "glove")), time);
 
 		turn_count = 0;
+		game_over = false;
 
 		world->queue("chess", id, &Board::printEvent);
 	}
@@ -60,11 +61,18 @@ namespace Chess {
 	}
 
 	void Board::setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+
 		// Take/Destroy the piece being captured
 		auto maybe_piece = board_of_pieces.find(new_p);
 		if (maybe_piece != board_of_pieces.end()) {
-			std::println("Piece at {} is taking {} at {}", old_p, maybe_piece->second, new_p);
+			std::println("Piece at {} is taking Piece<{}> at {}", old_p, maybe_piece->second, new_p);
 			queue(maybe_piece->second, time, &Piece::destroy);
+			auto king = world->observe<King>("chess", maybe_piece->second);
+			if (king) {
+				std::println("THE KING HAS FALLEN. GAME OVER.");
+				game_over = true;
+			}
 		}
 
 		// Move the capturer into it's place
@@ -73,7 +81,7 @@ namespace Chess {
 		board_of_pieces.erase(new_p);
 		board_of_pieces.emplace(new_p, piece_id);
 		queue(piece_id, time, &Piece::setPosition, new_p);
-		std::println("Moving {} from {} to {}", piece_id, old_p, new_p);
+		std::println("Moving Piece<{}> from {} to {}", piece_id, old_p, new_p);
 	}
 
 	void Board::promote(const glm::vec3& old_p, const glm::vec3& new_p) {
