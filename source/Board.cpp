@@ -76,6 +76,15 @@ namespace Chess {
 		std::println("Moving {} from {} to {}", piece_id, old_p, new_p);
 	}
 
+	void Board::takePiece(const glm::vec3& p) {
+		auto maybe_piece = board_of_pieces.find(p);
+		if (maybe_piece != board_of_pieces.end()) {
+			std::println("Piece<{}> at {} is being taken", maybe_piece->second, p);
+			queue(maybe_piece->second, time, &Piece::destroy);
+			board_of_pieces.erase(p);
+		}
+	}
+
 	void Board::createBlackGlove() {
 		if (glove_black_id == -1) {
 			glove_black_id = create(std::shared_ptr<Glove>(new Glove(glm::vec3(.5, 0, 3.5), "glove", false)), time);
@@ -123,7 +132,45 @@ namespace Chess {
 		float board_t = ChessApp::raytrace(action->origin, action->direction, scene_id, pose);
 		glm::vec3 mouse_on_board_pos = action->origin + action->direction * board_t;
 		mouse_on_board_pos.y = 0;
+		glm::vec3 destination = mouse_on_board_pos; // Destination of a piece if placing a piece
+		// Center piece inside its square
+		destination.x = std::round(destination.x + .5f) - .5f;
+		destination.z = std::round(destination.z + .5f) - .5f;
 
+		handleGloves(mouse_on_board_pos);
+
+		if (action->held_piece != -1) {
+			std::shared_ptr<const Piece> piece = world->observe<Piece>("chess", action->held_piece);
+			if (piece) {
+				glowUpHeldPiece(piece);
+			}
+			if (action->clicked || !piece) {
+				// Only send the network event if the position is different
+				if (piece && (piece->position.x != destination.x || piece->position.z != destination.z)) {
+					movePiece(piece, destination);
+				}
+				action->next_held_piece = -1; // drop piece
+			}
+		}
+		else {
+			ParticlePlugin* particles = getTool<ParticlePlugin>();
+			particles->setPose(particle_id, glm::mat4(0));
+		}
+	}
+
+	void BoardView::movePiece(std::shared_ptr<const Chess::Piece>& piece, glm::vec3& destination) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		if (piece->tryingToCastle(destination)) {
+			castle(destination, piece);
+		} else if (piece->tryingToEnPassant(destination)) {
+			enPassant(destination, piece);
+		} else if (piece->isValidMove(destination)) {
+			world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, destination);
+		}
+	}
+
+	void BoardView::handleGloves(glm::vec3& mouse_on_board_pos)	{
+		WorldPlugin* world = getTool<WorldPlugin>();
 		if (world->amHosting()) {
 			world->queue("chess", last_observation->glove_white_id, &Glove::setPosition, mouse_on_board_pos);
 		}
@@ -135,45 +182,38 @@ namespace Chess {
 				world->queue("chess", last_observation->glove_black_id, &Glove::setPosition, mouse_on_board_pos);
 			}
 		}
+	}
 
-		if (action->held_piece != -1) {
-			std::shared_ptr<const Piece> piece = world->observe<Piece>("chess", action->held_piece);
-			if (piece) {
-				glowUpHeldPiece(piece);
-			}
-			if (action->clicked || !piece) {
-				// Place pieces in the middle of squares
-				glm::vec3 destination = mouse_on_board_pos;
-				destination.x = std::round(destination.x + .5f) - .5f;
-				destination.z = std::round(destination.z + .5f) - .5f;
+	// The destination is the square the pawn is trying to end up at after en passant. Assume it's valid.
+	void BoardView::enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		bool is_white = !!pawn->color;
+		auto enemy_pawn_pos = destination;
+		enemy_pawn_pos.z += is_white ? 1 : -1;
+		auto enemy_pawn = world->observe<Pawn>("chess", pawn->piece_at(enemy_pawn_pos));
 
-				// Only send the network event if the position is different
-				if (piece && (piece->position.x != destination.x || piece->position.z != destination.z)) {
-					if (piece->tryingToCastle(destination)) {
-						bool trying_to_castle_east = destination.x > 0;
-						float rook_x = trying_to_castle_east ? 3.5f : -3.5f;
-						glm::vec3 rook_pos = glm::vec3(rook_x, 0, piece->position.z);
-						int64_t rook_id = piece->piece_at(rook_pos);
-						auto rook = world->observe<Rook>("chess", rook_id);
-
-						if (rook) {
-							bool can_castle = !piece->has_moved && !rook->has_moved && !piece->blocked_by(rook_pos);
-
-							if (can_castle) {
-								world->queue("chess", rook_id, &Rook::castle);
-								world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, destination);
-							}
-						}
-					} else if (piece->isValidMove(destination)) {
-						world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, destination);
-					}
-				}
-				action->next_held_piece = -1; // drop piece
-			}
+		if (enemy_pawn && enemy_pawn->moved_count == 1 && fabs(enemy_pawn->position.z) == 0.5f) {
+			world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
+			world->queue("chess", last_observation->id, &Board::takePiece, enemy_pawn_pos);
 		}
-		else {
-			ParticlePlugin* particles = getTool<ParticlePlugin>();
-			particles->setPose(particle_id, glm::mat4(0));
+	}
+
+	// The destination is the square the king is trying to castle to. Assume it's valid.
+	void BoardView::castle(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& king) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		bool trying_to_castle_east = destination.x > 0;
+		float rook_x = trying_to_castle_east ? 3.5f : -3.5f;
+		glm::vec3 rook_pos = glm::vec3(rook_x, 0, king->position.z);
+		int64_t rook_id = king->piece_at(rook_pos);
+		auto rook = world->observe<Rook>("chess", rook_id);
+
+		if (rook) {
+			bool can_castle = !king->has_moved && !rook->has_moved && !king->blocked_by(rook_pos);
+
+			if (can_castle) {
+				world->queue("chess", rook_id, &Rook::castle);
+				world->queue("chess", last_observation->id, &Board::setPiecePosition, king->position, destination);
+			}
 		}
 	}
 

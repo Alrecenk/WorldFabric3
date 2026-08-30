@@ -57,6 +57,7 @@ namespace Chess {
 		void addPiece(const glm::vec3& p, const Piece::COLOR& color);
 		
 		void setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p);
+		void takePiece(const glm::vec3& p);
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template parameter to match your class
@@ -89,6 +90,14 @@ namespace Chess {
 		void receiveAction(std::shared_ptr<ChessMouseAction>& action, std::shared_ptr<ActionTrigger>& trigger) override;
 
 		void glowUpHeldPiece(std::shared_ptr<const Piece>& piece) ;
+
+		void castle(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& piece);
+
+		void handleGloves(glm::vec3& mouse_on_board_pos);
+
+		void movePiece(std::shared_ptr<const Chess::Piece>& piece, glm::vec3& destination);
+
+		void enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 	};
 
 	auto static getStructure(Board& obj) {

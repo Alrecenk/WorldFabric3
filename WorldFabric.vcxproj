@@ -912,9 +912,6 @@
     <ClCompile Include="engine\source\WorldPlugin.cpp" />
     <ClCompile Include="include\glm\detail\glm.cpp" />
     <ClCompile Include="include\stb_vorbis.c" />
-    <ClCompile Include="Narball\header\NarballMain.h">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll,.\Narball\header,.\Narball\source</AdditionalIncludeDirectories>
-    </ClCompile>
     <ClCompile Include="Narball\source\Ball.cpp" />
     <ClCompile Include="Narball\source\Nameplate.cpp" />
     <ClCompile Include="Narball\source\NarballMenu.cpp" />

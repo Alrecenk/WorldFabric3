@@ -12,6 +12,7 @@ namespace Chess {
 void Piece::setPosition(const glm::vec3& p) {
 	position = p;
 	has_moved = true;
+	moved_count++;
 }
 
 bool Piece::isValidMove(const glm::vec3& destination) const {

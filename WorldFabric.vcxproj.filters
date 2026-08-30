@@ -2164,9 +2164,6 @@
     <ClCompile Include="source\BallThrowApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Narball\header\NarballMain.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="engine\source\PanelPlugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
