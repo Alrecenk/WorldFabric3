@@ -227,20 +227,17 @@ namespace Chess {
 		world->queue("chess", last_observation->id, &Board::nextTurn);
 	}
 
-	// The destination is the square the pawn is trying to end up at after en passant. Assume it's valid.
+	// Assume the board state is perfectly setup currently for an en passant
 	void BoardView::enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		bool is_white = !!pawn->color;
 		glm::vec3 enemy_pawn_pos = destination;
 		enemy_pawn_pos.z += is_white ? 1 : -1;
-		auto enemy_pawn = world->observe<Pawn>("chess", pawn->piece_at(enemy_pawn_pos));
 		auto board = world->observeNearest<Board>("chess");
 
-		if (enemy_pawn && enemy_pawn->moved_count == 1 && fabs(enemy_pawn->position.z) == 0.5f && enemy_pawn->last_moved_turn == board->turn_count - 1 && fabs(enemy_pawn->last_moved_position.z) == 2.5f) {
-			world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
-			world->queue("chess", last_observation->id, &Board::takePiece, enemy_pawn_pos);
-			world->queue("chess", last_observation->id, &Board::nextTurn);
-		}
+		world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
+		world->queue("chess", last_observation->id, &Board::takePiece, enemy_pawn_pos);
+		world->queue("chess", last_observation->id, &Board::nextTurn);
 	}
 
 	// The destination is the square the king is trying to castle to. Assume it's valid.
@@ -252,14 +249,10 @@ namespace Chess {
 		int64_t rook_id = king->piece_at(rook_pos);
 		auto rook = world->observe<Rook>("chess", rook_id);
 
-		if (rook) {
-			bool can_castle = !king->has_moved && !rook->has_moved && !king->blocked_by(rook_pos);
-
-			if (can_castle) {
-				world->queue("chess", rook_id, &Rook::castle);
-				world->queue("chess", last_observation->id, &Board::setPiecePosition, king->position, destination);
-				world->queue("chess", last_observation->id, &Board::nextTurn);
-			}
+		if (rook && !king->has_moved && !rook->has_moved && !king->blocked_by(rook_pos)) {
+			world->queue("chess", rook_id, &Rook::castle);
+			world->queue("chess", last_observation->id, &Board::setPiecePosition, king->position, destination);
+			world->queue("chess", last_observation->id, &Board::nextTurn);
 		}
 	}
 

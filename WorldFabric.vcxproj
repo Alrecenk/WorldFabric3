@@ -928,6 +928,7 @@
     <ClCompile Include="source\Main.cpp" />
     <ClCompile Include="Narball\source\NarballGame.cpp" />
     <ClCompile Include="source\MirrorApp.cpp" />
+    <ClCompile Include="source\Pawn.cpp" />
     <ClCompile Include="source\Piece.cpp" />
     <ClCompile Include="source\PyramidApp.cpp" />
     <ClCompile Include="source\PlaySong.cpp" />
