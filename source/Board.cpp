@@ -61,36 +61,38 @@ namespace Chess {
 	}
 
 	// ghetto ass win animation until we bedazzle it more
-	void Board::gameOver() {
+	void Board::gameOver(const Piece::COLOR& color) {
 		WorldPlugin* world = getTool<WorldPlugin>();
-
-		for (auto& piece : board_of_pieces) {
-			auto king = world->observe<King>("chess", piece.second);
-			if (!king) {
-				queue(piece.second, time, &Piece::destroy);
-			}
+		
+		for (const auto& i : {4.5, 3.5, 2.5, 1.5, 0.5}) {
+			addPiece<King>(glm::vec3(4.5, 0, i), color);
+			addPiece<King>(glm::vec3(-4.5, 0, i), color);
+			addPiece<King>(glm::vec3(4.5, 0, -1.0 * i), color);
+			addPiece<King>(glm::vec3(-4.5, 0, -1.0 * i), color);
 		}
 	}
 
 	void Board::setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p) {
 		WorldPlugin* world = getTool<WorldPlugin>();
+		int64_t piece_id = board_of_pieces.at(old_p);
+		auto maybe_piece = board_of_pieces.find(new_p); // being captured
 
 		// Take/Destroy the piece being captured
-		auto maybe_piece = board_of_pieces.find(new_p);
 		if (maybe_piece != board_of_pieces.end()) {
-			std::println("Piece at {} is taking Piece<{}> at {}", old_p, maybe_piece->second, new_p);
+			std::println("Piece<{}> at {} is taking Piece<{}> at {}", piece_id, old_p, maybe_piece->second, new_p);
 			queue(maybe_piece->second, time, &Piece::destroy);
+
 			auto king = world->observe<King>("chess", maybe_piece->second);
-			if (king) {
+			if (king) { // The king has been captured
+				auto winner = world->observe<Piece>("chess", piece_id); // Assume capturing piece exists
+
 				std::println("THE KING HAS FALLEN. GAME OVER.");
 				game_over = true;
-				queue(id, time, &Board::gameOver);
-				return;
+				queue(id, time, &Board::gameOver, winner->color);
 			}
 		}
 
 		// Move the capturer into it's place
-		int64_t piece_id = board_of_pieces.at(old_p);
 		board_of_pieces.erase(old_p);
 		board_of_pieces.erase(new_p);
 		board_of_pieces.emplace(new_p, piece_id);
