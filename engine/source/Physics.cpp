@@ -646,7 +646,12 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
 	RigidBody* body_2 = cell->getBody(id2);
 
-	float velocity_against_normal = glm::dot(body_1->velocity - body_2->velocity, normal);
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+	glm::vec3 contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	float velocity_against_normal = glm::dot(contact_velocity_1 - contact_velocity_2, normal);
 
 	float restitution_bias = 0.0f; // inelastic
 	if (velocity_against_normal > min_velocity_for_elastic) {
