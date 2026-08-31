@@ -200,6 +200,8 @@ public:
 class ConstraintSet{
 public:
 
+	bool delete_if_not_updated = true; // collision constraints get autodeletedif not being actively updated
+
 	//Returns an identifying hash that can be used to group constraints into this set
 	virtual int64_t getHash() const = 0 ;
 	

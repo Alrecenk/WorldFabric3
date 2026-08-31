@@ -1263,7 +1263,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 	//Delete existing constraints not found now
 	std::vector<int64_t> to_delete;
 	for (auto& [id, constraint] : constraints) {
-		if (found_constraints.find(id) == found_constraints.end()) {
+		if (constraint->delete_if_not_updated && found_constraints.find(id) == found_constraints.end()) {
 			to_delete.push_back(id);
 		}
 	}
