@@ -1215,6 +1215,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
 			if (id1 < id2 && // only check each pair once
+				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
 				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
 
@@ -1317,6 +1318,14 @@ void SimpleLocalPhysicsCell::setPose(int64_t id, const glm::mat4& pose){
 		iter->second->setPose(pose) ;
 	}
 
+}
+
+void SimpleLocalPhysicsCell::disableCollision(int64_t a, int64_t b){
+	if(a < b){
+		collision_disabled.emplace(a,b) ;
+	}else{
+		collision_disabled.emplace(b, a);
+	}
 }
 
 } // end namespace Physics

@@ -408,6 +408,8 @@ public:
 
 	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
 
+	std::unordered_set<std::pair<int64_t, int64_t>> collision_disabled ;// whether collision is disabled between two objects (first int must be smaller)
+
 	int next_object_id = 1;
 	int next_type_id = 1;
 
@@ -447,6 +449,8 @@ public:
 	//Sets the pose of an object
 	void setPose(int64_t id, const glm::mat4& pose);
 
+
+	void disableCollision(int64_t a, int64_t b);
 };
 
 
