@@ -37,6 +37,8 @@ namespace Chess {
 
 		turn_count = 0;
 		game_over = false;
+		select_promotion = false;
+		most_recent_promotion_square = glm::vec3(0);
 
 		world->queue("chess", id, &Board::printEvent);
 	}
@@ -102,25 +104,45 @@ namespace Chess {
 
 	void Board::promote(const glm::vec3& old_p, const glm::vec3& new_p) {
 		WorldPlugin* world = getTool<WorldPlugin>();
-		auto maybe_piece = board_of_pieces.find(new_p);
-		int64_t piece_id = board_of_pieces.at(old_p);
-		auto piece = world->observe<Piece>("chess", piece_id);
+		auto piece = world->observe<Piece>("chess", board_of_pieces.at(new_p));
+		const int z_offset = piece->color ? -1 : 1;
 
-		// Take/Destroy the piece being captured
-		if (maybe_piece != board_of_pieces.end()) {
-			std::println("Piece at {} is taking {} at {}", old_p, maybe_piece->second, new_p);
-			queue(maybe_piece->second, time, &Piece::destroy);
-			board_of_pieces.erase(new_p);
+		// setup selectable options for promotion
+		glm::vec3 queen_p = new_p;
+		queen_p.z += z_offset;
+		queen_p.x += 2;
+		glm::vec3 bishop_p = new_p;
+		bishop_p.z += z_offset;
+		bishop_p.x += 1;
+		glm::vec3 knight_p = new_p;
+		knight_p.z += z_offset;
+		glm::vec3 rook_p = new_p;
+		rook_p.z += z_offset;
+		rook_p.x += -1;
+
+		addPiece<Queen>(queen_p, piece->color);
+		addPiece<Bishop>(bishop_p, piece->color);
+		addPiece<Knight>(knight_p, piece->color);
+		addPiece<Rook>(rook_p, piece->color);
+
+		// Don't pass the turn, require this player to first make thier promotion choice
+		select_promotion = true; 
+		most_recent_promotion_square = new_p;
+	}
+
+	void Board::resetPromotionSelection() {
+		const int z_offset = most_recent_promotion_square.z < 0 ? -1 : 1;
+
+		for (const auto& i : {-1, 0, 1, 2}) {
+			glm::vec3 selection_piece_pos = most_recent_promotion_square;
+			selection_piece_pos.z += z_offset;
+			selection_piece_pos.x += 2;
+
+			queue(id, time, &Board::takePiece, selection_piece_pos);
 		}
 
-		// Delete the pawn
-		board_of_pieces.erase(old_p);
-		std::println("Pawn<{}> at {} is being promoted", piece_id, old_p);
-		queue(piece_id, time, &Piece::destroy);
-
-		// Create a queen on the far rank / in the captured piece's place
-		addPiece<Queen>(new_p, piece->color);
-		std::println("Promoted to Queen at {}", new_p);
+		most_recent_promotion_square = glm::vec3(0);
+		select_promotion = false;
 	}
 
 	void Board::takePiece(const glm::vec3& p) {
@@ -207,7 +229,11 @@ namespace Chess {
 
 	void BoardView::movePiece(std::shared_ptr<const Chess::Piece>& piece, glm::vec3& destination) {
 		WorldPlugin* world = getTool<WorldPlugin>();
-		if (piece->tryingToCastle(destination)) {
+		auto board = world->observeNearest<Board>("chess");
+
+		if (board->select_promotion) {
+			selectPromotion(piece);
+		} else if (piece->tryingToCastle(destination)) {
 			castle(destination, piece);
 		} else if (piece->tryingToEnPassant(destination)) {
 			enPassant(destination, piece);
@@ -234,13 +260,23 @@ namespace Chess {
 		}
 	}
 
+	void BoardView::selectPromotion(std::shared_ptr<const Chess::Piece>& piece) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		auto board = world->observe<Board>("chess", last_observation->id);
+
+		world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, board->most_recent_promotion_square);
+		world->queue("chess", last_observation->id, &Board::resetPromotionSelection);
+		world->queue("chess", last_observation->id, &Board::nextTurn);
+	}
+
 	void BoardView::promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		bool is_white = !!pawn->color;
 		auto board = world->observeNearest<Board>("chess");
 
+		world->queue("chess", last_observation->id, &Board::setPiecePosition, pawn->position, destination);
 		world->queue("chess", last_observation->id, &Board::promote, pawn->position, destination);
-		world->queue("chess", last_observation->id, &Board::nextTurn);
+		// Waiting to pass the turn once the player has picked a promotion piece in BoardView::selectPromotion...
 	}
 
 	// Assume the board state is perfectly setup currently for an en passant

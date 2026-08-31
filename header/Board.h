@@ -34,6 +34,8 @@ namespace Chess {
 		int64_t glove_black_id = -1;
 		int turn_count;
 		bool game_over;
+		bool select_promotion;
+		glm::vec3 most_recent_promotion_square;
 		std::map<glm::vec3, int64_t, decltype([](glm::vec3 a, glm::vec3 b) {
 			// Need to compare vec3's so the map can be ordered
 			if (a.x != b.x) return a.x < b.x;
@@ -42,7 +44,7 @@ namespace Chess {
 		})> board_of_pieces;
 
 		Board(const glm::vec3& p, const std::string& model_name_set)
-			: WorldObject(position), model_name(model_name_set), turn_count(0), game_over(false) {};
+			: WorldObject(position), model_name(model_name_set) {};
 		void init();
 
 		void destroy();
@@ -63,6 +65,7 @@ namespace Chess {
 		void promote(const glm::vec3& old_p, const glm::vec3& new_p);
 		void takePiece(const glm::vec3& p);
 		void nextTurn();
+		void resetPromotionSelection();
 		void gameOver(const Piece::COLOR& color);
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
@@ -110,6 +113,8 @@ namespace Chess {
 		void enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 
 		void promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
+
+		void selectPromotion(std::shared_ptr<const Chess::Piece>& piece);
 	};
 
 
