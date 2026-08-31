@@ -32,6 +32,8 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	cell = std::make_shared<Physics::SimpleLocalPhysicsCell>() ;
+	glm::vec3 mid = (min + max) * 0.5f;
+
 
 	float ball_radius = 0.5f ;
 	float ball_mass = 1.0f ;
@@ -116,8 +118,36 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	bunny_type = cell->addType(bunny_parts, BUNNY_VISUAL_MODEL, transform , 0.1f, 0.6f);
 
 
+	float chain_scale = 0.7f;
+	float chain_mass = 0.5f;
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(chain_scale, chain_scale, chain_scale));
+	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
+	scene->createModelSet(CHAIN_MODEL_CUT, CHAIN_MODEL_CUT, true);
+	std::shared_ptr<GLTF> chain_model = scene->getModelController(CHAIN_MODEL_CUT);
+	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
+	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
+	chain_type = cell->addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
+
+
+	glm::vec3 chain_pos = mid ;
+	float chain_angle = 0 ;
+	float y_step = chain_scale ;
+	float angle_step = 1.5f;
+	int64_t link ;
+	for(int k=0;k<20;k++){
+		link = cell->add(chain_type,chain_pos) ;
+		cell->getBody(link)->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f),chain_angle,glm::vec3(0,1,0))) ;
+		chain_angle+=angle_step;
+		chain_pos.y += y_step ;
+		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
+		chain_pos += off ;
+	}
+	
+	cell->getBody(link)->inv_mass = 0;
+	cell->getBody(link)->inv_moment = glm::mat3(0);
+
 	// Add the container blocks
-	glm::vec3 mid = (min + max) * 0.5f;
+	
 	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
 	cell->add(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z));
 	cell->add(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z));
@@ -164,7 +194,7 @@ void ConstraintTestApp::run() {
 
 
 	updateCamera();
-	cell->runPhysicsFrame(dt, 20);
+	cell->runPhysicsFrame(dt, 15);
 	cell->updateGraphics();
 
 
