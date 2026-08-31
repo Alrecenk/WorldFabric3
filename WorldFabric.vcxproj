@@ -169,6 +169,7 @@
     <ClInclude Include="engine\header\ActionMap.h" />
     <ClInclude Include="engine\header\AsyncPlugin.h" />
     <ClInclude Include="engine\header\AudioPlugin.h" />
+    <ClInclude Include="engine\header\BSPNode.h" />
     <ClInclude Include="engine\header\content_ptr.h" />
     <ClInclude Include="engine\header\ConvexShape.h" />
     <ClInclude Include="engine\header\ConvexSolid.h" />
@@ -204,6 +205,7 @@
     <ClInclude Include="engine\header\vk_initializers.h" />
     <ClInclude Include="engine\header\vk_mem_alloc.h" />
     <ClInclude Include="engine\header\vk_types.h" />
+    <ClInclude Include="engine\header\VolumeNode.h" />
     <ClInclude Include="engine\header\VulkanPlugin.h" />
     <ClInclude Include="engine\header\WorldPlugin.h" />
     <ClInclude Include="header\BallTestApp.h" />
@@ -870,6 +872,7 @@
   <ItemGroup>
     <ClCompile Include="engine\source\AsyncPlugin.cpp" />
     <ClCompile Include="engine\source\AudioPlugin.cpp" />
+    <ClCompile Include="engine\source\BSPNode.cpp" />
     <ClCompile Include="engine\source\ConvexShape.cpp" />
     <ClCompile Include="engine\source\ConvexSolid.cpp" />
     <ClCompile Include="engine\source\GLTF.cpp" />
@@ -892,6 +895,7 @@
     <ClCompile Include="engine\source\ViewPlugin.cpp" />
     <ClCompile Include="engine\source\VkBootstrap.cpp" />
     <ClCompile Include="engine\source\vk_initializers.cpp" />
+    <ClCompile Include="engine\source\VolumeNode.cpp" />
     <ClCompile Include="engine\source\VulkanPlugin.cpp" />
     <ClCompile Include="engine\source\WorldPlugin.cpp" />
     <ClCompile Include="include\glm\detail\glm.cpp" />

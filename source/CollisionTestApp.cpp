@@ -135,7 +135,7 @@ void CollisionTestApp::run() {
 	for(int iteration = 0 ; iteration < 1; iteration++){ // iterate a bunch to measure performance
 	for(int k=1;k<instances.size();k++){
 		for(int j=0;j<k;j++){
-			auto result = Physics::detectCollision(&instances[k], &instances[j]);
+			auto result = Physics::detectCollision(&instances[k],0, &instances[j],0);
 			if(result.size() > 0){
 				/*
 				glm::vec3 O(0,0,0) ;
@@ -163,7 +163,7 @@ void CollisionTestApp::run() {
 
 				
 
-				Physics::SupportPoint collision = Physics::getPenetration(result, &instances[k], &instances[j]) ;
+				Physics::SupportPoint collision = Physics::getPenetration(result, &instances[k],0, &instances[j],0) ;
 
 				if(iteration == 0 ){ // only update visual on first iteration
 					int p_id = particles->createParticle(0);

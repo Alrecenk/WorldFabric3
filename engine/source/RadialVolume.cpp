@@ -93,3 +93,35 @@ RadialVolume RadialVolume::cut(std::pair<dvec3,double> absolute_plane){
     }
     return result ;
 }
+
+
+std::vector<std::pair<dvec3, double>> RadialVolume::getHullPlanes(std::vector<dvec3>& points, int hull_faces, int detail_level){
+	RadialVolume optimal(points, detail_level);
+	RadialVolume sphere(optimal.center, optimal.radius * 2.0f, detail_level);
+
+	RadialVolume current = sphere;
+	std::vector<std::pair<dvec3, double>> planes;
+	while (planes.size() < hull_faces) {
+		RadialVolume best = current;
+		double best_volume = best.getVolume();
+		int best_plane = -1; ;
+		for (int k = 0; k < current.size(); k++) {
+			std::pair<dvec3, double> candidate = optimal.getPlane(k);
+			RadialVolume test = current.cut(candidate);
+			double test_volume = test.getVolume();
+			if (test_volume < best_volume) {
+				best = test;
+				best_volume = test_volume;
+				best_plane = k;
+			}
+		}
+		if (best_plane < 0) {
+			break;
+		}
+		planes.push_back(optimal.getPlane(best_plane));
+		current = best;
+		last_hull_volume = best_volume ;
+	}
+	return planes ;
+
+}

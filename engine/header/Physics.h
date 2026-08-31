@@ -10,6 +10,8 @@ class ConvexShape{
 public:
 	float inv_mass = 0;
 	glm::mat3 inv_moment = glm::mat3(0) ;
+	float mass = 0 ;
+	glm::mat3 moment = glm::mat3(0);
 
 	//Returns the point on the shape furthest in the given direction
 	virtual glm::vec3 support(const glm::vec3& direction) const = 0;
@@ -37,8 +39,11 @@ public:
 
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass);
 
-	// Mak a new polyhedron by reposing and/or changing the mass of an existing polyhedron
+	// Make a new polyhedron by reposing and/or changing the mass of an existing polyhedron
 	ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass);
+
+	// Make a new polyhedron by reposing another, no specified mass means infinite mass and unmoveable
+	ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose);
 
 	void buildFromPolygons(std::vector<Polygon>& polygons);
 
@@ -97,6 +102,15 @@ public:
 	// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 	static ConvexPolyhedron makeApproximateHull(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level = 4) ;
 
+	//Same as above but first breaks a model into its connected pieces
+	static std::vector<ConvexPolyhedron> makeApproximateSurfaceHulls(std::shared_ptr<GLTF>& model, float mass, int hull_faces=30, int detail_level=4) ;
+
+	//Collect the convex pieces of a model
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByBSP(std::shared_ptr<GLTF>& model);
+
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByRadialVolumes(std::shared_ptr<GLTF>& model, int depth);
+
+	static std::vector<ConvexPolyhedron>collectConvexPiecesByBone(std::shared_ptr<GLTF>& model, int hull_faces = 20, int detail_level = 4, float min_weight = 0.3f, float min_bone_volume = 0);
 };
 
 
@@ -124,18 +138,20 @@ public:
 	int64_t id ;
 	glm::vec3 position = glm::vec3(0,0,0) ;
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::quat orientation = glm::quat(0, 0, 0, 1);
+	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	std::shared_ptr<ConvexShape> shape ; // TODO add support for non-convex shapes by compounding
+	std::vector<std::shared_ptr<ConvexShape>> shape ; // TODO add support for non-convex shapes by compounding
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.05f ;
 	float angular_drag = 0.05f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
+	float inv_mass = 0;
+	glm::mat3 base_inv_moment ;
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
@@ -143,14 +159,18 @@ public:
 
 	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
+
+	RigidBody(const std::vector<std::shared_ptr<ConvexShape>>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
+
 	void integrateVelocity(float dt);
 
 	void integrateAcceleration(const glm::vec3& acceleration, float dt);
 
-	//Only for debugging, will be overwritten if physics is actually happening
 	void setPose(const glm::mat4& p){
 		pose = p ;
 		inv_pose = glm::inverse(p);
+		orientation = glm::quat_cast(pose);
+		position = p * glm::vec4(0,0,0,1);
 	}
 };
 
@@ -244,7 +264,9 @@ struct SupportEdge {
 class Collision : public Constraint {
 public:
 	int64_t id1 = -1;
+	int shape1 = -1 ;
 	int64_t id2 = -1;
+	int shape2 = -1 ;
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
@@ -262,8 +284,8 @@ public:
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
-	static int64_t getHash(int64_t id1, int64_t id2, int constraint_type) {
-		return hashBytes(serialize(id1, id2, constraint_type));
+	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2, int constraint_type) {
+		return hashBytes(serialize(id1,s1, id2,s2, constraint_type));
 	}
 
 
@@ -345,7 +367,7 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& a, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const RigidBody* B);
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A,int shapeA, const RigidBody* B, int shapeB);
 
 //Build a support simplex from a triangle facing a point
 std::vector<SupportTriangle> buildSupportSimplex(const SupportTriangle& triangle, const SupportPoint& D);
@@ -355,21 +377,21 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, const RigidBody* B, int max_iterations = 10);
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
 
 //Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
 void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const RigidBody* B, int max_iterations = 10);
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
 
 class SimpleLocalPhysicsCell : PhysicsContainer {
 public:
 
 	class ObjectType {
 	public:
-		std::shared_ptr<Physics::ConvexShape> shape;
+		std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 		std::string model;
 		glm::mat4 render_transform;
 		float elasticity;
@@ -396,6 +418,12 @@ public:
 
 	int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 
+
+	int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+
+	int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& transform, float elasticity, float friction);
+
 	int64_t add(int type, const glm::vec3& pos, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
 
 	//Ball ids are allocated one after another and are always positive
@@ -415,6 +443,9 @@ public:
 
 	//Uses types to render all objects with the scene plugin
 	void updateGraphics();
+
+	//Sets the pose of an object
+	void setPose(int64_t id, const glm::mat4& pose);
 
 };
 

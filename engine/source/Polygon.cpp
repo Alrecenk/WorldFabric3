@@ -492,42 +492,41 @@ std::vector<Polygon> Polygon::reduce(std::vector<Polygon> surface, int triangle_
 }
 
 
+
 // Builds an approximate convex hull of the given point with up to the given number of faces
 // Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
 std::vector<Polygon> Polygon::buildApproximateHull(std::vector<dvec3>& points, int hull_faces, int detail_level){
-    RadialVolume optimal(points, detail_level);
-    RadialVolume sphere(optimal.center, optimal.radius, detail_level);
-    
-    RadialVolume current = sphere ;
-    
-    std::vector<std::pair<dvec3, double>> planes ;
-    while(planes.size() < hull_faces){
-        RadialVolume best = current;
-        double best_volume = best.getVolume();
-        int best_plane = -1; ;
-        for(int k=0;k<current.size();k++){
-            std::pair<dvec3, double> candidate = optimal.getPlane(k);
-            RadialVolume test = current.cut(candidate);
-            double test_volume = test.getVolume() ;
-            if(test_volume < best_volume ){
-                best = test;
-                best_volume = test_volume ;
-                best_plane = k ;
-            }
-        }
-        if(best_plane < 0){
-            break ;
-        }
-        planes.push_back(optimal.getPlane(best_plane));
-        current = best ;
-    }
-    dvec3 r(current.radius*1.01f, current.radius*1.01f, current.radius*1.01f);
-    vector<Polygon> surface = ConvexShape::makeAxisAlignedBox(current.center-r, current.center+r).getPolygons();
+	// Get axis aligned bounding box of points
+	dvec3 min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+	dvec3 max(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+	for (auto& x : points) {
+		min.x = fmin(min.x, x.x);
+		min.y = fmin(min.y, x.y);
+		min.z = fmin(min.z, x.z);
+		max.x = fmax(max.x, x.x);
+		max.y = fmax(max.y, x.y);
+		max.z = fmax(max.z, x.z);
+	}
+	
+	// cut away from box expanded from bounding box
+	std::vector<std::pair<glm::dvec3, double>> planes = RadialVolume::getHullPlanes(points, hull_faces, detail_level) ;
+    vector<Polygon> surface = ConvexShape::makeAxisAlignedBox(min, max).getPolygons();
     for(auto& plane : planes){
         surface = Polygon::splitOnPlane(surface, plane).first;
     }
     return surface ;
 }
+
+std::vector<Polygon> Polygon::buildApproximateHull(std::vector<Polygon> surface, int hull_faces, int detail_level){
+	std::vector<glm::dvec3> points ;
+	for(auto& face : surface){
+		for(auto& v : face.p){
+			points.emplace_back(v);
+		}
+	}
+	return buildApproximateHull(points, hull_faces, detail_level) ;
+}
+
 
 // splits a polyhedron in half on each axis until bo piece is larger than the given extent in any axis
 std::vector<std::vector<Polygon>> Polygon::splitToMaximumExtent(std::vector<Polygon> surface, float target_extent){

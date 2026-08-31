@@ -12,7 +12,7 @@ class Polygon{
         std::vector<glm::dvec3> p;
         std::pair<glm::dvec3, double> my_plane ;
         bool on_last_plane = false;
-        static constexpr double EPSILON = 0.0000001;
+        static constexpr double EPSILON = 1.0e-6;
 
         Polygon();
         Polygon(std::vector<glm::dvec3> np);
@@ -52,9 +52,13 @@ class Polygon{
         // Reduce the polygons in a closed triangle surface by repeatedly collapsing the shortest edge
         static std::vector<Polygon> reduce(std::vector<Polygon> surface, int triangle_budget);
 
-        // Builds an approximate convex hull of the given point with up to the given number of faces
+        // Builds an approximate convex hull of the given points with up to the given number of faces
         // Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
         static std::vector<Polygon> buildApproximateHull(std::vector<glm::dvec3>& points, int hull_faces, int detail_level);
+
+		// Builds an approximate convex hull of the given polygon surface with up to the given number of faces
+		// Detail level is sphere extrapolation used, it improves the quality but also increases the time taken exponentially
+		static std::vector<Polygon> buildApproximateHull(std::vector<Polygon> surface, int hull_faces, int detail_level);
 
         // splits a polyhedron in half on each axis until bo piece is larger than the given extent in any axis
         static std::vector<std::vector<Polygon>> splitToMaximumExtent(std::vector<Polygon> surface, float target_extent);
