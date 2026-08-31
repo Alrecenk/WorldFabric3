@@ -63,9 +63,9 @@ namespace Chess {
 
 		void setPiecePosition(const glm::vec3& old_p, const glm::vec3& new_p);
 		void promote(const glm::vec3& old_p, const glm::vec3& new_p);
-		void takePiece(const glm::vec3& p);
+		void takePiece(const glm::vec3& piece);
 		void nextTurn();
-		void resetPromotionSelection();
+		void clearPromotionSelection();
 		void gameOver(const Piece::COLOR& color);
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
@@ -112,9 +112,11 @@ namespace Chess {
 
 		void enPassant(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 
-		void promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
+		void startPromotion(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn);
 
 		void selectPromotion(std::shared_ptr<const Chess::Piece>& piece);
+
+		bool tryingToSelectPromotion(const glm::vec3& piece);
 	};
 
 

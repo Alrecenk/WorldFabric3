@@ -88,7 +88,7 @@ namespace Chess {
 		world->registerMethod(&Board::nextTurn, "nextTurn");
 		world->registerMethod(&Board::promote, "promote");
 		world->registerMethod(&Board::gameOver, "gameOver");
-		world->registerMethod(&Board::resetPromotionSelection, "resetPromotionSelection");
+		world->registerMethod(&Board::clearPromotionSelection, "clearPromotionSelection");
 		world->registerClass<Glove, GloveView>("Glove");
 		world->registerMethod(&Glove::setPosition, "setPosition");
 		world->registerMethod(&Piece::destroy, "destroy");

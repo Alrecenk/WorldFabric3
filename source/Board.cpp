@@ -130,27 +130,28 @@ namespace Chess {
 		most_recent_promotion_square = new_p;
 	}
 
-	void Board::resetPromotionSelection() {
-		const int z_offset = most_recent_promotion_square.z < 0 ? -1 : 1;
+	void Board::clearPromotionSelection() {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		auto board = world->observeNearest<Board>("chess");
+		const int z_offset = board->most_recent_promotion_square.z < 0 ? -1 : 1;
 
-		for (const auto& i : {-1, 0, 1, 2}) {
-			glm::vec3 selection_piece_pos = most_recent_promotion_square;
+		for (const auto& x_offset : {-1, 0, 1, 2}) {
+			glm::vec3 selection_piece_pos = board->most_recent_promotion_square;
 			selection_piece_pos.z += z_offset;
-			selection_piece_pos.x += 2;
+			selection_piece_pos.x += x_offset;
 
-			queue(id, time, &Board::takePiece, selection_piece_pos);
+			takePiece(selection_piece_pos);
 		}
 
-		most_recent_promotion_square = glm::vec3(0);
 		select_promotion = false;
 	}
 
-	void Board::takePiece(const glm::vec3& p) {
-		auto maybe_piece = board_of_pieces.find(p);
+	void Board::takePiece(const glm::vec3& piece) {
+		auto maybe_piece = board_of_pieces.find(piece);
 		if (maybe_piece != board_of_pieces.end()) {
-			std::println("Piece<{}> at {} is being taken", maybe_piece->second, p);
+			std::println("Piece<{}> at {} is being taken", maybe_piece->second, piece);
 			queue(maybe_piece->second, time, &Piece::destroy);
-			board_of_pieces.erase(p);
+			board_of_pieces.erase(piece);
 		}
 	}
 
@@ -159,6 +160,20 @@ namespace Chess {
 			glove_black_id = create(std::shared_ptr<Glove>(new Glove(glm::vec3(.5, 0, 3.5), "glove", false)), time);
 		}
 	}
+
+	/*
+	* ==============================================================================================================
+	* ^^^^^^^^^^^^^^^^^^^^^^^^^ Board ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* ==============================================================================================================
+	* vvvvvvvvvvvvvvvvvvvvvvvvv Board View vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	* ==============================================================================================================
+	*/
 
 	void BoardView::created(std::shared_ptr<const Board>& observation) {
 		ScenePlugin* scene = getTool<ScenePlugin>();
@@ -231,14 +246,14 @@ namespace Chess {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		auto board = world->observeNearest<Board>("chess");
 
-		if (board->select_promotion) {
+		if (tryingToSelectPromotion(piece->position)) {
 			selectPromotion(piece);
 		} else if (piece->tryingToCastle(destination)) {
 			castle(destination, piece);
 		} else if (piece->tryingToEnPassant(destination)) {
 			enPassant(destination, piece);
 		} else if (piece->tryingToPromote(destination)) {
-			promote(destination, piece);
+			startPromotion(destination, piece);
 		} else if (piece->isValidMove(destination)) {
 			world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, destination);
 			world->queue("chess", last_observation->id, &Board::nextTurn);
@@ -260,16 +275,22 @@ namespace Chess {
 		}
 	}
 
+	bool BoardView::tryingToSelectPromotion(const glm::vec3& piece) {
+		WorldPlugin* world = getTool<WorldPlugin>();
+		auto board = world->observeNearest<Board>("chess");
+		return board->select_promotion && fabs(piece.z) == 4.5f;
+	}
+
 	void BoardView::selectPromotion(std::shared_ptr<const Chess::Piece>& piece) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		auto board = world->observe<Board>("chess", last_observation->id);
 
 		world->queue("chess", last_observation->id, &Board::setPiecePosition, piece->position, board->most_recent_promotion_square);
-		world->queue("chess", last_observation->id, &Board::resetPromotionSelection);
+		world->queue("chess", last_observation->id, &Board::clearPromotionSelection);
 		world->queue("chess", last_observation->id, &Board::nextTurn);
 	}
 
-	void BoardView::promote(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
+	void BoardView::startPromotion(glm::vec3& destination, std::shared_ptr<const Chess::Piece>& pawn) {
 		WorldPlugin* world = getTool<WorldPlugin>();
 		bool is_white = !!pawn->color;
 		auto board = world->observeNearest<Board>("chess");
