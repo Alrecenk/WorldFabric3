@@ -273,7 +273,7 @@ public:
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
 	glm::vec3 point; // middle point of collision
-	glm::vec3 normal; // normal points from object 1 to object 2, doesn ot change
+	glm::vec3 normal; // normal points from object 1 to object 2
 	glm::vec3 local_a ; // point on surface of a in A's local coordinates
 	glm::vec3 local_b ; // point on surface of b in B's local coordinates
 	float penetration_depth = 0;
@@ -292,8 +292,6 @@ public:
 
 
 	int64_t getHash() const override;
-
-
 	bool updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
@@ -335,6 +333,59 @@ public:
 	static inline int max_collision_points = 4 ;
 
 	ManifoldCollision(int64_t h): hash(h){};
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	int64_t getHash() const override;
+
+	//Add a constraint to this set
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	bool updateConstraints(PhysicsContainer* cell) override;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	void applyWarmingImpulses(PhysicsContainer* cell) override;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	void applyConstraints(PhysicsContainer* cell) override;
+
+};
+
+// A User-created constraint that connects two objects at a point
+class Pin : public Constraint{
+public:
+	int64_t id1 = -1;
+	int64_t id2 = -1;
+	glm::vec3 warm_impulse;
+	glm::vec3 target; // target velocity difference between the two points
+	glm::vec3 local_a; // point of a in A's local coordinates
+	glm::vec3 local_b; // point of b in B's local coordinates
+	float spring_coefficient = 10.0f ; // Velocity applied to keep points together
+
+	static inline const int CONSTRAINT_TYPE = 3;
+
+	static int64_t getHash(int64_t id1, int64_t id2,  int constraint_type) {
+		return hashBytes(serialize(id1, id2, constraint_type));
+	}
+
+
+	int64_t getHash() const override;
+	bool updateConstraint(PhysicsContainer* cell) override;
+	void applyWarmingImpulse(PhysicsContainer* cell) override;
+	void applyConstraint(PhysicsContainer* cell) override;
+
+
+};
+
+class PinSet : public ConstraintSet{
+public:
+	int64_t hash;
+	std::vector<Pin> points;
+
+	PinSet(int64_t h) : hash(h) {
+		delete_if_not_updated = false;
+	};
 
 	//Returns an identifying hash that can be used to group constraints into this set
 	int64_t getHash() const override;

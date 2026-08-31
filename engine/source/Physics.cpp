@@ -880,6 +880,59 @@ void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
 }	
 
 
+
+int64_t Pin::getHash() const {
+	return getHash(id1, id2, CONSTRAINT_TYPE);
+}
+bool Pin::updateConstraint(PhysicsContainer* cell) {
+	
+	return true; // TODO compute if still relevant
+}
+void Pin::applyWarmingImpulse(PhysicsContainer* cell) {
+	
+}
+void Pin::applyConstraint(PhysicsContainer* cell) {
+	
+
+}
+
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t PinSet::getHash() const {
+	return hash ;
+}
+
+//Add a constraint to this set
+void PinSet::addConstraint(PhysicsContainer* cell, Constraint& new_constraint) {
+	Pin& new_point = static_cast<Pin&>(new_constraint);
+	points.emplace_back(new_point) ;
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+bool PinSet::updateConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.updateConstraint(cell);
+	}
+	return true;
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void PinSet::applyWarmingImpulses(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.applyWarmingImpulse(cell);
+	}
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void PinSet::applyConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.applyConstraint(cell);
+	}
+}
+
+
+
 Sphere::Sphere(float r, float m){
 	radius = r ;
 	mass = m ;
