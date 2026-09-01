@@ -663,7 +663,7 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
-	return true ; // TODO compute if still relevant
+	return true ;//TODO remove unused relevancy bool
 }
 void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -684,7 +684,7 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
-	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);// TODO inertia needs to be rotated based on pose of rigid body
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse);
 }
 void Collision::applyConstraint(PhysicsContainer* cell){
@@ -701,7 +701,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
+	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal);
 	float rot_term2 = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, normal), r2), normal);
 	float effective_mass_n = body_1->inv_mass + body_2->inv_mass + rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
@@ -718,7 +718,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	//Apply normal impulse
 	body_1->velocity -= impulse_vec_n * body_1->inv_mass;
 	body_2->velocity += impulse_vec_n * body_2->inv_mass;
-	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse_vec_n);
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse_vec_n);
 
 	//update warm impulse
@@ -943,7 +943,7 @@ Sphere::Sphere(float r, float m){
 	mass = m ;
 	inv_mass = 1.0f/ m ;
 	inv_moment = glm::mat3(1.0f/ ( 0.4f * m * r * r)) ;
-	moment = glm::inverse(inv_moment); // TODO not invert
+	moment = glm::mat3(0.4f * m * r * r);
 }
 
 //Returns the point on the shape furthest in the given direction
@@ -1099,7 +1099,7 @@ std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, con
 				break;
 			}
 		}
-		if (!found_triangle) { // origin was insdide all faces
+		if (!found_triangle) { // origin was inside all faces
 			return simplex; // collision detected
 		}
 	}
@@ -1122,8 +1122,8 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 }
 
 
-//Uses expanding polytope algorithm on result of detectCollision
-// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
+// Uses expanding polytope algorithm on result of detectCollision
+// Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
@@ -1186,7 +1186,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 			}
 		}
 
-		//Add edges not duplicated
+		//Add edges not duplicated as new triangles
 		for (auto& edge : edge_list) {
 			if (!edge.disabled) {
 				polytope.emplace_back(edge.A, edge.B, new_point);

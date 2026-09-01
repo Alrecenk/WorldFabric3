@@ -143,7 +143,7 @@ public:
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	std::vector<std::shared_ptr<ConvexShape>> shape ; // TODO add support for non-convex shapes by compounding
+	std::vector<std::shared_ptr<ConvexShape>> shape ;
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.05f ;
