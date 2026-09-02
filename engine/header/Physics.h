@@ -187,8 +187,7 @@ public:
 	virtual int64_t getHash() const = 0;
 
 	//Update the constraint target based on information at the start of the frame
-	//Returns if the constraint is active at all
-	virtual bool updateConstraint(PhysicsContainer* cell) = 0;
+	virtual void updateConstraint(PhysicsContainer* cell) = 0;
 
 	//Apply a starting impulse carried over if this constraint has existed for multiple frames in a row
 	virtual void applyWarmingImpulse(PhysicsContainer* cell) = 0;
@@ -210,7 +209,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	virtual bool updateConstraints(PhysicsContainer* cell) = 0;
+	virtual void updateConstraints(PhysicsContainer* cell) = 0;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	virtual void applyWarmingImpulses(PhysicsContainer* cell) = 0;
@@ -292,7 +291,7 @@ public:
 
 
 	int64_t getHash() const override;
-	bool updateConstraint(PhysicsContainer* cell) override;
+	void updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
 
@@ -314,7 +313,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
+	void updateConstraints(PhysicsContainer* cell) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	void applyWarmingImpulses(PhysicsContainer* cell) override;
@@ -342,7 +341,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
+	void updateConstraints(PhysicsContainer* cell) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	void applyWarmingImpulses(PhysicsContainer* cell) override;
@@ -359,9 +358,10 @@ public:
 	int64_t id2 = -1;
 	glm::vec3 warm_impulse;
 	glm::vec3 target; // target velocity difference between the two points
+	glm::vec3 point ; //average of the two points in world space
 	glm::vec3 local_a; // point of a in A's local coordinates
 	glm::vec3 local_b; // point of b in B's local coordinates
-	float spring_coefficient = 10.0f ; // Velocity applied to keep points together
+	float spring_coefficient = 10.0f ; // Velocity applied per error to keep points together
 
 	static inline const int CONSTRAINT_TYPE = 3;
 
@@ -369,13 +369,10 @@ public:
 		return hashBytes(serialize(id1, id2, constraint_type));
 	}
 
-
 	int64_t getHash() const override;
-	bool updateConstraint(PhysicsContainer* cell) override;
+	void updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
-
-
 };
 
 class PinSet : public ConstraintSet{
@@ -395,7 +392,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
+	void updateConstraints(PhysicsContainer* cell) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	void applyWarmingImpulses(PhysicsContainer* cell) override;

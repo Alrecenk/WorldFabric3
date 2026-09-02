@@ -642,7 +642,7 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBone(std::s
 int64_t Collision::getHash() const {
 	return getHash(id1,shape1, id2, shape2, CONSTRAINT_TYPE);
 }
-bool Collision::updateConstraint(PhysicsContainer* cell){
+void Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
 	RigidBody* body_2 = cell->getBody(id2);
 
@@ -663,7 +663,6 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
-	return true ;//TODO remove unused relevancy bool
 }
 void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -801,8 +800,8 @@ void SinglePointCollision::addConstraint(PhysicsContainer* cell, Constraint& new
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-bool SinglePointCollision::updateConstraints(PhysicsContainer* cell){
-	return point.updateConstraint(cell);
+void SinglePointCollision::updateConstraints(PhysicsContainer* cell){
+	point.updateConstraint(cell);
 	
 }
 
@@ -863,11 +862,10 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-bool ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
+void ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
 	for (auto& p : points) {
 		p.updateConstraint(cell);
 	}
-	return true ;
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
@@ -889,15 +887,14 @@ void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
 int64_t Pin::getHash() const {
 	return getHash(id1, id2, CONSTRAINT_TYPE);
 }
-bool Pin::updateConstraint(PhysicsContainer* cell) {
-	
-	return true; // TODO compute if still relevant
+void Pin::updateConstraint(PhysicsContainer* cell) {
+	//TODO
 }
 void Pin::applyWarmingImpulse(PhysicsContainer* cell) {
-	
+	//TODO
 }
 void Pin::applyConstraint(PhysicsContainer* cell) {
-	
+	//TODO
 
 }
 
@@ -915,11 +912,10 @@ void PinSet::addConstraint(PhysicsContainer* cell, Constraint& new_constraint) {
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-bool PinSet::updateConstraints(PhysicsContainer* cell) {
+void PinSet::updateConstraints(PhysicsContainer* cell) {
 	for (auto& p : points) {
 		p.updateConstraint(cell);
 	}
-	return true;
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
