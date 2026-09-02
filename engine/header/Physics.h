@@ -285,8 +285,8 @@ public:
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
-	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2, int constraint_type) {
-		return hashBytes(serialize(id1,s1, id2,s2, constraint_type));
+	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
+		return hashBytes(serialize(id1,s1, id2,s2, CONSTRAINT_TYPE));
 	}
 
 
@@ -365,8 +365,8 @@ public:
 
 	static inline const int CONSTRAINT_TYPE = 3;
 
-	static int64_t getHash(int64_t id1, int64_t id2,  int constraint_type) {
-		return hashBytes(serialize(id1, id2, constraint_type));
+	static int64_t getHash(int64_t id1, int64_t id2) {
+		return hashBytes(serialize(id1, id2, CONSTRAINT_TYPE));
 	}
 
 	int64_t getHash() const override;
@@ -501,6 +501,15 @@ public:
 
 
 	void disableCollision(int64_t a, int64_t b);
+	void enableCollision(int64_t a, int64_t b);
+
+	//Adds a pin constraint between two objects at the given point
+	//Collision between the objects will be turned off
+	void addPin(int64_t a, int64_t b, glm::vec3& world_point);
+
+	//Deletes all pins currently onthe two objects
+	//Collision between the objects will be turned on
+	void deletePins(int64_t a, int64_t b);
 };
 
 

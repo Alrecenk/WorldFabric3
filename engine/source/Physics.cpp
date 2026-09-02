@@ -640,7 +640,7 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBone(std::s
 
 
 int64_t Collision::getHash() const {
-	return getHash(id1,shape1, id2, shape2, CONSTRAINT_TYPE);
+	return getHash(id1,shape1, id2, shape2);
 }
 void Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -844,7 +844,7 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 		points[closest].point= new_point.point;
 		points[closest].normal = new_point.normal; 
 		// but carry over warm impulses
-	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision
+	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision points
 		points[closest] = new_point ; // overwrite with new point
 		// dont carry over warm impulses
 	}else{ //We can have a totally new point
@@ -885,17 +885,65 @@ void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
 
 
 int64_t Pin::getHash() const {
-	return getHash(id1, id2, CONSTRAINT_TYPE);
+	return getHash(id1, id2);
 }
 void Pin::updateConstraint(PhysicsContainer* cell) {
-	//TODO
+	glm::vec3 a = cell->getBody(id1)->pose * glm::vec4(local_a, 1);
+	glm::vec3 b = cell->getBody(id2)->pose * glm::vec4(local_b, 1);
+	point = (a+b)*0.5f;
+	target = (b-a) * spring_coefficient ;
 }
 void Pin::applyWarmingImpulse(PhysicsContainer* cell) {
-	//TODO
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+
+	// Apply the stored impulse from last frame
+	body_1->velocity -= warm_impulse * body_1->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, warm_impulse);
+
+	body_2->velocity += warm_impulse * body_2->inv_mass;
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, warm_impulse);
 }
 void Pin::applyConstraint(PhysicsContainer* cell) {
-	//TODO
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
 
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+
+	glm::vec3 v1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	glm::vec3 v2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	glm::vec3 relative_velocity = v2 - v1;
+
+	//Compute effective mass as a 3x3 matrix
+	//This matrix maps how a change in impulse affects relative velocity at the pin
+	glm::mat3 effective_mass(0.0f);
+	float inv_mass_sum = body_1->inv_mass + body_2->inv_mass;
+	for (int i = 0; i < 3; ++i) {
+		// effect from translation 
+		glm::vec3 axis(0);
+		axis[i] = 1.0f;
+		effective_mass[i] = axis * inv_mass_sum ; 
+		//effect from rotation
+		effective_mass[i] += glm::cross(body_1->inv_moment * glm::cross(r1, axis), r1); ;
+		effective_mass[i] += glm::cross(body_2->inv_moment * glm::cross(r2, axis), r2);
+	}
+	//Solve for the impulse needed to make the relative velocity change by the desired amount
+	glm::vec3 impulse = glm::inverse(effective_mass) * (target-relative_velocity) ;
+
+	//Apply the impulse
+	body_1->velocity -= impulse * body_1->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
+	body_2->velocity += impulse * body_2->inv_mass;
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse);
+
+	// Accumulate for starting impulse next frame
+	warm_impulse += impulse;
 }
 
 
@@ -1284,7 +1332,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 								glm::vec3 normal = glm::normalize(sp.x);
 
 								normal = glm::normalize(normal);
-								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB, Physics::Collision::CONSTRAINT_TYPE);
+								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB);
 								found_constraints.insert(constraint_id); // track found so we can remove not found
 						
 								std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
@@ -1380,6 +1428,38 @@ void SimpleLocalPhysicsCell::disableCollision(int64_t a, int64_t b){
 	}else{
 		collision_disabled.emplace(b, a);
 	}
+}
+
+void SimpleLocalPhysicsCell::enableCollision(int64_t a, int64_t b) {
+	if (a < b) {
+		collision_disabled.erase(std::pair<int64_t,int64_t>(a,b));
+	}else{
+		collision_disabled.erase(std::pair<int64_t, int64_t>(b, a));
+	}
+}
+
+//Adds a pin constraint between two objects at the given point
+	//Collision between the objects will be turned off
+void SimpleLocalPhysicsCell::addPin(int64_t a, int64_t b, glm::vec3& world_point){
+	int64_t hash = Pin::getHash(a,b);
+	auto iter = constraints.find(hash) ;
+	if(iter == constraints.end()){
+		constraints[hash] = std::make_shared<PinSet>(hash) ;
+	}
+	Pin new_pin;
+	new_pin.local_a = getBody(a)->inv_pose * glm::vec4(world_point,1);
+	new_pin.local_b = getBody(b)->inv_pose * glm::vec4(world_point, 1);
+	disableCollision(a,b);
+	constraints[hash]->addConstraint(this,new_pin);
+}
+
+//Deletes all pins currently onthe two objects
+//Collision between the objects will be turned on
+void SimpleLocalPhysicsCell::deletePins(int64_t a, int64_t b){
+	int64_t hash = Pin::getHash(a, b);
+	constraints.erase(hash);
+	enableCollision(a, b);
+
 }
 
 } // end namespace Physics
