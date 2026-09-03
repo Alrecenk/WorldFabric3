@@ -118,6 +118,8 @@ class Sphere : public ConvexShape {
 public:
 	float radius ;
 
+	Sphere(float radius);
+
 	Sphere(float radius, float mass) ;
 
 	//Returns the point on the shape furthest in the given direction
@@ -146,8 +148,8 @@ public:
 	std::vector<std::shared_ptr<ConvexShape>> shape ;
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
-	float drag = 0.05f ;
-	float angular_drag = 0.05f ;
+	float drag = 0.25f ;
+	float angular_drag = 0.25f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
@@ -171,6 +173,8 @@ public:
 		inv_pose = glm::inverse(p);
 		orientation = glm::quat_cast(pose);
 		position = p * glm::vec4(0,0,0,1);
+		velocity = glm::vec3(0);
+		angular_velocity = glm::vec3(0) ;
 	}
 };
 
@@ -280,8 +284,8 @@ public:
 	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
-	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.02f;
+	static inline float penetration_spring_coefficient = 1.0f;
+	static inline float allowed_collision_depth = 0.03f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
@@ -356,12 +360,13 @@ class Pin : public Constraint{
 public:
 	int64_t id1 = -1;
 	int64_t id2 = -1;
-	glm::vec3 warm_impulse;
+	glm::vec3 warm_impulse = glm::vec3(0);
 	glm::vec3 target; // target velocity difference between the two points
 	glm::vec3 point ; //average of the two points in world space
 	glm::vec3 local_a; // point of a in A's local coordinates
 	glm::vec3 local_b; // point of b in B's local coordinates
-	float spring_coefficient = 10.0f ; // Velocity applied per error to keep points together
+	float spring_coefficient = 5.0f ; // Velocity applied per error to keep points together
+	float max_impulse = 0.01f ; // maximum impulse applied, limits force of constraint
 
 	static inline const int CONSTRAINT_TYPE = 3;
 

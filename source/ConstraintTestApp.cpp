@@ -11,12 +11,6 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 
-	// Make a particle for the mouse
-	mouse_particle_id = particles->createParticle(0);
-	particles->setColor(mouse_particle_id, glm::vec4(1, 0, 0, 1));
-	glm::mat4 particle_pose = glm::mat4(1.0f);
-	particles->setPose(mouse_particle_id, particle_pose);
-
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
 	glm::vec3 light_position = glm::vec3(15, 0.5, -0.5);
@@ -133,7 +127,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	float y_step = chain_scale ;
 	float angle_step = 1.5f;
 	int64_t link ;
-	for(int k=0;k<20;k++){
+	for(int k=0;k<15;k++){
 		link = cell->add(chain_type,chain_pos) ;
 		cell->getBody(link)->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f),chain_angle,glm::vec3(0,1,0))) ;
 		chain_angle+=angle_step;
@@ -152,6 +146,17 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	cell->add(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z));
 	cell->add(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f));
 	cell->add(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f));
+
+
+
+	transform = glm::scale(glm::mat4(1.0f), glm::vec3(mouse_size, mouse_size, mouse_size));
+	std::shared_ptr<Physics::Sphere> mouse_shape = std::make_shared<Physics::Sphere>(mouse_size);
+	int mouse_type = cell->addType(mouse_shape, BALL_MODEL, transform, 0.0f, 0.0f);
+	mouse_body = cell->add(mouse_type, mid) ;
+
+	for(auto& [id, body] : cell->bodies){
+		cell->disableCollision(id, mouse_body);
+	}
 
 }
 
@@ -176,16 +181,28 @@ void ConstraintTestApp::run() {
 	glm::vec3 ray_direction = window->getMouseRay();
 
 	std::pair<int64_t, float> trace = cell->activeVisualRaytrace(ray_origin, ray_direction) ;
-	mouse_depth = trace.second ;
+	int64_t clicked = trace.first ;
+	if(held_body == -1){
+		mouse_depth = trace.second ;
+	}
 
 
 	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth ;
 
-	glm::mat4 particle_pose = glm::mat4(1.0f);
-	particle_pose = glm::translate(particle_pose, mouse_position);
-	particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
-	particles->setPose(mouse_particle_id, particle_pose);
+	glm::mat4 mouse_pose = glm::mat4(1.0f);
+	mouse_pose = glm::translate(mouse_pose, mouse_position);
+	cell->setPose(mouse_body, mouse_pose);
 	
+	bool clicking = window->mouseDown(1) && !mouse_down_left ;
+	mouse_down_left = window->mouseDown(1) ;
+	if(clicking && held_body == -1 && clicked != -1){
+		cell->addPin(clicked, mouse_body,mouse_position) ;
+		held_body = clicked ;
+	}else if(clicking){
+		cell->deletePins(held_body, mouse_body) ;
+		cell->disableCollision(held_body,mouse_body);
+		held_body = -1 ;
+	}
 
 	updateCamera();
 	cell->runPhysicsFrame(dt, 15);
@@ -211,7 +228,8 @@ void ConstraintTestApp::run() {
 		}else if(rand< 0.65){
 			type = jar_type ;
 		}
-		auto id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
+		int64_t id = cell->add(type, pos, vel, glm::vec3(randomFloat()*2.0f-1.0f, randomFloat() * 2.0f-1.0f, randomFloat() * 2.0f-1.0f));
+		cell->disableCollision(id, mouse_body);
 	}
 
 
@@ -225,7 +243,6 @@ void ConstraintTestApp::run() {
 void ConstraintTestApp::exit(std::shared_ptr<MachineState> to) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
-	particles->destroyParticle(mouse_particle_id);
 }
 
 void ConstraintTestApp::updateCamera() {

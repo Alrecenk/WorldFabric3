@@ -32,20 +32,22 @@ private:
 
 	std::shared_ptr<Physics::SimpleLocalPhysicsCell> cell ;
 	int light_id = -1; // Scene light
-	int mouse_particle_id = -1;
 	float mouse_depth = 11.0f ;
+	float mouse_size = 0.1f ;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
 	std::chrono::high_resolution_clock::time_point last_ball_time = now();
 
+	int64_t held_body = -1 ;
+	int64_t mouse_body = -1 ;
 
 
 	glm::vec3 min = { -4,-4,-4 };
 	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
 	int millis_between_balls = 300;
-	int max_balls = 200 ;
+	int max_balls = 50 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -2, 0);

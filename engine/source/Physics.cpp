@@ -891,9 +891,15 @@ void Pin::updateConstraint(PhysicsContainer* cell) {
 	glm::vec3 a = cell->getBody(id1)->pose * glm::vec4(local_a, 1);
 	glm::vec3 b = cell->getBody(id2)->pose * glm::vec4(local_b, 1);
 	point = (a+b)*0.5f;
-	target = (b-a) * spring_coefficient ;
+	target = (a-b) * spring_coefficient ;
 }
 void Pin::applyWarmingImpulse(PhysicsContainer* cell) {
+	
+	float d2 = glm::dot(warm_impulse, warm_impulse);
+	if (d2 > max_impulse * max_impulse) {
+		warm_impulse /= sqrtf(d2);
+	}
+
 	RigidBody* body_1 = cell->getBody(id1);
 	RigidBody* body_2 = cell->getBody(id2);
 
@@ -934,9 +940,14 @@ void Pin::applyConstraint(PhysicsContainer* cell) {
 		effective_mass[i] += glm::cross(body_2->inv_moment * glm::cross(r2, axis), r2);
 	}
 	//Solve for the impulse needed to make the relative velocity change by the desired amount
-	glm::vec3 impulse = glm::inverse(effective_mass) * (target-relative_velocity) ;
-
+	glm::vec3 impulse =  glm::inverse(effective_mass) * (target-relative_velocity) ;
+	float d2 = glm::dot(impulse,impulse);
+	if(d2 > max_impulse*max_impulse){
+		impulse /= sqrtf(d2);
+	}
+	printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
 	//Apply the impulse
+	
 	body_1->velocity -= impulse * body_1->inv_mass;
 	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
 	body_2->velocity += impulse * body_2->inv_mass;
@@ -944,6 +955,8 @@ void Pin::applyConstraint(PhysicsContainer* cell) {
 
 	// Accumulate for starting impulse next frame
 	warm_impulse += impulse;
+	
+	
 }
 
 
@@ -980,7 +993,13 @@ void PinSet::applyConstraints(PhysicsContainer* cell) {
 	}
 }
 
-
+Sphere::Sphere(float r) {
+	radius = r;
+	mass = 0;
+	inv_mass = 0;
+	inv_moment = glm::mat3(0);
+	moment = glm::mat3(0);
+}
 
 Sphere::Sphere(float r, float m){
 	radius = r ;
@@ -1413,7 +1432,6 @@ void SimpleLocalPhysicsCell::updateGraphics() {
 void SimpleLocalPhysicsCell::setPose(int64_t id, const glm::mat4& pose){
 	auto iter = bodies.find(id);
 	if(iter != bodies.end()){
-		printf("Set pose\n");
 		iter->second->setPose(pose) ;
 	}
 
@@ -1438,12 +1456,19 @@ void SimpleLocalPhysicsCell::enableCollision(int64_t a, int64_t b) {
 //Adds a pin constraint between two objects at the given point
 //Collision between the objects will be turned off
 void SimpleLocalPhysicsCell::addPin(int64_t a, int64_t b, glm::vec3& world_point){
+	if(a > b){
+		int64_t c = a ;
+		a = b ;
+		b = c ;
+	}
 	int64_t hash = Pin::getHash(a,b);
 	auto iter = constraints.find(hash) ;
 	if(iter == constraints.end()){
 		constraints[hash] = std::make_shared<PinSet>(hash) ;
 	}
 	Pin new_pin;
+	new_pin.id1 = a ;
+	new_pin.id2 = b ;
 	new_pin.local_a = getBody(a)->inv_pose * glm::vec4(world_point,1);
 	new_pin.local_b = getBody(b)->inv_pose * glm::vec4(world_point, 1);
 	disableCollision(a,b);
@@ -1453,6 +1478,11 @@ void SimpleLocalPhysicsCell::addPin(int64_t a, int64_t b, glm::vec3& world_point
 //Deletes all pins currently onthe two objects
 //Collision between the objects will be turned on
 void SimpleLocalPhysicsCell::deletePins(int64_t a, int64_t b){
+	if (a > b) {
+		int64_t c = a;
+		a = b;
+		b = c;
+	}
 	int64_t hash = Pin::getHash(a, b);
 	constraints.erase(hash);
 	enableCollision(a, b);
