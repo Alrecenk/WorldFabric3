@@ -32,19 +32,22 @@ private:
 
 	std::shared_ptr<Physics::SimpleLocalPhysicsCell> cell ;
 	int light_id = -1; // Scene light
-	int mouse_particle_id = -1;
+	float mouse_depth = 11.0f ;
+	float mouse_size = 0.1f ;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
 	std::chrono::high_resolution_clock::time_point last_ball_time = now();
 
+	int64_t held_body = -1 ;
+	int64_t mouse_body = -1 ;
 
 
 	glm::vec3 min = { -4,-4,-4 };
 	glm::vec3 max = { 4,4,4 };
 	float gravity = 4.0f ;
-	int millis_between_balls = 200;
-	int max_balls = 350 ;
+	int millis_between_balls = 300;
+	int max_balls = 50 ;
 
 	// Csmera control stuff
 	glm::vec3 look_at = glm::vec3(0, -2, 0);
@@ -72,11 +75,15 @@ private:
 	static inline const std::string FOX_MODEL = "./assets/Fox2_base.glb";
 	static inline const std::string BUNNY_MODEL = "./assets/cut_bunny.glb";
 	static inline const std::string BUNNY_VISUAL_MODEL = "./assets/uncut_bunny.glb";
+	static inline const std::string CHAIN_MODEL = "./assets/chain_link.glb";
+	static inline const std::string CHAIN_MODEL_CUT = "./assets/chain_link_cut.glb";
+
 	int box_type=-1 ;
 	int ball_type = -1;
 	int wall_type = -1;
 	int rod_type = -1 ;
 	int jar_type = -1 ;
 	int bunny_type = -1 ;
+	int chain_type = -1 ;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_

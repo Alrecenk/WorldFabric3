@@ -118,6 +118,8 @@ class Sphere : public ConvexShape {
 public:
 	float radius ;
 
+	Sphere(float radius);
+
 	Sphere(float radius, float mass) ;
 
 	//Returns the point on the shape furthest in the given direction
@@ -143,11 +145,11 @@ public:
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	std::vector<std::shared_ptr<ConvexShape>> shape ; // TODO add support for non-convex shapes by compounding
+	std::vector<std::shared_ptr<ConvexShape>> shape ;
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
-	float drag = 0.05f ;
-	float angular_drag = 0.05f ;
+	float drag = 0.25f ;
+	float angular_drag = 0.25f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
@@ -171,6 +173,8 @@ public:
 		inv_pose = glm::inverse(p);
 		orientation = glm::quat_cast(pose);
 		position = p * glm::vec4(0,0,0,1);
+		velocity = glm::vec3(0);
+		angular_velocity = glm::vec3(0) ;
 	}
 };
 
@@ -187,8 +191,7 @@ public:
 	virtual int64_t getHash() const = 0;
 
 	//Update the constraint target based on information at the start of the frame
-	//Returns if the constraint is active at all
-	virtual bool updateConstraint(PhysicsContainer* cell) = 0;
+	virtual void updateConstraint(PhysicsContainer* cell) = 0;
 
 	//Apply a starting impulse carried over if this constraint has existed for multiple frames in a row
 	virtual void applyWarmingImpulse(PhysicsContainer* cell) = 0;
@@ -200,6 +203,8 @@ public:
 class ConstraintSet{
 public:
 
+	bool delete_if_not_updated = true; // collision constraints get autodeletedif not being actively updated
+
 	//Returns an identifying hash that can be used to group constraints into this set
 	virtual int64_t getHash() const = 0 ;
 	
@@ -208,7 +213,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	virtual bool updateConstraints(PhysicsContainer* cell) = 0;
+	virtual void updateConstraints(PhysicsContainer* cell) = 0;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	virtual void applyWarmingImpulses(PhysicsContainer* cell) = 0;
@@ -271,7 +276,7 @@ public:
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
 	glm::vec3 point; // middle point of collision
-	glm::vec3 normal; // normal points from object 1 to object 2, doesn ot change
+	glm::vec3 normal; // normal points from object 1 to object 2
 	glm::vec3 local_a ; // point on surface of a in A's local coordinates
 	glm::vec3 local_b ; // point on surface of b in B's local coordinates
 	float penetration_depth = 0;
@@ -279,20 +284,18 @@ public:
 	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
-	static inline float penetration_spring_coefficient = 10.0f;
-	static inline float allowed_collision_depth = 0.02f;
+	static inline float penetration_spring_coefficient = 1.0f;
+	static inline float allowed_collision_depth = 0.03f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
-	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2, int constraint_type) {
-		return hashBytes(serialize(id1,s1, id2,s2, constraint_type));
+	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
+		return hashBytes(serialize(id1,s1, id2,s2, CONSTRAINT_TYPE));
 	}
 
 
 	int64_t getHash() const override;
-
-
-	bool updateConstraint(PhysicsContainer* cell) override;
+	void updateConstraint(PhysicsContainer* cell) override;
 	void applyWarmingImpulse(PhysicsContainer* cell) override;
 	void applyConstraint(PhysicsContainer* cell) override;
 
@@ -314,7 +317,7 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
+	void updateConstraints(PhysicsContainer* cell) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	void applyWarmingImpulses(PhysicsContainer* cell) override;
@@ -342,7 +345,59 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	bool updateConstraints(PhysicsContainer* cell) override;
+	void updateConstraints(PhysicsContainer* cell) override;
+
+	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+	void applyWarmingImpulses(PhysicsContainer* cell) override;
+
+	//Applies impulses to velocity of involved bodies to satisfy these constraints
+	void applyConstraints(PhysicsContainer* cell) override;
+
+};
+
+// A User-created constraint that connects two objects at a point
+class Pin : public Constraint{
+public:
+	int64_t id1 = -1;
+	int64_t id2 = -1;
+	glm::vec3 warm_impulse = glm::vec3(0);
+	glm::vec3 target; // target velocity difference between the two points
+	glm::vec3 point ; //average of the two points in world space
+	glm::vec3 local_a; // point of a in A's local coordinates
+	glm::vec3 local_b; // point of b in B's local coordinates
+	float spring_coefficient = 5.0f ; // Velocity applied per error to keep points together
+	float max_impulse = 0.01f ; // maximum impulse applied, limits force of constraint
+
+	static inline const int CONSTRAINT_TYPE = 3;
+
+	static int64_t getHash(int64_t id1, int64_t id2) {
+		return hashBytes(serialize(id1, id2, CONSTRAINT_TYPE));
+	}
+
+	int64_t getHash() const override;
+	void updateConstraint(PhysicsContainer* cell) override;
+	void applyWarmingImpulse(PhysicsContainer* cell) override;
+	void applyConstraint(PhysicsContainer* cell) override;
+};
+
+class PinSet : public ConstraintSet{
+public:
+	int64_t hash;
+	std::vector<Pin> points;
+
+	PinSet(int64_t h) : hash(h) {
+		delete_if_not_updated = false;
+	};
+
+	//Returns an identifying hash that can be used to group constraints into this set
+	int64_t getHash() const override;
+
+	//Add a constraint to this set
+	void addConstraint(PhysicsContainer* cell, Constraint& new_constraint) override;
+
+	//Update the constraint targets based on information at the start of the frame
+	//Returns if any of the constraints are active at all
+	void updateConstraints(PhysicsContainer* cell) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 	void applyWarmingImpulses(PhysicsContainer* cell) override;
@@ -408,6 +463,8 @@ public:
 
 	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
 
+	std::unordered_set<std::pair<int64_t, int64_t>> collision_disabled ;// whether collision is disabled between two objects (first int must be smaller)
+
 	int next_object_id = 1;
 	int next_type_id = 1;
 
@@ -447,6 +504,23 @@ public:
 	//Sets the pose of an object
 	void setPose(int64_t id, const glm::mat4& pose);
 
+
+	void disableCollision(int64_t a, int64_t b);
+	void enableCollision(int64_t a, int64_t b);
+
+	//Adds a pin constraint between two objects at the given point
+	//Collision between the objects will be turned off
+	void addPin(int64_t a, int64_t b, glm::vec3& world_point);
+
+	//Deletes all pins currently onthe two objects
+	//Collision between the objects will be turned on
+	void deletePins(int64_t a, int64_t b);
+
+
+	//performs a raytrace of the ray p+v*t against all active objects' scene instance (not their physics shapes)
+	//Return the closets object hit and the t value on hit
+	//returns -1,-1 on miss
+	std::pair<int64_t, float> activeVisualRaytrace(const glm::vec3& p, const glm::vec3& v);
 };
 
 

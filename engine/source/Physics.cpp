@@ -640,13 +640,18 @@ std::vector<ConvexPolyhedron> ConvexPolyhedron::collectConvexPiecesByBone(std::s
 
 
 int64_t Collision::getHash() const {
-	return getHash(id1,shape1, id2, shape2, CONSTRAINT_TYPE);
+	return getHash(id1,shape1, id2, shape2);
 }
-bool Collision::updateConstraint(PhysicsContainer* cell){
+void Collision::updateConstraint(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
 	RigidBody* body_2 = cell->getBody(id2);
 
-	float velocity_against_normal = glm::dot(body_1->velocity - body_2->velocity, normal);
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+	glm::vec3 contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	float velocity_against_normal = glm::dot(contact_velocity_1 - contact_velocity_2, normal);
 
 	float restitution_bias = 0.0f; // inelastic
 	if (velocity_against_normal > min_velocity_for_elastic) {
@@ -658,7 +663,6 @@ bool Collision::updateConstraint(PhysicsContainer* cell){
 	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
 
 	target = restitution_bias + penetration_bias;
-	return true ; // TODO compute if still relevant
 }
 void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 	RigidBody* body_1 = cell->getBody(id1);
@@ -679,7 +683,7 @@ void Collision::applyWarmingImpulse(PhysicsContainer* cell){
 
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
-	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);// TODO inertia needs to be rotated based on pose of rigid body
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse);
 }
 void Collision::applyConstraint(PhysicsContainer* cell){
@@ -696,7 +700,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal); // TODO inertia needs to be rotated based on pose of rigid body
+	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal);
 	float rot_term2 = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, normal), r2), normal);
 	float effective_mass_n = body_1->inv_mass + body_2->inv_mass + rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
@@ -713,7 +717,7 @@ void Collision::applyConstraint(PhysicsContainer* cell){
 	//Apply normal impulse
 	body_1->velocity -= impulse_vec_n * body_1->inv_mass;
 	body_2->velocity += impulse_vec_n * body_2->inv_mass;
-	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse_vec_n);// TODO inertia needs to be rotated based on pose of rigid body
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse_vec_n);
 	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse_vec_n);
 
 	//update warm impulse
@@ -796,8 +800,8 @@ void SinglePointCollision::addConstraint(PhysicsContainer* cell, Constraint& new
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-bool SinglePointCollision::updateConstraints(PhysicsContainer* cell){
-	return point.updateConstraint(cell);
+void SinglePointCollision::updateConstraints(PhysicsContainer* cell){
+	point.updateConstraint(cell);
 	
 }
 
@@ -840,7 +844,7 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 		points[closest].point= new_point.point;
 		points[closest].normal = new_point.normal; 
 		// but carry over warm impulses
-	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision
+	}else if(closest >=0 && points.size() >= max_collision_points){ // Too many collision points
 		points[closest] = new_point ; // overwrite with new point
 		// dont carry over warm impulses
 	}else{ //We can have a totally new point
@@ -858,11 +862,10 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-bool ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
+void ManifoldCollision::updateConstraints(PhysicsContainer* cell) {
 	for (auto& p : points) {
 		p.updateConstraint(cell);
 	}
-	return true ;
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
@@ -880,12 +883,130 @@ void ManifoldCollision::applyConstraints(PhysicsContainer* cell) {
 }	
 
 
+
+int64_t Pin::getHash() const {
+	return getHash(id1, id2);
+}
+void Pin::updateConstraint(PhysicsContainer* cell) {
+	glm::vec3 a = cell->getBody(id1)->pose * glm::vec4(local_a, 1);
+	glm::vec3 b = cell->getBody(id2)->pose * glm::vec4(local_b, 1);
+	point = (a+b)*0.5f;
+	target = (a-b) * spring_coefficient ;
+}
+void Pin::applyWarmingImpulse(PhysicsContainer* cell) {
+	
+	float d2 = glm::dot(warm_impulse, warm_impulse);
+	if (d2 > max_impulse * max_impulse) {
+		warm_impulse /= sqrtf(d2);
+	}
+
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+
+	// Apply the stored impulse from last frame
+	body_1->velocity -= warm_impulse * body_1->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, warm_impulse);
+
+	body_2->velocity += warm_impulse * body_2->inv_mass;
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, warm_impulse);
+}
+void Pin::applyConstraint(PhysicsContainer* cell) {
+	RigidBody* body_1 = cell->getBody(id1);
+	RigidBody* body_2 = cell->getBody(id2);
+
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1->position;
+	glm::vec3 r2 = point - body_2->position;
+
+	glm::vec3 v1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
+	glm::vec3 v2 = body_2->velocity + glm::cross(body_2->angular_velocity, r2);
+	glm::vec3 relative_velocity = v2 - v1;
+
+	//Compute effective mass as a 3x3 matrix
+	//This matrix maps how a change in impulse affects relative velocity at the pin
+	glm::mat3 effective_mass(0.0f);
+	float inv_mass_sum = body_1->inv_mass + body_2->inv_mass;
+	for (int i = 0; i < 3; ++i) {
+		// effect from translation 
+		glm::vec3 axis(0);
+		axis[i] = 1.0f;
+		effective_mass[i] = axis * inv_mass_sum ; 
+		//effect from rotation
+		effective_mass[i] += glm::cross(body_1->inv_moment * glm::cross(r1, axis), r1); ;
+		effective_mass[i] += glm::cross(body_2->inv_moment * glm::cross(r2, axis), r2);
+	}
+	//Solve for the impulse needed to make the relative velocity change by the desired amount
+	glm::vec3 impulse =  glm::inverse(effective_mass) * (target-relative_velocity) ;
+	float d2 = glm::dot(impulse,impulse);
+	if(d2 > max_impulse*max_impulse){
+		impulse /= sqrtf(d2);
+	}
+	printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
+	//Apply the impulse
+	
+	body_1->velocity -= impulse * body_1->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
+	body_2->velocity += impulse * body_2->inv_mass;
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse);
+
+	// Accumulate for starting impulse next frame
+	warm_impulse += impulse;
+	
+	
+}
+
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t PinSet::getHash() const {
+	return hash ;
+}
+
+//Add a constraint to this set
+void PinSet::addConstraint(PhysicsContainer* cell, Constraint& new_constraint) {
+	Pin& new_point = static_cast<Pin&>(new_constraint);
+	points.emplace_back(new_point) ;
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+void PinSet::updateConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.updateConstraint(cell);
+	}
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void PinSet::applyWarmingImpulses(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.applyWarmingImpulse(cell);
+	}
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void PinSet::applyConstraints(PhysicsContainer* cell) {
+	for (auto& p : points) {
+		p.applyConstraint(cell);
+	}
+}
+
+Sphere::Sphere(float r) {
+	radius = r;
+	mass = 0;
+	inv_mass = 0;
+	inv_moment = glm::mat3(0);
+	moment = glm::mat3(0);
+}
+
 Sphere::Sphere(float r, float m){
 	radius = r ;
 	mass = m ;
 	inv_mass = 1.0f/ m ;
 	inv_moment = glm::mat3(1.0f/ ( 0.4f * m * r * r)) ;
-	moment = glm::inverse(inv_moment); // TODO not invert
+	moment = glm::mat3(0.4f * m * r * r);
 }
 
 //Returns the point on the shape furthest in the given direction
@@ -1041,7 +1162,7 @@ std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, con
 				break;
 			}
 		}
-		if (!found_triangle) { // origin was insdide all faces
+		if (!found_triangle) { // origin was inside all faces
 			return simplex; // collision detected
 		}
 	}
@@ -1064,8 +1185,8 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 }
 
 
-//Uses expanding polytope algorithm on result of detectCollision
-// Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
+// Uses expanding polytope algorithm on result of detectCollision
+// Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
@@ -1128,7 +1249,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 			}
 		}
 
-		//Add edges not duplicated
+		//Add edges not duplicated as new triangles
 		for (auto& edge : edge_list) {
 			if (!edge.disabled) {
 				polytope.emplace_back(edge.A, edge.B, new_point);
@@ -1206,15 +1327,15 @@ Physics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
 	}
 }
 
-//Finds all collisions of the balls with each other and the walls of the cell
+//Finds all collisions of the bodies with each other
 //Creates or destroys constraints so the contents of constraints matches the current collisions
 //Also sets points and normal for collisions
 void SimpleLocalPhysicsCell::updateCollisions() {
 	std::unordered_set<int64_t> found_constraints;
 	for (auto& [id1, body_1] : bodies) {
-		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
 			if (id1 < id2 && // only check each pair once
+				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
 				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
 
@@ -1229,7 +1350,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 								glm::vec3 normal = glm::normalize(sp.x);
 
 								normal = glm::normalize(normal);
-								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB, Physics::Collision::CONSTRAINT_TYPE);
+								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB);
 								found_constraints.insert(constraint_id); // track found so we can remove not found
 						
 								std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
@@ -1262,7 +1383,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 	//Delete existing constraints not found now
 	std::vector<int64_t> to_delete;
 	for (auto& [id, constraint] : constraints) {
-		if (found_constraints.find(id) == found_constraints.end()) {
+		if (constraint->delete_if_not_updated && found_constraints.find(id) == found_constraints.end()) {
 			to_delete.push_back(id);
 		}
 	}
@@ -1287,8 +1408,8 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 			constraint->applyConstraints(this);
 		}
 	}
-	for (auto& [id, ball] : bodies) {
-		ball->integrateVelocity(dt);
+	for (auto& [id, body] : bodies) {
+		body->integrateVelocity(dt);
 	}
 	updateCollisions();
 }
@@ -1296,15 +1417,13 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 //Uses types to render all objects with the scene plugin
 void SimpleLocalPhysicsCell::updateGraphics() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
-	for (auto& [id, ball] : bodies) {
-		if (id > 0) { // it's a ball
+	for (auto& [id, body] : bodies) {
 			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, ball->position);
-			pose = pose * glm::mat4_cast(ball->orientation);
+			pose = glm::translate(pose, body->position);
+			pose = pose * glm::mat4_cast(body->orientation);
 			pose = pose * types[iter->second.first].render_transform;
 			scene->setPose(instance[id].second, pose);
-		}
 	}
 }
 
@@ -1313,8 +1432,94 @@ void SimpleLocalPhysicsCell::updateGraphics() {
 void SimpleLocalPhysicsCell::setPose(int64_t id, const glm::mat4& pose){
 	auto iter = bodies.find(id);
 	if(iter != bodies.end()){
-		printf("Set pose\n");
 		iter->second->setPose(pose) ;
+	}
+
+}
+
+void SimpleLocalPhysicsCell::disableCollision(int64_t a, int64_t b){
+	if(a < b){
+		collision_disabled.emplace(a,b) ;
+	}else{
+		collision_disabled.emplace(b, a);
+	}
+}
+
+void SimpleLocalPhysicsCell::enableCollision(int64_t a, int64_t b) {
+	if (a < b) {
+		collision_disabled.erase(std::pair<int64_t,int64_t>(a,b));
+	}else{
+		collision_disabled.erase(std::pair<int64_t, int64_t>(b, a));
+	}
+}
+
+//Adds a pin constraint between two objects at the given point
+//Collision between the objects will be turned off
+void SimpleLocalPhysicsCell::addPin(int64_t a, int64_t b, glm::vec3& world_point){
+	if(a > b){
+		int64_t c = a ;
+		a = b ;
+		b = c ;
+	}
+	int64_t hash = Pin::getHash(a,b);
+	auto iter = constraints.find(hash) ;
+	if(iter == constraints.end()){
+		constraints[hash] = std::make_shared<PinSet>(hash) ;
+	}
+	Pin new_pin;
+	new_pin.id1 = a ;
+	new_pin.id2 = b ;
+	new_pin.local_a = getBody(a)->inv_pose * glm::vec4(world_point,1);
+	new_pin.local_b = getBody(b)->inv_pose * glm::vec4(world_point, 1);
+	disableCollision(a,b);
+	constraints[hash]->addConstraint(this,new_pin);
+}
+
+//Deletes all pins currently onthe two objects
+//Collision between the objects will be turned on
+void SimpleLocalPhysicsCell::deletePins(int64_t a, int64_t b){
+	if (a > b) {
+		int64_t c = a;
+		a = b;
+		b = c;
+	}
+	int64_t hash = Pin::getHash(a, b);
+	constraints.erase(hash);
+	enableCollision(a, b);
+
+}
+
+//performs a raytrace of the ray p+v*t against all active objects' scene instance (not their physics shapes)
+	//Return the closets object hit and the t value on hit
+	//returns -1,-1 on miss
+std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm::vec3& p, const glm::vec3& v){
+	float best_t = FLT_MAX;
+	int64_t best_id = -1 ;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, body] : bodies) {
+			if(body->inv_mass > 0){
+				auto iter = instance.find(id);
+				int type = iter->second.first ;
+				int scene_id = iter->second.second ;
+				glm::mat4 pose = glm::mat4(1.0f);
+				pose = glm::translate(pose, body->position);
+				pose = pose * glm::mat4_cast(body->orientation);
+				pose = pose * types[type].render_transform;
+				glm::mat4 scene_to_model_space = glm::inverse(pose);
+				glm::vec3 ray_origin = scene_to_model_space * glm::vec4(p, 1);
+				glm::vec3 ray_direction = scene_to_model_space * glm::vec4(v, 0);
+				std::shared_ptr<GLTF> model = scene->getModelController(scene_id);
+				float t = model->rayTrace(ray_origin, ray_direction);
+				if(t >= 0 && t < best_t){
+					best_t = t ;
+					best_id = id ;
+				}
+			}
+	}
+	if(best_t < FLT_MAX){
+		return std::pair<int64_t,float>(best_id, best_t) ;
+	}else{
+		return std::pair<int64_t, float>(-1,-1.0f) ;
 	}
 
 }
