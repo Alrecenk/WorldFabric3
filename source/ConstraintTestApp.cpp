@@ -11,7 +11,6 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 
-
 	// Make a particle for the mouse
 	mouse_particle_id = particles->createParticle(0);
 	particles->setColor(mouse_particle_id, glm::vec4(1, 0, 0, 1));
@@ -176,22 +175,17 @@ void ConstraintTestApp::run() {
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
 
-	float t = -1 ; // TODO implement raytracing to make balls clickable
-	//Place the mouse particle
-	glm::vec3 mouse_position;
-	if (t > 0) { // collision
-		particles->setColor(mouse_particle_id, glm::vec4(0, 0, 1, 1)); // blue
-		mouse_position = window->window_target->camera_position + window->getMouseRay() * t; // hit postion
-	}
-	else { // no collision
-		particles->setColor(mouse_particle_id, glm::vec4(1, 0, 0, 1)); // red
-		mouse_position = window->window_target->camera_position + window->getMouseRay() * 3.0f; // arbitrary depth on no collision
-	}
+	std::pair<int64_t, float> trace = cell->activeVisualRaytrace(ray_origin, ray_direction) ;
+	mouse_depth = trace.second ;
+
+
+	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth ;
+
 	glm::mat4 particle_pose = glm::mat4(1.0f);
 	particle_pose = glm::translate(particle_pose, mouse_position);
 	particle_pose = glm::scale(particle_pose, glm::vec3(0.03, 0.03, 0.03));
 	particles->setPose(mouse_particle_id, particle_pose);
-
+	
 
 	updateCamera();
 	cell->runPhysicsFrame(dt, 15);
@@ -251,9 +245,7 @@ void ConstraintTestApp::updateCamera() {
 		mouse_down_position_right = window->getMousePosition();
 		camera_down_thi = camera_thi;
 		camera_down_theta = camera_theta;
-
-	}
-	else {
+	} else {
 		mouse_down_right = false;
 	}
 
@@ -263,7 +255,6 @@ void ConstraintTestApp::updateCamera() {
 	else if (mouse_wheel_y_previous > window->getMouseWheelPosition().y) {
 		zoom /= 0.95f;
 	}
-
 	if (zoom < 1.0f) {
 		zoom = 1.0f;
 	}

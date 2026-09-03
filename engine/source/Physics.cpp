@@ -1308,13 +1308,12 @@ Physics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
 	}
 }
 
-//Finds all collisions of the balls with each other and the walls of the cell
+//Finds all collisions of the bodies with each other
 //Creates or destroys constraints so the contents of constraints matches the current collisions
 //Also sets points and normal for collisions
 void SimpleLocalPhysicsCell::updateCollisions() {
 	std::unordered_set<int64_t> found_constraints;
 	for (auto& [id1, body_1] : bodies) {
-		//Ball to ball collisions
 		for (auto& [id2, body_2] : bodies) {
 			if (id1 < id2 && // only check each pair once
 				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
@@ -1390,8 +1389,8 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 			constraint->applyConstraints(this);
 		}
 	}
-	for (auto& [id, ball] : bodies) {
-		ball->integrateVelocity(dt);
+	for (auto& [id, body] : bodies) {
+		body->integrateVelocity(dt);
 	}
 	updateCollisions();
 }
@@ -1399,15 +1398,13 @@ void SimpleLocalPhysicsCell::runPhysicsFrame(float dt, int constraints_iter) {
 //Uses types to render all objects with the scene plugin
 void SimpleLocalPhysicsCell::updateGraphics() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
-	for (auto& [id, ball] : bodies) {
-		if (id > 0) { // it's a ball
+	for (auto& [id, body] : bodies) {
 			auto iter = instance.find(id);
 			glm::mat4 pose = glm::mat4(1.0f);
-			pose = glm::translate(pose, ball->position);
-			pose = pose * glm::mat4_cast(ball->orientation);
+			pose = glm::translate(pose, body->position);
+			pose = pose * glm::mat4_cast(body->orientation);
 			pose = pose * types[iter->second.first].render_transform;
 			scene->setPose(instance[id].second, pose);
-		}
 	}
 }
 
@@ -1439,7 +1436,7 @@ void SimpleLocalPhysicsCell::enableCollision(int64_t a, int64_t b) {
 }
 
 //Adds a pin constraint between two objects at the given point
-	//Collision between the objects will be turned off
+//Collision between the objects will be turned off
 void SimpleLocalPhysicsCell::addPin(int64_t a, int64_t b, glm::vec3& world_point){
 	int64_t hash = Pin::getHash(a,b);
 	auto iter = constraints.find(hash) ;
@@ -1459,6 +1456,41 @@ void SimpleLocalPhysicsCell::deletePins(int64_t a, int64_t b){
 	int64_t hash = Pin::getHash(a, b);
 	constraints.erase(hash);
 	enableCollision(a, b);
+
+}
+
+//performs a raytrace of the ray p+v*t against all active objects' scene instance (not their physics shapes)
+	//Return the closets object hit and the t value on hit
+	//returns -1,-1 on miss
+std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm::vec3& p, const glm::vec3& v){
+	float best_t = FLT_MAX;
+	int64_t best_id = -1 ;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	for (auto& [id, body] : bodies) {
+			if(body->inv_mass > 0){
+				auto iter = instance.find(id);
+				int type = iter->second.first ;
+				int scene_id = iter->second.second ;
+				glm::mat4 pose = glm::mat4(1.0f);
+				pose = glm::translate(pose, body->position);
+				pose = pose * glm::mat4_cast(body->orientation);
+				pose = pose * types[type].render_transform;
+				glm::mat4 scene_to_model_space = glm::inverse(pose);
+				glm::vec3 ray_origin = scene_to_model_space * glm::vec4(p, 1);
+				glm::vec3 ray_direction = scene_to_model_space * glm::vec4(v, 0);
+				std::shared_ptr<GLTF> model = scene->getModelController(scene_id);
+				float t = model->rayTrace(ray_origin, ray_direction);
+				if(t >= 0 && t < best_t){
+					best_t = t ;
+					best_id = id ;
+				}
+			}
+	}
+	if(best_t < FLT_MAX){
+		return std::pair<int64_t,float>(best_id, best_t) ;
+	}else{
+		return std::pair<int64_t, float>(-1,-1.0f) ;
+	}
 
 }
 

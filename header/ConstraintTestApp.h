@@ -33,6 +33,7 @@ private:
 	std::shared_ptr<Physics::SimpleLocalPhysicsCell> cell ;
 	int light_id = -1; // Scene light
 	int mouse_particle_id = -1;
+	float mouse_depth = 11.0f ;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 

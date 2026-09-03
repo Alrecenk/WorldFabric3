@@ -510,6 +510,12 @@ public:
 	//Deletes all pins currently onthe two objects
 	//Collision between the objects will be turned on
 	void deletePins(int64_t a, int64_t b);
+
+
+	//performs a raytrace of the ray p+v*t against all active objects' scene instance (not their physics shapes)
+	//Return the closets object hit and the t value on hit
+	//returns -1,-1 on miss
+	std::pair<int64_t, float> activeVisualRaytrace(const glm::vec3& p, const glm::vec3& v);
 };
 
 
