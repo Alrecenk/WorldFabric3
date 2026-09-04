@@ -411,8 +411,8 @@ void setupGameStates() {
 	//app->add(BallThrowApp::state_name, std::shared_ptr<BallThrowApp>(new BallThrowApp()));
 	//app->setState(BallThrowApp::state_name);
 
-	//app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
-	//app->setState(MirrorApp::state_name);
+	app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
+	app->setState(MirrorApp::state_name);
 
 	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
 	//app->setState(TraceApp::state_name);
@@ -420,8 +420,8 @@ void setupGameStates() {
 	//app->add(CollisionTestApp::state_name, std::make_shared<CollisionTestApp>());
 	//app->setState(CollisionTestApp::state_name);
 
-	app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
-	app->setState(ConstraintTestApp::state_name);
+	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
+	//app->setState(ConstraintTestApp::state_name);
 
 	//app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
 	//app->setState(PyramidApp::state_name);
