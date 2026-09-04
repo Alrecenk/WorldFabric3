@@ -955,10 +955,10 @@ public:
 				vertex_buffer = renderer->createVulkanBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 				index_buffer = renderer->createVulkanBuffer(indices.size() * sizeof(int32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 				model_size_changed = false ;
+				draw_indirect_buffer_allocated = false;
 			}
 			renderer->pushBufferData(cmd,vertices, vertex_buffer);
 			renderer->pushBufferData(cmd,indices, index_buffer);
-
 			model_changed = false;
 			if (debug_print) {
 				printf("model update\n");

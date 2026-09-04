@@ -16,6 +16,8 @@ MirrorApp::MirrorApp() {
 void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 	OpenXRPlugin* controls = getTool<OpenXRPlugin>() ;
 	ScenePlugin* scene = getTool<ScenePlugin>();
+	VulkanPlugin* window = getTool<VulkanPlugin>();
+	AudioPlugin* audio = getTool<AudioPlugin>();
 
 	controls->setBackgroundColor(glm::vec3(0.0f, 0.0f, 0.0f));
 	
@@ -69,10 +71,10 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 
 		my_instance = scene->createInstance(avatar_model, avatar_pose);
 		mirror_instance = scene->createInstance(mirror_model, avatar_pose);
-		scene_instance = scene->createInstance(scene_model,scene_pose) ;
+		//scene_instance = scene->createInstance(scene_model,scene_pose) ;
 		camera_avatar_instance = scene->createInstance(avatar_model, avatar_pose);
 		camera_avatar_instance_2 = scene->createInstance(mirror_model, avatar_pose);
-		camera_scene_instance = scene->createInstance(scene_model, scene_pose);
+		//camera_scene_instance = scene->createInstance(scene_model, scene_pose);
 
 		scene->createPin(my_instance, hips, avatar->human_bone[hips], glm::vec3(0, 0, 0), 2.0f, 2.0f);
 		scene->createPin(my_instance, head, avatar->first_person_bone, avatar->first_person_offset, 1.0f, 1.0f);
@@ -158,7 +160,15 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 
 	calibrated = false;
 	start_time = now();
+
+	//override background color to be a green screen
+	window->window_target->clear_values[0] = { 0.0f,1.0f,0.0f,1.0f } ;
+
 	recenter(scene, current_head_pose);
+
+
+	audio->startRecording("Vozard");
+	recording = true;
 }
 
 
@@ -283,7 +293,7 @@ void MirrorApp::run() {
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
-
+	
 	if(window->keyDown(SDLK_SPACE) || controls->getBoolean("/actions/general/in/press_b")){
 		if(!space_held){ // space pressed
 			if(!recording){
@@ -408,7 +418,7 @@ void MirrorApp::run() {
 	}
 
 	updateBlink(morph_weights);
-	//morph_weights[blink_morph] = randomFloat();
+	//morph_weights[blink_morph] = randomFloat(); // test if morphs are displaying
 	scene->setMorphWeights(avatar_model, morph_weights);
 	scene->setMorphWeights(mirror_model, morph_weights);
 	
@@ -422,7 +432,7 @@ void MirrorApp::run() {
 	shift_pose = glm::translate(shift_pose, recording_offset);
 	scene->setPose(camera_avatar_instance, shift_pose * h.pose * coord_fix, h.bone_data);
 	scene->setPose(camera_avatar_instance_2, shift_pose * h.pose * coord_fix, h.bone_data);
-	scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
+	//scene->setPose(camera_scene_instance, shift_pose * scene_pose) ;
 	
 
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
@@ -552,8 +562,9 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	glm::vec3 look_at = mirror_pose*model_head_position ;
 
 	VulkanPlugin* window = getTool<VulkanPlugin>();
-	glm::vec3 camera_position = glm::vec3(model_head_position)*0.6f + look_at * 0.4f ;
-	float fov = 0.8f;
+	//glm::vec3 camera_position = glm::vec3(model_head_position)*0.6f + look_at * 0.4f ;
+	glm::vec3 camera_position = glm::vec3(model_head_position) + glm::vec3(0,-0.25f,0);
+	float fov = 0.7f;
 	//window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0)); // look from head position at mirror
 
 	look_at += recording_offset ;
