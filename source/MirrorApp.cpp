@@ -293,7 +293,7 @@ void MirrorApp::run() {
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
-
+	
 	if(window->keyDown(SDLK_SPACE) || controls->getBoolean("/actions/general/in/press_b")){
 		if(!space_held){ // space pressed
 			if(!recording){
@@ -418,7 +418,7 @@ void MirrorApp::run() {
 	}
 
 	updateBlink(morph_weights);
-	//morph_weights[blink_morph] = randomFloat();
+	//morph_weights[blink_morph] = randomFloat(); // test if morphs are displaying
 	scene->setMorphWeights(avatar_model, morph_weights);
 	scene->setMorphWeights(mirror_model, morph_weights);
 	

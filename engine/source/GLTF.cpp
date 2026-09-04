@@ -483,9 +483,9 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 					glm::vec3 normal = v.normal ;
 					for(int i = 0; i < weights.size() && i < v.morph_position.size();i++){
 						position += v.morph_position[i] * weights[i] ;
-						normal += v.morph_normal[i] * weights[i] ;
+						normal += v.morph_normal[i] * weights[i] ;						
 					}
-					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
+					render_model->vertices.emplace_back(position, normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].A]);
@@ -498,7 +498,7 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 						position += v.morph_position[i] * weights[i];
 						normal += v.morph_normal[i] * weights[i];
 					}
-					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
+					render_model->vertices.emplace_back(position, normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].B]);
@@ -511,7 +511,7 @@ std::vector< std::shared_ptr<GLTF::RenderModel>> GLTF::getMorphedRenderBuffers(s
 						position += v.morph_position[i] * weights[i];
 						normal += v.morph_normal[i] * weights[i];
 					}
-					render_model->vertices.emplace_back(v.position, v.normal, v.color_mult, v.tex_coord, v.joints, v.weights);
+					render_model->vertices.emplace_back(position, normal, v.color_mult, v.tex_coord, v.joints, v.weights);
 					num_vertices++;
 				}
 				render_model->indices.push_back(old_to_new_index[triangles[k].C]);
@@ -1116,6 +1116,7 @@ void GLTF::addPrimitive(std::vector<Vertex>& vertices, std::vector<Triangle>& tr
     for(int k=0;k<num_vertices;k++){
         Vertex v ;
         v.position = vec3(point_data[3*k], point_data[3*k+1],point_data[3*k+2]) ;
+		
         v.color_mult = vec4(1,1,1,1);
         if(has_normals){
             v.normal = vec3(normal_data[3*k], normal_data[3*k+1], normal_data[3*k+2]) ;
