@@ -39,8 +39,15 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 		avatar->colliders[13].radius *= 1.5f; // make hand colliders bigger
 		avatar->colliders[21].offset *= 2.5f ;// movre hand collider otu into palm
 		avatar->colliders[13].offset *= 2.5f;
-		avatar->nodes[avatar->human_bone["rightShoulder"]].stiffness = 3.0f;
+		avatar->nodes[avatar->human_bone["rightShoulder"]].stiffness = 3.0f; // tighten the shoulder blades so the upper arms move first
 		avatar->nodes[avatar->human_bone["leftShoulder"]].stiffness = 3.0f;
+
+		int core_bone = avatar->human_bone["chest"] ;
+		avatar->nodes[core_bone].stiffness = 10.0f;
+		core_bone = avatar->nodes[core_bone].parent; // make the spin stiffer, so the avatar doesn't crumple
+		avatar->nodes[core_bone].stiffness = 10.0f;
+	
+		
 
 		std::shared_ptr<GLTF> mirror_image = avatar->createMirrorImage();
 		scene->createModelSet(mirror_model, mirror_image, false);
@@ -138,8 +145,8 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 			finger_map.emplace_back(right_hand_skeleton, "finger_pinky_r_end", avatar->human_bone["rightLittleDistal"]);
 
 		}else if(OpenXRPlugin::ENABLED){
-			scene->createPin(my_instance, left_hand, avatar->human_bone[left_hand], glm::vec3(0, 0, 0), 1.0f, 1.0f);
-			scene->createPin(my_instance, right_hand, avatar->human_bone[right_hand], glm::vec3(0, 0, 0), 1.0f, 1.0f);
+			scene->createPin(my_instance, left_hand, avatar->human_bone[left_hand], glm::vec3(0, 0, 0), 0.2f, 0.2f);
+			scene->createPin(my_instance, right_hand, avatar->human_bone[right_hand], glm::vec3(0, 0, 0), 0.2f, 0.2f);
 			scene->enableIK(my_instance, true);
 		}
 
@@ -230,6 +237,7 @@ void MirrorApp::run() {
 			}
 		}else{
 
+	
 			glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
 			glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
 		
@@ -249,8 +257,38 @@ void MirrorApp::run() {
 			current_left_hand_pose = current_left_hand_pose * left_hand_pose_fix * initial_left_hand_matrix;
 			current_right_hand_pose = current_right_hand_pose * right_hand_pose_fix * initial_right_hand_matrix;
 			
-			scene->setPinTarget(my_instance, left_hand, current_left_hand_pose * coord_fix);
-			scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);			
+			if(hand_lock){
+				scene->setPinTarget(my_instance, left_hand, avatar_pose * left_hand_lock_pose);
+				scene->setPinTarget(my_instance, right_hand, avatar_pose * right_hand_lock_pose);
+			}else{
+				scene->setPinTarget(my_instance, left_hand, current_left_hand_pose * coord_fix);
+				scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);
+
+			}
+
+
+
+
+
+
+			if (controls->getBoolean("/actions/general/in/press_b")) {
+				if (!lock_held) {
+					if (hand_lock) {
+						hand_lock = false;
+					}else {
+						hand_lock = true;
+						glm::mat4 inv = glm::inverse(avatar_pose);
+						left_hand_lock_pose = inv * current_left_hand_pose * coord_fix ;
+						right_hand_lock_pose = inv * current_right_hand_pose * coord_fix;
+					}
+				}
+				lock_held = true;
+			} else {
+				lock_held = false;
+			}
+
+
+		
 		}
 	
 				
@@ -293,7 +331,9 @@ void MirrorApp::run() {
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
+
 	
+	/*
 	if(window->keyDown(SDLK_SPACE) || controls->getBoolean("/actions/general/in/press_b")){
 		if(!space_held){ // space pressed
 			if(!recording){
@@ -340,8 +380,11 @@ void MirrorApp::run() {
 		printf("Morph Selected: %d -> %s\n", selected_morph, avatar->morph_names[selected_morph].c_str());
 	}
 	right_held = window->keyDown(SDLK_RIGHT);
+	*/
+	
 
 	
+
 
 	if(recording){
 		

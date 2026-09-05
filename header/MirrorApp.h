@@ -260,6 +260,12 @@ private:
 	static inline glm::mat4 coord_fix = glm::scale(glm::mat4(1.0), glm::vec3(-1, 1, -1));
 
 
+	bool hand_lock = false;
+	bool lock_held = false;
+	glm::mat4 left_hand_lock_pose;
+	glm::mat4 right_hand_lock_pose;
+
+
 	void recenter(ScenePlugin* scene, glm::mat4& current_head_pose);
 
 

@@ -440,7 +440,7 @@ int exampleMain(int argc, char* argv[]) {
 	printf("Command: %s\n", command_line.c_str());
 
 	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = false; // Enable this for VR support
+	OpenXRPlugin::ENABLED = true; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
