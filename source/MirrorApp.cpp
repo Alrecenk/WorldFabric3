@@ -629,7 +629,7 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	int light_id = 0 ;
 	lc.light_color = glm::vec4(.2, .2, .2, 1);
 	scene->setLightComponent<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, lc) ;
-	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id,light_pos, light_look_at, glm::vec3(0, 1, 0.1), 0.7f, 20);
+	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id,light_pos, light_look_at, glm::vec3(0, 1, 0.1), 0.25f, 15);
 
 	
 	
