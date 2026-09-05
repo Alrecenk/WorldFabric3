@@ -3,13 +3,12 @@
 #include "ConvexShape.h"
 #include "LinearPredictiveCode.h"
 #include "ParticlePlugin.h"
+#include "Registry.h"
 
 //Loads models from the hard drive on construction
 MirrorApp::MirrorApp() {
 
 }
-
-
 
 
 // Called when switching into this sate before the first time run is claled
@@ -28,20 +27,40 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 		scene->createModelSet(avatar_model, avatar_model_file, false);
 		std::shared_ptr<GLTF> avatar = scene->getModelController(avatar_model);
 		avatar->setToBasePose();
-		initial_head_matrix = glm::mat4_cast(avatar->createPin(head, avatar->first_person_bone, avatar->first_person_offset, 1.0f, 0.1f));
-		initial_left_hand_matrix = glm::inverse(glm::mat4_cast(avatar->createPin(left_hand, avatar->human_bone[left_hand], glm::vec3(0, 0, 0), 1.0f, 0.1f)));
-		initial_right_hand_matrix = glm::inverse(glm::mat4_cast(avatar->createPin(right_hand, avatar->human_bone[right_hand], glm::vec3(0, 0, 0), 1.0f, 0.1f)));
+		initial_head_matrix = glm::mat4_cast(avatar->createPin(head, avatar->first_person_bone, avatar->first_person_offset, 1.0f, 0.3f));
+		initial_left_hand_matrix = glm::inverse(glm::mat4_cast(avatar->createPin(left_hand, avatar->human_bone[left_hand], glm::vec3(0, 0, 0), 0.5f, 0.2f)));
+		initial_right_hand_matrix = glm::inverse(glm::mat4_cast(avatar->createPin(right_hand, avatar->human_bone[right_hand], glm::vec3(0, 0, 0), 0.5f, 0.2f)));
 		initial_hips_matrix = glm::inverse(glm::mat4_cast(avatar->createPin(hips, avatar->human_bone[hips], glm::vec3(0, 0, 0), 1.0f, 0.1f)));
 		avatar->computeNodeMatrices();
 
 		avatar->colliders[1].radius *= 1.3f ; // boost the collider size in the middle of the body to include the breasts for hair collision
 		avatar->colliders[21].radius *= 1.5f; // make hand colliders bigger
-		avatar->colliders[13].radius *= 1.5f; // make hand colliders bigger
-		avatar->colliders[21].offset *= 2.5f ;// movre hand collider otu into palm
+		avatar->colliders[13].radius *= 1.5f; 
+		avatar->colliders[21].offset *= 2.5f ;// move hand collider out into palm
 		avatar->colliders[13].offset *= 2.5f;
-		avatar->nodes[avatar->human_bone["rightShoulder"]].stiffness = 3.0f;
-		avatar->nodes[avatar->human_bone["leftShoulder"]].stiffness = 3.0f;
 
+		avatar->nodes[avatar->human_bone["rightShoulder"]].stiffness = 3.0f; // tighten the shoulder blades so the upper arms move first
+		avatar->nodes[avatar->human_bone["leftShoulder"]].stiffness = 3.0f;
+		
+		int core_bone = avatar->human_bone["chest"] ;// make the spine stiffer, so the avatar doesn't crumple when the hands are very low
+		avatar->nodes[core_bone].stiffness = 2.0f;
+		core_bone = avatar->nodes[core_bone].parent; 
+		avatar->nodes[core_bone].stiffness = 3.0f;
+
+
+		// Remove the bust and sleeve springs, because they are distracting and look bad
+		std::vector<GLTF::SpringChain> edited_chains ;
+		std::vector<int> springs_to_delete ;
+		for(int k=0;k<avatar->spring_chains.size();k++){
+			std::string name = avatar->spring_chains[k].name ;
+			if(name == "Bust" || name == "Sleeve"){
+				
+			}else{
+				edited_chains.push_back(avatar->spring_chains[k]) ;
+			}
+		}
+		avatar->spring_chains = edited_chains ; 
+	
 		std::shared_ptr<GLTF> mirror_image = avatar->createMirrorImage();
 		scene->createModelSet(mirror_model, mirror_image, false);
 	}
@@ -142,8 +161,6 @@ void MirrorApp::enter(std::shared_ptr<MachineState> from) {
 			scene->createPin(my_instance, right_hand, avatar->human_bone[right_hand], glm::vec3(0, 0, 0), 1.0f, 1.0f);
 			scene->enableIK(my_instance, true);
 		}
-
-
 	}
 
 	printf("Shoulders: %d, %d\n", avatar->human_bone["rightShoulder"],avatar->human_bone["leftShoulder"]) ;
@@ -230,6 +247,7 @@ void MirrorApp::run() {
 			}
 		}else{
 
+	
 			glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
 			glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
 		
@@ -249,11 +267,31 @@ void MirrorApp::run() {
 			current_left_hand_pose = current_left_hand_pose * left_hand_pose_fix * initial_left_hand_matrix;
 			current_right_hand_pose = current_right_hand_pose * right_hand_pose_fix * initial_right_hand_matrix;
 			
-			scene->setPinTarget(my_instance, left_hand, current_left_hand_pose * coord_fix);
-			scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);			
-		}
-	
-				
+			if(hand_lock){
+				scene->setPinTarget(my_instance, left_hand, avatar_pose * left_hand_lock_pose);
+				scene->setPinTarget(my_instance, right_hand, avatar_pose * right_hand_lock_pose);
+			}else{
+				scene->setPinTarget(my_instance, left_hand, current_left_hand_pose * coord_fix);
+				scene->setPinTarget(my_instance, right_hand, current_right_hand_pose * coord_fix);
+
+			}
+
+			if (controls->getBoolean("/actions/general/in/press_b")) {
+				if (!lock_held) {
+					if (hand_lock) {
+						hand_lock = false;
+					}else {
+						hand_lock = true;
+						glm::mat4 inv = glm::inverse(avatar_pose);
+						left_hand_lock_pose = inv * current_left_hand_pose * coord_fix ;
+						right_hand_lock_pose = inv * current_right_hand_pose * coord_fix;
+					}
+				}
+				lock_held = true;
+			} else {
+				lock_held = false;
+			}
+		}	
 	}
 
 
@@ -293,7 +331,9 @@ void MirrorApp::run() {
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
+
 	
+	/*
 	if(window->keyDown(SDLK_SPACE) || controls->getBoolean("/actions/general/in/press_b")){
 		if(!space_held){ // space pressed
 			if(!recording){
@@ -340,8 +380,11 @@ void MirrorApp::run() {
 		printf("Morph Selected: %d -> %s\n", selected_morph, avatar->morph_names[selected_morph].c_str());
 	}
 	right_held = window->keyDown(SDLK_RIGHT);
+	*/
+	
 
 	
+
 
 	if(recording){
 		
@@ -426,7 +469,27 @@ void MirrorApp::run() {
 	while(pose_history.front().time < time - pose_delay){
 		pose_history.pop_front();
 	}
-	HistoryPose& h = pose_history.front() ;
+	HistoryPose h = pose_history.front() ;
+
+
+	int smooth_amount = 4;
+	if(pose_history.size() >= smooth_amount){
+		
+		std::vector<HistoryPose> set ;
+		for(HistoryPose& h : pose_history){
+			set.push_back(h);
+			if(set.size() == smooth_amount){
+				break ;
+			}
+		}
+	
+		h.pose = smooth(set[0].pose, set[1].pose, set[2].pose, set[3].pose) ;
+
+		for(int k=0;k<h.bone_data.size();k++){
+			h.bone_data[k] = smooth(set[0].bone_data[k], set[1].bone_data[k], set[2].bone_data[k], set[3].bone_data[k]) ;
+		}
+	}
+	
 	//printf("pose time : %f time : %f Delay : %f \n", h.time, time, time - h.time) ;
 	glm::mat4 shift_pose = glm::mat4(1.0f);
 	shift_pose = glm::translate(shift_pose, recording_offset);
@@ -574,21 +637,42 @@ void MirrorApp::recenter(ScenePlugin* scene, glm::mat4& current_head_pose) {
 	avatar->setToOriginalPose();
 	scene->setPose(my_instance, avatar_pose,avatar->getBoneVector());
 	scene->clearSpringBones(my_instance) ;
+	
 	scene->enableVRMSpringBones(my_instance, 10.0f);
 
 
 
 	ScenePlugin::LightComponent lc;
+	lc.light_color = glm::vec4(.06, .06, .06, 1);
 
-	glm::vec3 light_pos = look_at*0.3f + camera_position * 0.7f + glm::vec3(-1,3,0);
-	glm::vec3 light_look_at = look_at*0.2f + camera_position * 0.8f;
+	glm::vec3 light_offset = glm::vec3(-1, 3, 0) ;
+	glm::vec3 light_pos = look_at * 0.7f + camera_position * 0.3f + light_offset;
+	glm::vec3 light_look_at = look_at * 0.2f + camera_position * 0.8f + 0.1f;
+
+
+	while(lights.size()<desired_lights){
+		int l = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(glm::vec3(-5, 15, -5), glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), 0.55f, 30, 2048, 0, lc);
+		lights.push_back(l);
+	}
+
+	float theta = 0 ;
+	float r = 0.2f;
+	float y_off = 2.0f ;
+	float rand = 0.00f ;
+	for(int light_id : lights){
+		theta = (2.0f * 3.14159f * light_id)/lights.size() ;
+		
+		light_offset = glm::vec3(cosf(theta)*r + rand*(randomFloat()-0.5f), sinf(theta)*r+y_off + rand * (randomFloat() - 0.5f),0.0f) ;
+		glm::vec3 light_pos = look_at * 0.7f + camera_position * 0.3f + light_offset;
+		scene->setLightComponent<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, lc);
+		scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_pos, light_look_at, glm::vec3(randomFloat(), randomFloat(), randomFloat()), 0.55f, 15);
+	}
 
 	int light_id = 0 ;
-	lc.light_color = glm::vec4(.2, .2, .2, 1);
-	scene->setLightComponent<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, lc) ;
-	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id,light_pos, light_look_at, glm::vec3(0, 1, 0.1), 0.7f, 20);
-
 	
+	
+
+
 	
 }
 

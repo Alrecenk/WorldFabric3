@@ -1416,7 +1416,7 @@ void GLTF::loadVRMExtensions(Variant& json){
 		vector<Variant> human_bones = json["extensions"]["VRM"]["humanoid"]["humanBones"].getVariantArray();
 		for (Variant& bone : human_bones) {
 			human_bone[bone["bone"].getString()] = bone["node"].getInt();
-			//printf("%s : %d \n", bone["bone"].getString().c_str(), bone["node"].getInt() );
+			printf("%s : %d \n", bone["bone"].getString().c_str(), bone["node"].getInt() );
 		}
 	}
 	if (json["extensions"]["VRM"]["firstPerson"].defined()) {
@@ -1435,7 +1435,7 @@ void GLTF::loadVRMExtensions(Variant& json){
 		//printf("Found VRM 1.0 human bones:\n");
 		for (auto& [name, bone] : human_bones) {
 			human_bone[name] = bone["node"].getInt();
-			//printf("%s : %d \n", name.c_str(), human_bone[name] );
+			printf("%s : %d \n", name.c_str(), human_bone[name] );
 		}
 		first_person_bone = human_bone["head"];
 		Variant offset = json["extensions"]["VRMC_vrm"]["firstPerson"]["lookAt"]["offsetFromHeadBone"];

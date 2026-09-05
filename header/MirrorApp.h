@@ -9,6 +9,7 @@
 #include "AudioPlugin.h"
 #include "MachineState.h"
 #include "glm/glm.hpp"
+#include "Registry.h"
 
 #include <stdio.h>
 #include <cstdlib>
@@ -62,6 +63,10 @@ public:
 		glm::mat4 pose ;
 		std::vector<glm::mat4> bone_data ;
 	};
+
+	auto static getStructure(HistoryPose& obj) {
+		return std::tie(obj.time, obj.pose, obj.bone_data);
+	}
 
 	std::deque<HistoryPose> pose_history ;
 	
@@ -234,6 +239,9 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
+	int desired_lights = 8 ;
+	std::vector<int> lights = {0} ;
+
 	bool wiggle_enabled = false;
 
 
@@ -260,8 +268,18 @@ private:
 	static inline glm::mat4 coord_fix = glm::scale(glm::mat4(1.0), glm::vec3(-1, 1, -1));
 
 
+	bool hand_lock = false;
+	bool lock_held = false;
+	glm::mat4 left_hand_lock_pose;
+	glm::mat4 right_hand_lock_pose;
+
+
 	void recenter(ScenePlugin* scene, glm::mat4& current_head_pose);
 
+
+	glm::mat4 smooth(glm::mat4 A, glm::mat4 B, glm::mat4 C, glm::mat4 D){
+		return interpolate(interpolate(A,B,0.5f), interpolate(C,D,0.5f), 0.5f) ;
+	}
 
 };
 #endif // #ifndef _MIRROR_APP_H_
