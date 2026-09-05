@@ -561,6 +561,19 @@ inline glm::mat4 interpolate(const glm::mat4& A, const glm::mat4& B, float t){
 	return result;
 }
 
+/*
+template<class T>
+inline std::vector<T> interpolate(const std::vector<T>& a, const std::vector<T>& b, float t){
+	std::vector<T> c ;
+	printf("inerpolating vector!\n");
+	for(int k = 0 ; k < std::min(a.size(), b.size()) ; k++){
+		c.push_back(interpolate(a[k],b[k]),t) ;
+	}
+	return c ;
+}
+*/
+
+
 // For any undefined data type interpolate will do nearest neighbor
 template<class T>
 T interpolate(const T& a, const T& b, float t){

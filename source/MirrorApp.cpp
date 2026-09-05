@@ -3,6 +3,7 @@
 #include "ConvexShape.h"
 #include "LinearPredictiveCode.h"
 #include "ParticlePlugin.h"
+#include "Registry.h"
 
 //Loads models from the hard drive on construction
 MirrorApp::MirrorApp() {
@@ -468,7 +469,27 @@ void MirrorApp::run() {
 	while(pose_history.front().time < time - pose_delay){
 		pose_history.pop_front();
 	}
-	HistoryPose& h = pose_history.front() ;
+	HistoryPose h = pose_history.front() ;
+
+
+	int smooth_amount = 4;
+	if(pose_history.size() >= smooth_amount){
+		
+		std::vector<HistoryPose> set ;
+		for(HistoryPose& h : pose_history){
+			set.push_back(h);
+			if(set.size() == smooth_amount){
+				break ;
+			}
+		}
+	
+		h.pose = smooth(set[0].pose, set[1].pose, set[2].pose, set[3].pose) ;
+
+		for(int k=0;k<h.bone_data.size();k++){
+			h.bone_data[k] = smooth(set[0].bone_data[k], set[1].bone_data[k], set[2].bone_data[k], set[3].bone_data[k]) ;
+		}
+	}
+	
 	//printf("pose time : %f time : %f Delay : %f \n", h.time, time, time - h.time) ;
 	glm::mat4 shift_pose = glm::mat4(1.0f);
 	shift_pose = glm::translate(shift_pose, recording_offset);
