@@ -177,7 +177,7 @@ ScenePlugin* setUpScene(VulkanPlugin* window, OpenXRPlugin* xr){
 	
 	
 	lc.light_color = glm::vec4(0.01, 0.01, 0.01, 1);
-	scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(glm::vec3(-5, 15, -5), glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc);
+	scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(glm::vec3(-5, 15, -5), glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), 0.55f, 30, 2048, 0, lc);
 	
 	auto shaders1 = loadSceneShader(scene, window, "./shader/GLTF1.vert.spv", "./shader/GLTF.frag.spv", "./shader/GLTFShadow1.vert.spv", "./shader/GLTFShadow.frag.spv");
 	scene->addDefaultShader<ScenePlugin::DefaultPushConstants, GLTF::Instance1>(shaders1.first, shaders1.second, 1);
@@ -204,7 +204,7 @@ ScenePlugin* setUpScene(VulkanPlugin* window, OpenXRPlugin* xr){
 	//std::vector< std::shared_ptr<VulkanImage>> screen_images = {window_color_image, window_normal_image, window_point_image };
 	auto ambient_program = std::shared_ptr<ScreenShaderProgram>(new ScreenShaderProgram(window->device, ambient_shader, sizeof(ScenePlugin::ScreenPushConstants), window->window_target->images, 16));
 	auto ambient_post_effect = std::shared_ptr<ScreenModel<ScenePlugin::ScreenPushConstants, ScenePlugin::AmbientComponent>>(new ScreenModel<ScenePlugin::ScreenPushConstants, ScenePlugin::AmbientComponent>(ambient_program));
-	std::vector<ScenePlugin::AmbientComponent> ambient_components = { {glm::vec4(0.5,0.5,0.5,1)} };
+	std::vector<ScenePlugin::AmbientComponent> ambient_components = { {glm::vec4(0.6,0.6,0.6,1)} };
 	ambient_post_effect->setModel(ambient_components);
 	ambient_post_effect->setConstantLocations(&ambient_post_effect->push_constants.world_matrix, &ambient_post_effect->push_constants.camera_position, &ambient_post_effect->push_constants.component_buffer);
 	ambient_post_effect->phase = ScenePlugin::LIGHT_PHASE;

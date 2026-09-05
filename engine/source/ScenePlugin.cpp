@@ -781,6 +781,7 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 		
 	}
 
+	/*
 	for(GLTF::CollisionGroup& group : instance.skeleton->collision_groups){
 		printf("Group =  %s:", group.name.c_str());
 		for(int k : group.colliders){
@@ -789,7 +790,7 @@ void ScenePlugin::enableVRMSpringBones(int instance_id, float gravity_strength, 
 		printf("\n");
 
 	}
-
+	*/
 
 }
 

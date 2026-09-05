@@ -234,6 +234,9 @@ private:
 	glm::mat4 initial_hips_matrix;
 	glm::mat4 avatar_pose;
 
+	int desired_lights = 8 ;
+	std::vector<int> lights = {0} ;
+
 	bool wiggle_enabled = false;
 
 
