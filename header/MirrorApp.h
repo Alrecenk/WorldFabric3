@@ -268,10 +268,19 @@ private:
 	static inline glm::mat4 coord_fix = glm::scale(glm::mat4(1.0), glm::vec3(-1, 1, -1));
 
 
-	bool hand_lock = false;
+	bool hand_lock = true;
 	bool lock_held = false;
-	glm::mat4 left_hand_lock_pose;
-	glm::mat4 right_hand_lock_pose;
+	glm::mat4 left_hand_lock_pose = { 0.0f,-1.0f,0.0f,0.0f,
+										-1.0f,0.0f,0.0f,0.0f,
+										0.0f,0.0f,-1.0f,0.0f,
+										-0.2f,0.9f,0.0f,1.0f
+	};
+
+	glm::mat4 right_hand_lock_pose = { 0.0f,1.0f,0.0f,0.0f,
+										1.0f,0.0f,0.0f,0.0f,
+										0.0f,0.0f,-1.0f,0.0f,
+										0.2f,0.9f,0.0f,1.0f
+	};
 
 
 	void recenter(ScenePlugin* scene, glm::mat4& current_head_pose);

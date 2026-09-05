@@ -285,6 +285,12 @@ void MirrorApp::run() {
 						glm::mat4 inv = glm::inverse(avatar_pose);
 						left_hand_lock_pose = inv * current_left_hand_pose * coord_fix ;
 						right_hand_lock_pose = inv * current_right_hand_pose * coord_fix;
+
+						printf("left lock:\n");
+						Variant(left_hand_lock_pose).printFormatted();
+
+						printf("right lock:\n");
+						Variant(right_hand_lock_pose).printFormatted();
 					}
 				}
 				lock_held = true;
