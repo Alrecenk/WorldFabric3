@@ -170,7 +170,7 @@ void ConstraintTestApp::run() {
 	current_time = now();
 	float dt = microsBetween(last_run_time, current_time) / 1000000.0f;
 	
-	if(dt <= 0.001f || dt > 0.5f){ 
+	if(dt <= 0.001f || dt > 0.1f){ 
 		dt = 0.001f ; // don't move on frames where something is amiss with the clock
 	}
 	
