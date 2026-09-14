@@ -37,6 +37,8 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	base_shape["tetra"] = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.2), glm::vec3(0.2, 0, 0),glm::vec3(0, 0.2, 0),glm::vec3(0, 0, 0))) ;
 	base_shape["cylinder"] = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.2), glm::vec3(0, 0, -0.2), 0.1f, 8)) ;
 
+//TODO update for shapeset
+/*
 	int c = 0 ;
 	for(auto& [name, base] : base_shape){
 		std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
@@ -49,7 +51,7 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 		scene_ids.push_back( getTool<ScenePlugin>()->createInstance(name, pose));
 		c++;
 	}
-
+*/
 
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
 	box->setBoundingBoxModel(min, max, glm::vec4(1, 1, 1, 1));
@@ -135,8 +137,9 @@ void CollisionTestApp::run() {
 	for(int iteration = 0 ; iteration < 1; iteration++){ // iterate a bunch to measure performance
 	for(int k=1;k<instances.size();k++){
 		for(int j=0;j<k;j++){
-			auto result = Physics::detectCollision(&instances[k],0, &instances[j],0);
-			if(result.size() > 0){
+			//TODO updatr to shapeset
+			//auto result = Physics::detectCollision(&instances[k],0, &instances[j],0);
+			//if(result.size() > 0){
 				/*
 				glm::vec3 O(0,0,0) ;
 				glm::vec3 A  = result[0].A.x ;
@@ -161,8 +164,8 @@ void CollisionTestApp::run() {
 				*/
 
 
-				
-
+				//TODO update to shapeset
+/*
 				Physics::SupportPoint collision = Physics::getPenetration(result, &instances[k],0, &instances[j],0) ;
 
 				if(iteration == 0 ){ // only update visual on first iteration
@@ -195,8 +198,9 @@ void CollisionTestApp::run() {
 					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
 					display_particles.push_back(p_id);
 				}
+*/
 				
-			}
+			//}
 
 		}
 	}

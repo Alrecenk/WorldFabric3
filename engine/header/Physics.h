@@ -134,6 +134,118 @@ public:
 	std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const override;
 } ;
 
+//Shapeset contains a variety of explicitly typed shapes
+//Designed to be cmpatible with local_ptr
+class ShapeSet {
+public:
+	std::vector<Sphere> sphere;
+	std::vector<ConvexPolyhedron> poly;
+	//Add more shapes here later
+
+
+	void addShape(const std::shared_ptr<Physics::ConvexShape>& shape) {
+		std::shared_ptr<const Sphere> s = dynamic_pointer_cast<const Sphere>(shape);
+		if (s) {
+			sphere.emplace_back(*(s.get()));
+		}
+		std::shared_ptr<const ConvexPolyhedron> p = dynamic_pointer_cast<const ConvexPolyhedron>(shape);
+		if (p) {
+			poly.emplace_back(*(p.get()));
+		}
+	}
+
+	ShapeSet(){}
+
+	ShapeSet(const std::shared_ptr<Physics::ConvexShape>& shape) {
+		addShape(shape);
+	}
+
+	ShapeSet(const std::vector<std::shared_ptr<Physics::ConvexShape>>& shapes){
+			for (auto& shape : shapes) {
+				addShape(shape);
+			}
+	}
+
+	
+
+	//Convenience functions for iterator
+	int getBucketCount() const { return 2; }
+	int getBucketSize(int bucket) const {
+		switch (bucket) {
+		case 0: return (int)sphere.size();
+		case 1: return (int)poly.size();
+		default: return 0;
+		}
+	}
+	const ConvexShape& getShape(int bucket, int index) const {
+		switch (bucket) {
+		case 0: return sphere[index];
+		case 1: return poly[index];
+		default: throw std::out_of_range("Invalid ShapeSet fetch");
+		}
+	}
+
+	ConvexShape& getShape(int bucket, int index){
+		switch (bucket) {
+		case 0: return sphere[index];
+		case 1: return poly[index];
+		default: throw std::out_of_range("Invalid ShapeSet fetch");
+		}
+	}
+
+	//Iterator and begin and end defintions allow C++17 style loops for const ShapeSet&
+	class Iterator {
+	public:
+
+	private:
+		const ShapeSet* set ;
+		int bucket=0;
+		int index=0;
+		const ConvexShape* current ;
+
+		void advance(){
+			while (bucket < set->getBucketCount() && index >= set->getBucketSize(bucket)) {
+				bucket++;
+				index = 0;
+			}
+			if (bucket < set->getBucketCount()) {
+				current = &set->getShape(bucket, index);
+			} else {
+				current = nullptr;
+			}
+		}
+	public:
+		Iterator(const ShapeSet* s, int b, int i) : set(s), bucket(b), index(i) {
+			advance();
+		}
+
+		Iterator& operator++() {
+			index++;
+			advance();
+			return *this;
+		}
+
+		Iterator operator++(int) {
+			Iterator tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		auto& operator*() const { return *current; }
+		auto* operator->() const { return current; }
+
+		bool operator==(const Iterator& other) const { return current == other.current; }
+		bool operator!=(const Iterator& other) const { return current != other.current; }
+	};
+
+	Iterator begin() const { return Iterator(this, 0, 0); }
+	Iterator end() const { return Iterator(this, getBucketCount(), 0); }
+
+	// Explicit const entry points (modern C++ style)
+	Iterator cbegin() const { return Iterator(this, 0, 0); }
+	Iterator cend() const { return Iterator(this, getBucketCount(), 0); }
+	
+};
 
 class RigidBody {
 public:
@@ -145,7 +257,7 @@ public:
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	std::vector<std::shared_ptr<ConvexShape>> shape ;
+	ShapeSet shape ;
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.25f ;
@@ -157,12 +269,7 @@ public:
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
-	RigidBody(const std::shared_ptr<ConvexShape>& s);
-
-	RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i , const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
-
-
-	RigidBody(const std::vector<std::shared_ptr<ConvexShape>>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
+	RigidBody(const ShapeSet& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
 	void integrateVelocity(float dt);
 
@@ -422,7 +529,7 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& a, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A,int shapeA, const RigidBody* B, int shapeB);
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB);
 
 //Build a support simplex from a triangle facing a point
 std::vector<SupportTriangle> buildSupportSimplex(const SupportTriangle& triangle, const SupportPoint& D);
@@ -432,21 +539,21 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB, int max_iterations = 10);
 
 //Adds an edge fromed by the two support points to an edge list or disables an inner edge on duplication (used in getPenetration)
 void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<SupportEdge>& edge_list);
 
 //Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resoltuion vector in x and the closets points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations = 10);
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB, int max_iterations = 10);
 
 class SimpleLocalPhysicsCell : PhysicsContainer {
 public:
 
 	class ObjectType {
 	public:
-		std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
+		Physics::ShapeSet shape;
 		std::string model;
 		glm::mat4 render_transform;
 		float elasticity;
