@@ -1252,7 +1252,7 @@ SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {}
 SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	for (auto& [id, type_sceneid] : instance) {
-		scene->deleteInstance(type_sceneid.second);
+		scene->deleteInstance(type_sceneid);
 	}
 }
 
@@ -1283,10 +1283,11 @@ int SimpleLocalPhysicsCell::addType(std::vector<Physics::ConvexPolyhedron> raw_s
 int64_t SimpleLocalPhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) {
 	int64_t id = next_object_id++;
 	ScenePlugin* scene = getTool<ScenePlugin>();
-	instance[id] = { type, scene->createInstance(types[type].model, glm::mat4(0)) };
+	instance[id] = scene->createInstance(types[type].model, glm::mat4(0)) ;
 	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
 	bodies[id]->elasticity = types[type].elasticity;
 	bodies[id]->friction = types[type].friction;
+	bodies[id]->render_type = type ;
 	return id;
 }
 
@@ -1409,8 +1410,8 @@ void SimpleLocalPhysicsCell::updateGraphics() {
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, body->position);
 			pose = pose * glm::mat4_cast(body->orientation);
-			pose = pose * types[iter->second.first].render_transform;
-			scene->setPose(instance[id].second, pose);
+			pose = pose * types[body->render_type].render_transform;
+			scene->setPose(instance[id], pose);
 	}
 }
 
@@ -1486,8 +1487,8 @@ std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm
 	for (auto& [id, body] : bodies) {
 			if(body->inv_mass > 0){
 				auto iter = instance.find(id);
-				int type = iter->second.first ;
-				int scene_id = iter->second.second ;
+				int type = body->render_type ;;
+				int scene_id = iter->second ;
 				glm::mat4 pose = glm::mat4(1.0f);
 				pose = glm::translate(pose, body->position);
 				pose = pose * glm::mat4_cast(body->orientation);

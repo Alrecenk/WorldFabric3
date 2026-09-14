@@ -601,7 +601,7 @@ public:
 	std::unordered_map<int64_t, std::shared_ptr<Physics::ConstraintSet>> constraints;
 	std::unordered_map<int, ObjectType> types;
 
-	std::unordered_map<int64_t, std::pair<int, int>> instance; // maps physics objects to type and scene instance
+	std::unordered_map<int64_t, int> instance; // maps physics objects scene instance
 
 	std::unordered_set<std::pair<int64_t, int64_t>> collision_disabled ;// whether collision is disabled between two objects (first int must be smaller)
 
