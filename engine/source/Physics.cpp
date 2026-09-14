@@ -7,7 +7,7 @@
 namespace Physics{
 
 
-	RigidBody::RigidBody(const ShapeSet& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w){
+	RigidBody::RigidBody(local_ptr<ShapeSet>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w){
 		shape = s ;
 		id = i;
 		position = p;
@@ -929,7 +929,7 @@ void Pin::applyConstraint(PhysicsContainer* cell) {
 	if(d2 > max_impulse*max_impulse){
 		impulse /= sqrtf(d2);
 	}
-	printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
+	//printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
 	//Apply the impulse
 	
 	body_1->velocity -= impulse * body_1->inv_mass;

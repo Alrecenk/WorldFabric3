@@ -113,10 +113,16 @@ public:
 	static std::vector<ConvexPolyhedron>collectConvexPiecesByBone(std::shared_ptr<GLTF>& model, int hull_faces = 20, int detail_level = 4, float min_weight = 0.3f, float min_bone_volume = 0);
 };
 
+auto static getStructure(ConvexPolyhedron& o) {
+	return std::tie(o.face, o.vertex, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
+}
+
 
 class Sphere : public ConvexShape {
 public:
-	float radius ;
+	float radius = 0 ;
+
+	Sphere() {}
 
 	Sphere(float radius);
 
@@ -133,6 +139,10 @@ public:
 	//First element is min values, second is max values
 	std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const override;
 } ;
+
+auto static getStructure(Sphere& o) {
+	return std::tie(o.radius, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
+}
 
 //Shapeset contains a variety of explicitly typed shapes
 //Designed to be cmpatible with local_ptr
@@ -247,6 +257,10 @@ public:
 	
 };
 
+auto static getStructure(ShapeSet& o ){
+	return std::tie(o.sphere, o.poly) ;
+}
+
 class RigidBody {
 public:
 	int64_t id ;
@@ -257,7 +271,7 @@ public:
 	glm::mat4 pose = glm::mat4(1);
 	glm::mat4 inv_pose = glm::mat4(1);
 
-	ShapeSet shape ;
+	local_ptr<ShapeSet> shape ;
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.25f ;
@@ -269,7 +283,7 @@ public:
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
-	RigidBody(const ShapeSet& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
+	RigidBody(local_ptr<ShapeSet>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
 	void integrateVelocity(float dt);
 
@@ -553,7 +567,7 @@ public:
 
 	class ObjectType {
 	public:
-		Physics::ShapeSet shape;
+		local_ptr<Physics::ShapeSet> shape;
 		std::string model;
 		glm::mat4 render_transform;
 		float elasticity;

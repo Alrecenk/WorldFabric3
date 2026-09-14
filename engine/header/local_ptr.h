@@ -368,12 +368,17 @@ public:
 	}
 
 	//Const accessor is read only, no dirty required
-	const T* operator->() const {
-		if (local){
+	const T* getConstPointer() const {
+		if (local) {
 			return local_value.get();
-		}else{
+		} else {
 			return ContentAddressedStorage::get<T>(hash);
 		}
+	}
+
+	//Const accessor is read only, no dirty required
+	const T* operator->() const {
+		return getConstPointer();
 	}
 
 	//Non-const access requires a local copy
@@ -417,6 +422,13 @@ public:
 		ContentAddressedStorage::addReference<T>(hash);
 		clean = true ;
 	}
+
+	T::Iterator begin() const { return getConstPointer()->begin() ; }
+	T::Iterator end() const { return getConstPointer()->end() ; }
+
+	// Explicit const entry points (modern C++ style)
+	T::Iterator cbegin() const { return getConstPointer()->cbegin() ; }
+	T::Iterator cend() const { return getConstPointer()->cend() ; }
 };
 
 //getStructure implementation is used by Registry to allow serialization of this object type
