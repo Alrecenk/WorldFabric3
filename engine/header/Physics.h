@@ -1,8 +1,9 @@
 #ifndef _PHYSICS_H_
 #define _PHYSICS_H_ 1
 
-#include "local_ptr.h"
 #include "Polygon.h"
+#include "WorldPlugin.h"
+#include "local_ptr.h"
 
 namespace Physics {
 
@@ -261,10 +262,8 @@ auto static getStructure(ShapeSet& o ){
 	return std::tie(o.sphere, o.poly) ;
 }
 
-class RigidBody {
+class RigidBody : public WorldObject {
 public:
-	int64_t id ;
-	glm::vec3 position = glm::vec3(0,0,0) ;
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
@@ -283,6 +282,8 @@ public:
 	glm::mat3 inv_moment ;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
+	int render_type = 0 ;
+
 	RigidBody(local_ptr<ShapeSet>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
 
 	void integrateVelocity(float dt);
@@ -297,7 +298,25 @@ public:
 		velocity = glm::vec3(0);
 		angular_velocity = glm::vec3(0) ;
 	}
+
+	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+	// Just change the template parameter to match your class
+	int getTypeId(Registry* r) const {
+		return r->getIdForType<RigidBody>();
+	}
+
+	//Functions used on observables or on read objects need to be const
+	void print() const override{
+		printf("RigidyBody");
+	}
 };
+
+//TODO
+auto static getStrcuture(RigidBody& o){
+	return std::tie(o.position, o.velocity, o.orientation, o.angular_velocity, o. render_type, o.shape,
+		o.elasticity, o.friction, o.drag, o.angular_drag, o.inv_mass, o.base_inv_moment, // TODO these could be grouped into a local_ptr to reduce network load
+		o.pose, o.inv_pose, o.inv_moment, o.AABB) ; // TODO the could be computed with onDeserialize to reduce network load
+}
 
 
 class PhysicsContainer{
