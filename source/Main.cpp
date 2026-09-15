@@ -557,6 +557,8 @@ int exampleMain(int argc, char* argv[]) {
 		worlds->disconnect();
 	}
 
+	ContentAddressedStorage::shutting_down = true ; // prevents cricular reference crash on shutdowm
+
 	return 0;
 }
 

@@ -21,8 +21,9 @@ struct TypedContent  {
 
 class ContentAddressedStorage {
 public:
-
 	static inline std::unordered_map<int64_t,UntypedContent> content ;
+	static inline bool shutting_down = false; // Set true before closing app to prevent references to destroyed content storage
+
 
 	// Type-erased cache. One static map per unique T.
 	template <typename T>
@@ -96,6 +97,9 @@ public:
 
 	template<typename T>
 	static void removeReference(const int64_t& hash){
+		if(shutting_down){
+			return ;
+		}
 		auto typed_iter = Typed<T>::content.find(hash);
 		auto untyped_iter = content.find(hash);
 		//Clean up typed content if required
