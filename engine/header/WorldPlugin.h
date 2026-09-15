@@ -234,6 +234,8 @@ public:
 	// For the client: check if requestConnect has succeeded, but also reports if the host has disconnected
 	bool connected();
 
+	bool connectionPending();
+
 	// For the server: Check if a specific remote connection is still active
 	bool connected(int id);
 

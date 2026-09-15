@@ -567,10 +567,12 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 	}
 	bool connected = client->connect(address, port);
 	if(!connected){
+		printf("IP connection failed\n");
 		disconnect();
 		connection_pending = false;
 		return ;
 	}
+	printf("Successfully connected by IP!\n");
 	lock.lock();
 	actuallyClearWorlds();
 	std::shared_ptr<Timeline::CopyPacket> empty_copy = std::shared_ptr<Timeline::CopyPacket>(new Timeline::CopyPacket());
@@ -634,6 +636,11 @@ bool WorldPlugin::connected(){
 }
 
 
+bool WorldPlugin::connectionPending(){
+	return connection_pending ;
+}
+
+
 
 // For the server: Check if a specific remote connection is still active
 bool WorldPlugin::connected(int id){
@@ -684,9 +691,11 @@ void WorldPlugin::onSocketConnect(int sender_id){
 
 //Called when a connection is closed, either remotely or because the socket holding it was closed
 void WorldPlugin::onSocketClose(int sender_id){
-	//printf("Got a socket close for %d!\n", sender_id);
-	connections[sender_id].disconnected = true ;
-	connections[sender_id].ready = true;
+	printf("Got a socket close for %d!\n", sender_id);
+	if(connections.find(sender_id) != connections.end()){
+		connections[sender_id].disconnected = true ;
+		connections[sender_id].ready = true;
+	}
 }
 
 WorldPlugin::~WorldPlugin(){

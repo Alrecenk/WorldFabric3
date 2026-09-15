@@ -31,6 +31,8 @@ public:
 
 	void createViewTypes();
 
+	void host();
+
 private:
 
 	int light_id = -1; // Scene light
@@ -39,7 +41,9 @@ private:
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
-	std::chrono::high_resolution_clock::time_point last_ball_time = now();
+	int port = 4225 ;
+	std::string version = "np0.01" ;
+	std::chrono::high_resolution_clock::time_point connect_time = now();
 
 	int64_t held_body = -1;
 	int64_t mouse_body = -1;

@@ -11,7 +11,7 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	worlds->createWorld(WORLD,1000.0f,0.0001f,50) ;
+
 	worlds->registerClass<Physics::RigidBody, Physics::RigidBodyView>("rigid body");
 
 	// Set up a light for the scene
@@ -28,40 +28,12 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	createViewTypes();
-
-	glm::vec3 mid = (min + max) * 0.5f;
-	glm::vec3 chain_pos = mid;
-	float chain_angle = 0;
-	float y_step = 0.7f;
-	float angle_step = 1.5f;
-	int num_links = 15 ;
-	for (int k = 1; k <= num_links; k++) {
-		std::shared_ptr<Physics::RigidBody> link = std::make_shared<Physics::RigidBody>(chain_type, chain_pos) ;
-		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
-		if(k == num_links){ // Fix the top link in place
-			link->inv_mass = 0 ;
-			link->inv_moment = glm::mat3(0);
-		}
-		int64_t link_id = worlds->create(WORLD, link);
-
-		chain_angle += angle_step;
-		chain_pos.y += y_step;
-		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
-		chain_pos += off;
-
-		
-	}
-
-
-	// Add the container blocks
-	float wall_size = 30.0f; // TODO share between type creation
-	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
-	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
-	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
-	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
-
-
+	//printf("Attempting to connect to existing simulation...\n");
+	worlds->connect("127.0.0.1", port, version);
+	//host();
+	//connect_time = now();
+	
+	
 	/*
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(mouse_size, mouse_size, mouse_size));
 	std::shared_ptr<Physics::Sphere> mouse_shape = std::make_shared<Physics::Sphere>(mouse_size);
@@ -81,6 +53,16 @@ void NetPhysicsApp::run() {
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
+
+	if(!worlds->amHosting() && !worlds->connected()){
+		if(!worlds->connectionPending()){
+			printf("Connection attempt timed out. Hosting...\n");
+			host();
+		}
+		return ;
+	}
+	
+
 	// Get the current time and time slice of the frame
 	current_time = now();
 	float dt = microsBetween(last_run_time, current_time) / 1000000.0f;
@@ -90,9 +72,6 @@ void NetPhysicsApp::run() {
 	}
 
 	last_run_time = current_time;
-
-	worlds->run(WORLD,dt);
-
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
@@ -281,5 +260,66 @@ void NetPhysicsApp::createViewTypes(){
 	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
 	chain_type = Physics::RigidBodyView::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
+
+}
+
+
+void NetPhysicsApp::host(){
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+
+	worlds->createWorld(WORLD, 1000.0f, 0.0001f, 50);
+	worlds->setTimeSpeed(WORLD, 1.0f);
+
+	glm::vec3 mid = (min + max) * 0.5f;
+	glm::vec3 chain_pos = mid;
+	float chain_angle = 0;
+	float y_step = 0.7f;
+	float angle_step = 1.5f;
+	int num_links = 15;
+	for (int k = 1; k <= num_links; k++) {
+		std::shared_ptr<Physics::RigidBody> link = std::make_shared<Physics::RigidBody>(chain_type, chain_pos);
+		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
+		if (k == num_links) { // Fix the top link in place
+			link->inv_mass = 0;
+			link->inv_moment = glm::mat3(0);
+		}
+		int64_t link_id = worlds->create(WORLD, link);
+
+		chain_angle += angle_step;
+		chain_pos.y += y_step;
+		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
+		chain_pos += off;
+	}
+
+	// Add the container blocks
+	float wall_size = 30.0f; // TODO share between type creation
+	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
+	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
+	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
+	worlds->create(WORLD, std::make_shared<Physics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
+
+	//Add some random stuff
+	for (int k = 0; k < 10; k++) {
+		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
+		float rand = randomFloat();
+		int type = ball_type;
+		if (rand < 0.2f) {
+			type = box_type;
+		}
+		else if (rand < 0.35f) {
+			type = rod_type;
+		}
+		else if (rand < 0.4f) {
+			type = bunny_type;
+		}
+		else if (rand < 0.65) {
+			type = jar_type;
+		}
+		int64_t id = worlds->create(WORLD, std::make_shared<Physics::RigidBody>(type, pos));
+	}
+
+	worlds->host(port,version) ;
 
 }
