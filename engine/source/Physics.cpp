@@ -30,6 +30,33 @@ namespace Physics{
 
 	}
 
+	//Create a rigid body from the static object type list on the RigidBodyView
+	RigidBody::RigidBody(int view_type, const glm::vec3& p, const glm::vec3& v, const glm::vec3& av){
+		render_type = view_type ;
+		shape = RigidBodyView::types[render_type].shape ;
+		position = p ;
+		velocity = v, 
+		angular_velocity = av ;
+		elasticity = RigidBodyView::types[render_type].elasticity ;
+		friction = RigidBodyView::types[render_type].friction;
+
+		float mass = 0;
+		glm::mat3 moment(0);
+		for (auto& part : shape) {
+			mass += part.mass;
+			moment += part.moment;
+		}
+		if (mass <= 0) { // immobile objects have 0 mass and inv_mass
+			base_inv_moment = glm::mat3(0);
+			inv_mass = 0;
+		}
+		else {
+			base_inv_moment = glm::inverse(moment);
+			inv_mass = 1.0f / mass;
+		}
+
+	}
+
 void RigidBody::integrateVelocity(float dt){
 	position += velocity * dt;
 	// Update orientation quaternion
@@ -1511,5 +1538,65 @@ std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm
 	}
 
 }
+
+
+//created is called when an objectis observed that ws no observed last time view was called on the world
+void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
+	last_view = body;
+	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, body->position);
+	pose = pose * glm::mat4_cast(body->orientation);
+	pose = pose * types[body->render_type].render_transform;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene_id = scene->createInstance(types[body->render_type].model, pose);
+	printf("View created type: %d\n", body->render_type) ;
+}
+
+//Update is called when an observation is made of an object that was also observed last frame on this same view
+void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body){
+	last_view = body;
+	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, body->position);
+	pose = pose * glm::mat4_cast(body->orientation);
+	pose = pose * types[body->render_type].render_transform;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene->setPose(scene_id, pose);
+	printf("View updated type: %d\n", body->render_type);
+	Variant(pose).printFormatted() ;
+}
+
+//Destroyed is called when an observation that was present in the last observation is no longer observed
+//This view will be deleted immediately after this call (it's destructor will be called after this)
+void RigidBodyView::destroyed(){
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene->deleteInstance(scene_id);
+}
+
+
+int RigidBodyView::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { ShapeSet(shape), model, render_transform, elasticity, friction };
+	return id;
+}
+
+
+int RigidBodyView::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { ShapeSet(shape), model, render_transform, elasticity, friction };
+	return id;
+}
+
+
+int RigidBodyView::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	std::vector<std::shared_ptr<ConvexShape>> shape;
+	for (auto& s : raw_shape) {
+		std::shared_ptr<Physics::ConvexPolyhedron> sh = std::make_shared<Physics::ConvexPolyhedron>(s, render_transform, s.mass);
+		shape.push_back(sh);
+	}
+	return addType(shape, model, render_transform, elasticity, friction);
+}
+
 
 } // end namespace Physics

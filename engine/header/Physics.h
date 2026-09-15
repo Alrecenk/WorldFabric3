@@ -284,7 +284,12 @@ public:
 
 	int render_type = 0 ;
 
+	RigidBody(){}
+
 	RigidBody(local_ptr<ShapeSet>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w);
+
+	//Create a rigid body from the static object type list on the RigidBodyView
+	RigidBody(int view_type,const glm::vec3& p, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0)) ;
 
 	void integrateVelocity(float dt);
 
@@ -311,8 +316,8 @@ public:
 	}
 };
 
-//TODO
-auto static getStrcuture(RigidBody& o){
+
+auto static getStructure(RigidBody& o){
 	return std::tie(o.position, o.velocity, o.orientation, o.angular_velocity, o. render_type, o.shape,
 		o.elasticity, o.friction, o.drag, o.angular_drag, o.inv_mass, o.base_inv_moment, // TODO these could be grouped into a local_ptr to reduce network load
 		o.pose, o.inv_pose, o.inv_moment, o.AABB) ; // TODO the could be computed with onDeserialize to reduce network load
@@ -665,7 +670,48 @@ public:
 
 
 
+class RigidBodyView : public ObjectView<RigidBody> {
+public:
 
+
+	int64_t id;
+	int scene_id = -1;
+	std::shared_ptr<const RigidBody> last_view;
+
+	//created is called when an objectis observed that ws no observed last time view was called on the world
+	void created(std::shared_ptr<const RigidBody>& body) override;
+
+	//Update is called when an observation is made of an object that was also observed last frame on this same view
+	void updated(std::shared_ptr<const RigidBody>& body) override;
+
+	//Destroyed is called when an observation that was present in the last observation is no longer observed
+	//This view will be deleted immediately after this call (it's destructor will be called after this)
+	void destroyed() override;
+
+	~RigidBodyView() = default;
+
+
+	class ObjectType {
+	public:
+		local_ptr<Physics::ShapeSet> shape;
+		std::string model;
+		glm::mat4 render_transform;
+		float elasticity;
+		float friction;
+	};
+
+	static inline std::unordered_map<int, ObjectType> types;
+	static inline int next_type_id = 1 ;
+
+
+	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+
+	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+
+
+	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction);
+};
 
 
 } // end namespace physics
