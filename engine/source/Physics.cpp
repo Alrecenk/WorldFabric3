@@ -1549,7 +1549,6 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
 	pose = pose * types[body->render_type].render_transform;
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene_id = scene->createInstance(types[body->render_type].model, pose);
-	printf("View created type: %d\n", body->render_type) ;
 }
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
@@ -1561,8 +1560,6 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body){
 	pose = pose * types[body->render_type].render_transform;
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene->setPose(scene_id, pose);
-	printf("View updated type: %d\n", body->render_type);
-	Variant(pose).printFormatted() ;
 }
 
 //Destroyed is called when an observation that was present in the last observation is no longer observed

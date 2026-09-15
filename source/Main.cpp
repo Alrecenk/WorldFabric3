@@ -8,6 +8,7 @@
 #include "GLTF.h"
 #include "SavePlugin.h"
 #include "StatePlugin.h"
+#include "ViewPlugin.h"
 #include "local_ptr.h"
 
 #include "BallTestApp.h"
@@ -328,7 +329,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -336,6 +337,8 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(worlds);
 	std::shared_ptr<OpenXRPlugin> openXR(new OpenXRPlugin("./assets/controller_actions.json"));
 	addTool(openXR);
+	std::shared_ptr<ViewPlugin> view(new ViewPlugin());
+	addTool(view);
 
 	
 	std::unordered_set<std::shared_ptr<RenderTarget>> render_targets ;
@@ -381,7 +384,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	plugins.push_back(scene);
 	plugins.push_back(panels);
 	plugins.push_back(steamworks);
-
+	plugins.push_back(view);
 }
 
 
@@ -504,6 +507,7 @@ int exampleMain(int argc, char* argv[]) {
 	plugin_name[7] = "scene";
 	plugin_name[8] = "panels";
 	plugin_name[9] = "steam";
+	plugin_name[10] = "view";
 	
 	AsyncPlugin::startPlugins(plugins);
 
