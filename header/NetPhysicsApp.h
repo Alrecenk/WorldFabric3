@@ -44,6 +44,7 @@ private:
 	int port = 4225 ;
 	std::string version = "np0.01" ;
 	std::chrono::high_resolution_clock::time_point connect_time = now();
+	int64_t cell_id = -1 ;
 
 	int64_t held_body = -1;
 	int64_t mouse_body = -1;

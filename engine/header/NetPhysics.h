@@ -233,6 +233,38 @@ public:
 };
 
 
+
+class PhysicsCell : public WorldObject {
+public:
+	std::vector<int64_t> bodies ;
+	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
+	static inline int ticks_per_second = 120 ;
+
+
+	PhysicsCell(){};
+
+	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+	// Just change the template parameter to match your class
+	int getTypeId(Registry* r) const {
+		return r->getIdForType<PhysicsCell>();
+	}
+
+	//Functions used on observables or on read objects need to be const
+	void print() const override {
+		printf("PhysicsCell");
+	}
+
+
+	void addBody(const int64_t& new_body) ;
+};
+
+auto static getStructure(PhysicsCell& o) {
+	return std::tie(o.position, o.bodies);
+}
+
+
+void registerPhysics() ;
+
 } // end namespace physics
 
 #endif // #ifndef _PHYSICS_H_

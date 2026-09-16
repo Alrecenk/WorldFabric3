@@ -163,5 +163,18 @@ int RigidBodyView::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, con
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
+void PhysicsCell::addBody(const int64_t& new_body){
+	bodies.push_back(new_body) ;
+	//TODO start physics on body
+}
+
+
+void registerPhysics(){
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	worlds->registerClass<RigidBody, RigidBodyView>("Body");
+	worlds->registerClass<PhysicsCell>("Cell");
+	worlds->registerMethod(&PhysicsCell::addBody,"addBody") ;
+
+}
 
 } // end namespace Physics
