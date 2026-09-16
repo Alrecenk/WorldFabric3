@@ -267,7 +267,7 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->createWorld(WORLD, 1000.0f, 0.0001f, 50);
+	worlds->createWorld(WORLD, 1E4f, 1E-6f, 20);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
@@ -275,6 +275,7 @@ void NetPhysicsApp::host(){
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
+	/*
 	glm::vec3 chain_pos = mid;
 	float chain_angle = 0;
 	float y_step = 0.7f;
@@ -295,6 +296,7 @@ void NetPhysicsApp::host(){
 		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
 		chain_pos += off;
 	}
+*/
 
 	int64_t body_id ;
 	// Add the container blocks
@@ -313,7 +315,7 @@ void NetPhysicsApp::host(){
 	//Add some random stuff
 	for (int k = 0; k < 10; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
-		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = randomFloat();
 		int type = ball_type;
 		if (rand < 0.2f) {
@@ -328,7 +330,7 @@ void NetPhysicsApp::host(){
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos));
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
 		worlds->queue(WORLD,cell_id,&NetPhysics::PhysicsCell::addBody,body_id) ;
 	}
 

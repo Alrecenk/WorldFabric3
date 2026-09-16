@@ -84,7 +84,7 @@ void RigidBody::integrateVelocity(float dt){
 	}
 }
 
-void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
+void RigidBody::integrateAcceleration(float dt){
 	if (inv_mass <= 0) { // don't accelerate objects with infinite mass
 		return;
 	}
@@ -106,6 +106,58 @@ void RigidBody::integrateAcceleration(const glm::vec3& acceleration, float dt){
 		angular_velocity *= (angular_speed - angular_drag*dt) / angular_speed;
 	}
 	
+}
+
+
+//Walks through state machine to run each physics step in lockstep with other elements
+void RigidBody::runPhysics(){
+
+	if(inv_mass == 0){ // don't run movement on events on immoveable objects
+		return ;
+	}
+
+	double frame_length = 1.0 / PhysicsCell::ticks_per_second ;
+	double slice_time = frame_length / PhysicsCell::frame_slices;
+	int frame = (int)(time * PhysicsCell::ticks_per_second + slice_time * 0.25) ; // offset makes sure rounding error doesn't cause round down into wrong frame
+	double frame_time = time - frame*frame_length;
+	int frame_step = (int)(frame_time / slice_time + 0.25) ;
+
+
+	
+
+	//Steps:
+	// 0 = integrate acceleraton
+	// 1 = update constraint targets
+	// 2 = apply warming
+	// for 0 <=k < constraint_iterations 
+	// 3 + 2k = apply constraint
+	//3 + 2k + 1 = collect impulses
+	//3 + 2 * constrant_iterations = integrate velocity
+	//3 + 2 * constrant_iterations + 1 to frame time  = update collisionsand find constraints
+
+
+	//printf(" %lld Run Physics time: %lf frame: %d, frame_length: %lf, step: %d  :", id, time, frame, frame_time, frame_step) ;
+	if(frame_step == 0 ){
+		integrateAcceleration((float)frame_length) ;
+		queue(id, frame * frame_length + slice_time * 2, &RigidBody::runPhysics) ;
+		//printf("acceleration %lf \n", frame * frame_length + slice_time * 2);
+	}else if(frame_step == 2){
+		//TODO apply warming
+		queue(id, frame * frame_length + slice_time * 4, &RigidBody::runPhysics);
+		//printf("warming %lf \n", frame * frame_length + slice_time * 4);
+	}else if(frame_step > 3 && frame_step < 3 + 2 * PhysicsCell::constraint_iterations && frame_step%2 == 0){
+		//TODO collect impulses
+		int next_step =std::min(frame_step+2, 3 + 2 * PhysicsCell::constraint_iterations) ;
+		queue(id, frame*frame_length + slice_time * next_step, &RigidBody::runPhysics);
+		//printf("collect \n");
+	}else if(frame_step == 3 + 2 * PhysicsCell::constraint_iterations){
+		integrateVelocity((float)frame_length) ;
+		queue(id, (frame+1) * frame_length, &RigidBody::runPhysics);
+		//printf(" %lf -> velocity -> %lf\n",time, (frame + 1) * frame_length);
+	}else{ // We're off step, wait until next frame and try again
+		queue(id, (frame + 1) * frame_length, &RigidBody::runPhysics);
+		//printf("%lf -> out of sync %d -> %lf\n",time,frame_step, (frame + 1) * frame_length);
+	}
 }
 
 //created is called when an objectis observed that ws no observed last time view was called on the world
@@ -165,13 +217,14 @@ int RigidBodyView::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, con
 
 void PhysicsCell::addBody(const int64_t& new_body){
 	bodies.push_back(new_body) ;
-	//TODO start physics on body
+	queue(new_body,time,&RigidBody::runPhysics) ;
 }
 
 
 void registerPhysics(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	worlds->registerClass<RigidBody, RigidBodyView>("Body");
+	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
+	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	worlds->registerClass<PhysicsCell>("Cell");
 	worlds->registerMethod(&PhysicsCell::addBody,"addBody") ;
 

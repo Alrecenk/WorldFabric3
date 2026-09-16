@@ -131,6 +131,7 @@ auto static getStructure(ShapeSet& o ){
 class RigidBody : public WorldObject {
 public:
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
+	glm::vec3 acceleration = glm::vec3(0, 0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 	glm::mat4 pose = glm::mat4(1);
@@ -140,7 +141,7 @@ public:
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.25f ;
-	float angular_drag = 0.25f ;
+	float angular_drag = 0 ; // 0.25f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
@@ -149,6 +150,7 @@ public:
 	std::pair<glm::vec3, glm::vec3> AABB;
 
 	int render_type = 0 ;
+
 
 	RigidBody(){}
 
@@ -159,7 +161,7 @@ public:
 
 	void integrateVelocity(float dt);
 
-	void integrateAcceleration(const glm::vec3& acceleration, float dt);
+	void integrateAcceleration(float dt);
 
 	void setPose(const glm::mat4& p){
 		pose = p ;
@@ -180,11 +182,14 @@ public:
 	void print() const override{
 		printf("RigidyBody");
 	}
+
+	//Walks through state machine to run each physics step in lockstep with other elements
+	void runPhysics() ;
 };
 
 
 auto static getStructure(RigidBody& o){
-	return std::tie(o.position, o.velocity, o.orientation, o.angular_velocity, o. render_type, o.shape,
+	return std::tie(o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o. render_type, o.shape,
 		o.elasticity, o.friction, o.drag, o.angular_drag, o.inv_mass, o.base_inv_moment, // TODO these could be grouped into a local_ptr to reduce network load
 		o.pose, o.inv_pose, o.inv_moment, o.AABB) ; // TODO the could be computed with onDeserialize to reduce network load
 }
@@ -238,8 +243,9 @@ class PhysicsCell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 120 ;
-
+	static inline int ticks_per_second = 60 ;
+	static inline int constraint_iterations = 3 ;
+	static inline int frame_slices = 20;
 
 	PhysicsCell(){};
 
