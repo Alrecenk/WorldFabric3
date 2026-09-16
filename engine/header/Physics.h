@@ -116,7 +116,9 @@ public:
 
 class Sphere : public ConvexShape {
 public:
-	float radius ;
+	float radius = 0;
+
+	Sphere(){} 
 
 	Sphere(float radius);
 
@@ -134,6 +136,14 @@ public:
 	std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const override;
 } ;
 
+auto static getStructure(ConvexPolyhedron& o) {
+	return std::tie(o.face, o.vertex, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
+}
+
+
+auto static getStructure(Sphere& o) {
+	return std::tie(o.radius, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
+}
 
 class RigidBody {
 public:

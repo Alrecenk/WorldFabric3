@@ -161,7 +161,6 @@ void CollisionTestApp::run() {
 				*/
 
 
-				
 
 				Physics::SupportPoint collision = Physics::getPenetration(result, &instances[k],0, &instances[j],0) ;
 
@@ -195,7 +194,7 @@ void CollisionTestApp::run() {
 					particles->setColor(p_id, glm::vec4(0, 0, 0, 1));
 					display_particles.push_back(p_id);
 				}
-				
+
 			}
 
 		}

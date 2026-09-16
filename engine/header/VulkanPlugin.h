@@ -283,7 +283,7 @@ public:
 
 	static inline std::string tag = "VulkanLink";
 
-	static inline constexpr bool USE_VALIDATION_LAYERS = true;
+	static inline constexpr bool USE_VALIDATION_LAYERS = false;
 	static inline constexpr unsigned int CHAIN_FRAMES = 2;
 	static inline int millis_to_hold_buffer = 50; // buffers get a few milliseconds before being destroyed after going out of scope to give pending off thread GPU actions time to complete
 	static inline int frames_to_hold_buffer = 3 ; // In case frame rate hitches, like when loading large models, also make sure buffers hang around for frame completion
@@ -298,8 +298,8 @@ public:
 	// SDL bookkeeping
 	SDL_Window* window = nullptr;
 	std::string title;
-	int window_width = 1280;
-	int window_height = 720;
+	int window_width = 960;
+	int window_height = 540;
 	bool vsync_enabled = true ;
 	int target_frame_micros = 1000000 / 120; //if vsync off, attempts to hit this amount of time on each frame
 	int sleep_micros = 0;

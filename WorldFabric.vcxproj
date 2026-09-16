@@ -180,6 +180,7 @@
     <ClInclude Include="engine\header\LinearPredictiveCode.h" />
     <ClInclude Include="engine\header\local_ptr_test.h" />
     <ClInclude Include="engine\header\MachineState.h" />
+    <ClInclude Include="engine\header\NetPhysics.h" />
     <ClInclude Include="engine\header\OpenXRPlugin.h" />
     <ClInclude Include="engine\header\OptimizationProblem.h" />
     <ClInclude Include="engine\header\PanelPlugin.h" />
@@ -230,6 +231,7 @@
     <ClInclude Include="header\DevMenu.h" />
     <ClInclude Include="header\MapApp.h" />
     <ClInclude Include="header\MirrorApp.h" />
+    <ClInclude Include="header\NetPhysicsApp.h" />
     <ClInclude Include="header\PyramidApp.h" />
     <ClInclude Include="header\TraceApp.h" />
     <ClInclude Include="Narball\header\Ball.h" />
@@ -876,6 +878,7 @@
     <ClCompile Include="engine\source\ConvexShape.cpp" />
     <ClCompile Include="engine\source\ConvexSolid.cpp" />
     <ClCompile Include="engine\source\GLTF.cpp" />
+    <ClCompile Include="engine\source\NetPhysics.cpp" />
     <ClCompile Include="engine\source\OpenXRPlugin.cpp" />
     <ClCompile Include="engine\source\OptimizationProblem.cpp" />
     <ClCompile Include="engine\source\PanelPlugin.cpp" />
@@ -916,6 +919,7 @@
     <ClCompile Include="source\Main.cpp" />
     <ClCompile Include="Narball\source\NarballGame.cpp" />
     <ClCompile Include="source\MirrorApp.cpp" />
+    <ClCompile Include="source\NetPhysicsApp.cpp" />
     <ClCompile Include="source\PlaySong.cpp" />
     <ClCompile Include="source\PyramidApp.cpp" />
     <ClCompile Include="source\SceneDemoApp.cpp" />

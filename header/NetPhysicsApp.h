@@ -1,20 +1,21 @@
-#ifndef _CONSTRAINT_TEST_APP_H_
-#define _CONSTRAINT_TEST_APP_H_ 1
+#ifndef _NET_PHYSICS_APP_H_
+#define _NET_PHYSICS_APP_H_ 1
 
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
-#include "Physics.h"
+#include "NetPhysics.h"
 
-class ConstraintTestApp : public MachineState {
+class NetPhysicsApp : public MachineState {
 
 public:
 
 
 
-	static inline const std::string state_name = "constraint_test_state";
+	static inline const std::string state_name = "net_physics_state";
+	static inline const std::string WORLD = "netphysics" ;
 
-	ConstraintTestApp();
+	NetPhysicsApp();
 
 	//Called every frame while the state is active
 	void run() override;
@@ -28,26 +29,31 @@ public:
 	void updateCamera();
 
 
+	void createViewTypes();
+
+	void host();
+
 private:
 
-	std::shared_ptr<Physics::SimpleLocalPhysicsCell> cell ;
 	int light_id = -1; // Scene light
-	float mouse_depth = 11.0f ;
-	float mouse_size = 0.1f ;
+	float mouse_depth = 11.0f;
+	float mouse_size = 0.1f;
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
-	std::chrono::high_resolution_clock::time_point last_ball_time = now();
+	int port = 4225 ;
+	std::string version = "np0.01" ;
+	std::chrono::high_resolution_clock::time_point connect_time = now();
 
-	int64_t held_body = -1 ;
-	int64_t mouse_body = -1 ;
+	int64_t held_body = -1;
+	int64_t mouse_body = -1;
 
 
 	glm::vec3 min = { -4,-4,-4 };
 	glm::vec3 max = { 4,4,4 };
-	float gravity = 4.0f ;
+	float gravity = 4.0f;
 	int millis_between_balls = 300;
-	int max_balls = 150 ;
+	int max_balls = 150;
 
 	// Camera control stuff
 	glm::vec3 look_at = glm::vec3(0, -2, 0);
@@ -67,7 +73,7 @@ private:
 	float light_zoom = 30.0f;
 	float light_fov = 0.7f;
 	float light_theta = 0.4f;
-	float light_thi = 1.5f ;
+	float light_thi = 1.5f;
 	float mouse_wheel_y_previous = 0.0f;
 
 	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
@@ -78,12 +84,12 @@ private:
 	static inline const std::string CHAIN_MODEL = "./assets/chain_link.glb";
 	static inline const std::string CHAIN_MODEL_CUT = "./assets/chain_link_cut.glb";
 
-	int box_type=-1 ;
+	int box_type = -1;
 	int ball_type = -1;
 	int wall_type = -1;
-	int rod_type = -1 ;
-	int jar_type = -1 ;
-	int bunny_type = -1 ;
-	int chain_type = -1 ;
+	int rod_type = -1;
+	int jar_type = -1;
+	int bunny_type = -1;
+	int chain_type = -1;
 };
 #endif // #ifndef _CONSTRAINT_TEST_APP_H_
