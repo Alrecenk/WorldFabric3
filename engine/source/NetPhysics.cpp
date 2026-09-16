@@ -1,29 +1,13 @@
-#include "Physics.h"
+#include "NetPhysics.h"
 #include "ScenePlugin.h"
 #include "VolumeNode.h"
 #include "BSPNode.h"
 #include <stack>
 
-namespace Physics{
+namespace NetPhysics{
 
 
-	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s) {
-		shape = {s};
-		base_inv_moment = s->inv_moment;
-		inv_mass = s->inv_mass;
-	}
-
-	RigidBody::RigidBody(const std::shared_ptr<ConvexShape>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w) {
-		shape = {s};
-		id = i;
-		position = p;
-		velocity = v;
-		angular_velocity = w;
-		base_inv_moment = s->inv_moment ;
-		inv_mass = s->inv_mass ;
-	}
-
-	RigidBody::RigidBody(const std::vector<std::shared_ptr<ConvexShape>>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w){
+	RigidBody::RigidBody(local_ptr<ShapeSet>& s, int64_t i, const glm::vec3& p, const glm::vec3& v, const glm::vec3& w){
 		shape = s ;
 		id = i;
 		position = p;
@@ -33,8 +17,8 @@ namespace Physics{
 		float mass = 0;
 		glm::mat3 moment(0) ;
 		for(auto& part : shape){
-			mass+= part->mass ;
-			moment += part->moment ;
+			mass+= part.mass ;
+			moment += part.moment ;
 		}
 		if(mass <=0){ // immobile objects have 0 mass and inv_mass
 			base_inv_moment = glm::mat3(0);
@@ -42,6 +26,33 @@ namespace Physics{
 		}else{
 			base_inv_moment = glm::inverse(moment);
 			inv_mass = 1.0f/ mass ;
+		}
+
+	}
+
+	//Create a rigid body from the static object type list on the RigidBodyView
+	RigidBody::RigidBody(int view_type, const glm::vec3& p, const glm::vec3& v, const glm::vec3& av){
+		render_type = view_type ;
+		shape = RigidBodyView::types[render_type].shape ;
+		position = p ;
+		velocity = v, 
+		angular_velocity = av ;
+		elasticity = RigidBodyView::types[render_type].elasticity ;
+		friction = RigidBodyView::types[render_type].friction;
+
+		float mass = 0;
+		glm::mat3 moment(0);
+		for (auto& part : shape) {
+			mass += part.mass;
+			moment += part.moment;
+		}
+		if (mass <= 0) { // immobile objects have 0 mass and inv_mass
+			base_inv_moment = glm::mat3(0);
+			inv_mass = 0;
+		}
+		else {
+			base_inv_moment = glm::inverse(moment);
+			inv_mass = 1.0f / mass;
 		}
 
 	}
@@ -63,7 +74,7 @@ void RigidBody::integrateVelocity(float dt){
 	inv_moment = r * base_inv_moment * glm::transpose(r);
 	AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
 	for(auto& s : shape){
-		auto  sAABB = s->getAABB(pose);
+		auto  sAABB = s.getAABB(pose);
 		AABB.first.x = fmin(AABB.first.x, sAABB.first.x) ;
 		AABB.second.x = fmax(AABB.second.x, sAABB.second.x);
 		AABB.first.y = fmin(AABB.first.y, sAABB.first.y);
@@ -945,7 +956,7 @@ void Pin::applyConstraint(PhysicsContainer* cell) {
 	if(d2 > max_impulse*max_impulse){
 		impulse /= sqrtf(d2);
 	}
-	printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
+	//printf("pin impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
 	//Apply the impulse
 	
 	body_1->velocity -= impulse * body_1->inv_mass;
@@ -1084,10 +1095,10 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const int shapeA, const RigidBody* B, const int shapeB) {
+SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB) {
 	SupportPoint sp;
-	sp.a = A->pose * glm::vec4( A->shape[shapeA]->support(A->inv_pose* glm::vec4(direction,0)), 1);
-	sp.b = B->pose * glm::vec4(B->shape[shapeB]->support(B->inv_pose * glm::vec4(-direction, 0)), 1);
+	sp.a = A->pose * glm::vec4( shapeA.support(A->inv_pose* glm::vec4(direction,0)), 1);
+	sp.b = B->pose * glm::vec4(shapeB.support(B->inv_pose * glm::vec4(-direction, 0)), 1);
 	sp.x = sp.a - sp.b;
 	return sp;
 }
@@ -1114,12 +1125,12 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
+std::vector<SupportTriangle> detectCollision(const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB, int max_iterations) {
 	// arbitrary first direction
 	glm::vec3 search_direction = glm::vec3(1, 0, 0);
 	const glm::vec3 origin(0, 0, 0);
 	//std::vector<SupportPoint> p;
-	SupportPoint p0 = findSupportPoint(search_direction, A,shapeA, B, shapeB);
+	SupportPoint p0 = findSupportPoint(search_direction, A, shapeA, B, shapeB);
 	search_direction = origin - p0.x; // From p0 to origin
 	SupportPoint p1 = findSupportPoint(search_direction, A, shapeA, B, shapeB);
 	//New point could not get past zero in search direction
@@ -1187,7 +1198,7 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 
 // Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, const ConvexShape& shapeA, const RigidBody* B, const ConvexShape& shapeB, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
 	polytope = collision_result;
@@ -1268,29 +1279,29 @@ SimpleLocalPhysicsCell::SimpleLocalPhysicsCell() {}
 SimpleLocalPhysicsCell::~SimpleLocalPhysicsCell() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	for (auto& [id, type_sceneid] : instance) {
-		scene->deleteInstance(type_sceneid.second);
+		scene->deleteInstance(type_sceneid);
 	}
 }
 
-int SimpleLocalPhysicsCell::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+int SimpleLocalPhysicsCell::addType(std::shared_ptr<NetPhysics::ConvexShape> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
-	types[id] = { {shape}, model, transform, elasticity, friction };
+	types[id] = { ShapeSet(shape), model, transform, elasticity, friction };
 	return id;
 }
 
 
-int SimpleLocalPhysicsCell::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+int SimpleLocalPhysicsCell::addType(std::vector<std::shared_ptr<NetPhysics::ConvexShape>> shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
-	types[id] = { shape, model, transform, elasticity, friction };
+	types[id] = { ShapeSet(shape), model, transform, elasticity, friction };
 	return id;
 }
 
-int SimpleLocalPhysicsCell::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
+int SimpleLocalPhysicsCell::addType(std::vector<NetPhysics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& transform, float elasticity, float friction) {
 	std::vector<std::shared_ptr<ConvexShape>> shape ;
 	for(auto& s : raw_shape){
-		std::shared_ptr<Physics::ConvexPolyhedron> sh= std::make_shared<Physics::ConvexPolyhedron>(s, transform, s.mass);
+		std::shared_ptr<NetPhysics::ConvexPolyhedron> sh= std::make_shared<NetPhysics::ConvexPolyhedron>(s, transform, s.mass);
 		shape.push_back(sh) ;
 	}
 	return addType(shape, model, transform, elasticity, friction) ;
@@ -1299,14 +1310,15 @@ int SimpleLocalPhysicsCell::addType(std::vector<Physics::ConvexPolyhedron> raw_s
 int64_t SimpleLocalPhysicsCell::add(int type, const glm::vec3& pos, const glm::vec3& vel, const glm::vec3& a_vel) {
 	int64_t id = next_object_id++;
 	ScenePlugin* scene = getTool<ScenePlugin>();
-	instance[id] = { type, scene->createInstance(types[type].model, glm::mat4(0)) };
-	bodies[id] = std::make_shared<Physics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
+	instance[id] = scene->createInstance(types[type].model, glm::mat4(0)) ;
+	bodies[id] = std::make_shared<NetPhysics::RigidBody>(types[type].shape, id, pos, vel, a_vel);
 	bodies[id]->elasticity = types[type].elasticity;
 	bodies[id]->friction = types[type].friction;
+	bodies[id]->render_type = type ;
 	return id;
 }
 
-Physics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
+NetPhysics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
 	auto iter = bodies.find(id);
 	if (iter != bodies.end()) {
 		return iter->second.get();
@@ -1317,7 +1329,7 @@ Physics::RigidBody* SimpleLocalPhysicsCell::getBody(int64_t id) {
 }
 
 //Consraint id should be a hash of the involved bodies and the type of constraint
-Physics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
+NetPhysics::ConstraintSet* SimpleLocalPhysicsCell::getConstraintSet(int64_t id) {
 	auto iter = constraints.find(id);
 	if (iter != constraints.end()) {
 		return iter->second.get();
@@ -1337,27 +1349,28 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 			if (id1 < id2 && // only check each pair once
 				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
-				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+				NetPhysics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
 
-				for(int shapeA = 0; shapeA < body_1->shape.size(); shapeA++){
-					for (int shapeB = 0; shapeB < body_2->shape.size(); shapeB++) {
-
-						auto simplex = Physics::detectCollision(body_1.get(), shapeA, body_2.get(), shapeB);
+				int index_a = 0 ;
+				int index_b = 0 ;
+				for(const ConvexShape& shapeA : body_1->shape){
+					for (const ConvexShape& shapeB : body_2->shape) {
+						auto simplex = NetPhysics::detectCollision(body_1.get(), shapeA, body_2.get(), shapeB);
 						if (simplex.size() > 0) {
-							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(),shapeA,body_2.get(), shapeB);
-							if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+							NetPhysics::SupportPoint sp = NetPhysics::getPenetration(simplex, body_1.get(),shapeA,body_2.get(), shapeB);
+							if (glm::length(sp.x) > NetPhysics::Collision::allowed_collision_depth * 0.5f) {
 								glm::vec3 point = (sp.a + sp.b) * 0.5f;
 								glm::vec3 normal = glm::normalize(sp.x);
 
 								normal = glm::normalize(normal);
-								int64_t constraint_id = Collision::getHash(id1, shapeA, id2, shapeB);
+								int64_t constraint_id = Collision::getHash(id1, index_a, id2, index_b);
 								found_constraints.insert(constraint_id); // track found so we can remove not found
 						
-								std::shared_ptr<Physics::Collision> constraint = std::make_shared<Physics::Collision>();
+								std::shared_ptr<NetPhysics::Collision> constraint = std::make_shared<NetPhysics::Collision>();
 								constraint->id1 = id1;
-								constraint->shape1 = shapeA;
+								constraint->shape1 = index_a;
 								constraint->id2 = id2;
-								constraint->shape2 = shapeB ;
+								constraint->shape2 = index_b;
 								constraint->point = point;
 								constraint->normal = normal;
 								constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
@@ -1373,7 +1386,9 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 						
 							}
 						}
+						index_b++;
 					}
+					index_a++;
 				}
 			}
 		}
@@ -1422,8 +1437,8 @@ void SimpleLocalPhysicsCell::updateGraphics() {
 			glm::mat4 pose = glm::mat4(1.0f);
 			pose = glm::translate(pose, body->position);
 			pose = pose * glm::mat4_cast(body->orientation);
-			pose = pose * types[iter->second.first].render_transform;
-			scene->setPose(instance[id].second, pose);
+			pose = pose * types[body->render_type].render_transform;
+			scene->setPose(instance[id], pose);
 	}
 }
 
@@ -1499,8 +1514,8 @@ std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm
 	for (auto& [id, body] : bodies) {
 			if(body->inv_mass > 0){
 				auto iter = instance.find(id);
-				int type = iter->second.first ;
-				int scene_id = iter->second.second ;
+				int type = body->render_type ;;
+				int scene_id = iter->second ;
 				glm::mat4 pose = glm::mat4(1.0f);
 				pose = glm::translate(pose, body->position);
 				pose = pose * glm::mat4_cast(body->orientation);
@@ -1523,5 +1538,62 @@ std::pair<int64_t, float> SimpleLocalPhysicsCell::activeVisualRaytrace(const glm
 	}
 
 }
+
+
+//created is called when an objectis observed that ws no observed last time view was called on the world
+void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
+	last_view = body;
+	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, body->position);
+	pose = pose * glm::mat4_cast(body->orientation);
+	pose = pose * types[body->render_type].render_transform;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene_id = scene->createInstance(types[body->render_type].model, pose);
+}
+
+//Update is called when an observation is made of an object that was also observed last frame on this same view
+void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body){
+	last_view = body;
+	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, body->position);
+	pose = pose * glm::mat4_cast(body->orientation);
+	pose = pose * types[body->render_type].render_transform;
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene->setPose(scene_id, pose);
+}
+
+//Destroyed is called when an observation that was present in the last observation is no longer observed
+//This view will be deleted immediately after this call (it's destructor will be called after this)
+void RigidBodyView::destroyed(){
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	scene->deleteInstance(scene_id);
+}
+
+
+int RigidBodyView::addType(std::shared_ptr<NetPhysics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { ShapeSet(shape), model, render_transform, elasticity, friction };
+	return id;
+}
+
+
+int RigidBodyView::addType(std::vector<std::shared_ptr<NetPhysics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = { ShapeSet(shape), model, render_transform, elasticity, friction };
+	return id;
+}
+
+
+int RigidBodyView::addType(std::vector<NetPhysics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	std::vector<std::shared_ptr<ConvexShape>> shape;
+	for (auto& s : raw_shape) {
+		std::shared_ptr<NetPhysics::ConvexPolyhedron> sh = std::make_shared<NetPhysics::ConvexPolyhedron>(s, render_transform, s.mass);
+		shape.push_back(sh);
+	}
+	return addType(shape, model, render_transform, elasticity, friction);
+}
+
 
 } // end namespace Physics

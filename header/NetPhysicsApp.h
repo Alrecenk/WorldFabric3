@@ -4,7 +4,7 @@
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
-#include "Physics.h"
+#include "NetPhysics.h"
 
 class NetPhysicsApp : public MachineState {
 
