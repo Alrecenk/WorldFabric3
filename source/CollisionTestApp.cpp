@@ -37,8 +37,6 @@ void CollisionTestApp::enter(std::shared_ptr<MachineState> from) {
 	base_shape["tetra"] = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeTetra(glm::vec3(0, 0, 0.2), glm::vec3(0.2, 0, 0),glm::vec3(0, 0.2, 0),glm::vec3(0, 0, 0))) ;
 	base_shape["cylinder"] = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 0.2), glm::vec3(0, 0, -0.2), 0.1f, 8)) ;
 
-//TODO update for shapeset
-
 	int c = 0 ;
 	for(auto& [name, base] : base_shape){
 		std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
@@ -137,7 +135,6 @@ void CollisionTestApp::run() {
 	for(int iteration = 0 ; iteration < 1; iteration++){ // iterate a bunch to measure performance
 	for(int k=1;k<instances.size();k++){
 		for(int j=0;j<k;j++){
-			
 			auto result = Physics::detectCollision(&instances[k],0, &instances[j],0);
 			if(result.size() > 0){
 				/*
@@ -198,7 +195,6 @@ void CollisionTestApp::run() {
 					display_particles.push_back(p_id);
 				}
 
-				
 			}
 
 		}

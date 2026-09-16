@@ -195,7 +195,7 @@ void NetPhysicsApp::createViewTypes(){
 
 	float ball_radius = 0.5f;
 	float ball_mass = 1.0f;
-	std::shared_ptr<NetPhysics::Sphere> ball_shape = std::make_shared<NetPhysics::Sphere>(ball_radius, ball_mass);
+	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
 	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius));
 	ball_type = NetPhysics::RigidBodyView::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
@@ -203,7 +203,7 @@ void NetPhysicsApp::createViewTypes(){
 
 	float box_size = 1.0f;
 	float box_mass = 2.0f;
-	std::shared_ptr<NetPhysics::ConvexPolyhedron> box_shape = std::make_shared< NetPhysics::ConvexPolyhedron>(NetPhysics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
+	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
@@ -214,11 +214,11 @@ void NetPhysicsApp::createViewTypes(){
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(0.7f, 0.7f, 0.8f, 1));
 	scene->createModelSet("wall", wall, false, false);
-	std::shared_ptr<NetPhysics::ConvexPolyhedron> wall_shape = std::make_shared< NetPhysics::ConvexPolyhedron>(NetPhysics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
+	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
 	wall_type = NetPhysics::RigidBodyView::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
-	std::shared_ptr<NetPhysics::ConvexPolyhedron> rod_shape = std::make_shared<NetPhysics::ConvexPolyhedron>(NetPhysics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
+	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
 	scene->createModelSet("rod", model, false, true);
@@ -230,8 +230,8 @@ void NetPhysicsApp::createViewTypes(){
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(jar_scale, jar_scale, jar_scale));
 	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
 	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
-	std::shared_ptr<NetPhysics::ConvexPolyhedron> jar_shape = std::make_shared<NetPhysics::ConvexPolyhedron>(NetPhysics::ConvexPolyhedron::makeApproximateHull(jar_model, jar_mass));
-	jar_shape = std::make_shared<NetPhysics::ConvexPolyhedron>(*(jar_shape.get()), transform, jar_mass);
+	std::shared_ptr<Physics::ConvexPolyhedron> jar_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeApproximateHull(jar_model, jar_mass));
+	jar_shape = std::make_shared<Physics::ConvexPolyhedron>(*(jar_shape.get()), transform, jar_mass);
 	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
 	//scene->createModelSet("jar", model2, false, true);
@@ -246,7 +246,7 @@ void NetPhysicsApp::createViewTypes(){
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
 	scene->createModelSet(BUNNY_MODEL, BUNNY_MODEL, true);
 	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
-	std::vector<NetPhysics::ConvexPolyhedron> bunny_parts = NetPhysics::ConvexPolyhedron::makeApproximateSurfaceHulls(bunny_model, bunny_mass, 20, 3);
+	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(bunny_model, bunny_mass, 20, 3);
 	scene->createModelSet(BUNNY_VISUAL_MODEL, BUNNY_VISUAL_MODEL, true);
 	bunny_type = NetPhysics::RigidBodyView::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
@@ -257,7 +257,7 @@ void NetPhysicsApp::createViewTypes(){
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
 	scene->createModelSet(CHAIN_MODEL_CUT, CHAIN_MODEL_CUT, true);
 	std::shared_ptr<GLTF> chain_model = scene->getModelController(CHAIN_MODEL_CUT);
-	std::vector<NetPhysics::ConvexPolyhedron> chain_parts = NetPhysics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
+	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
 	chain_type = NetPhysics::RigidBodyView::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
 
