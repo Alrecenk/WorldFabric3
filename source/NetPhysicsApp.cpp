@@ -12,7 +12,7 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->registerClass<NetPhysics::RigidBody, NetPhysics::RigidBodyView>("rigid body");
+	NetPhysics::registerPhysics();
 
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
@@ -267,10 +267,15 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->createWorld(WORLD, 1000.0f, 0.0001f, 50);
+	worlds->createWorld(WORLD, 1E4f, 1E-6f, 20);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
+
+	cell_id = worlds->create(WORLD,std::make_shared<NetPhysics::Cell>()) ;
+
+
 	glm::vec3 mid = (min + max) * 0.5f;
+	/*
 	glm::vec3 chain_pos = mid;
 	float chain_angle = 0;
 	float y_step = 0.7f;
@@ -284,25 +289,33 @@ void NetPhysicsApp::host(){
 			link->inv_moment = glm::mat3(0);
 		}
 		int64_t link_id = worlds->create(WORLD, link);
+		worlds->queue(WORLD, cell_id, &NetPhysics::PhysicsCell::addBody, link_id);
 
 		chain_angle += angle_step;
 		chain_pos.y += y_step;
 		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
 		chain_pos += off;
 	}
+*/
 
+	int64_t body_id ;
 	// Add the container blocks
 	float wall_size = 30.0f; // TODO share between type creation
-	worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
-	worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
-	worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
-	worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 
 	//Add some random stuff
 	for (int k = 0; k < 10; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
-		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = randomFloat();
 		int type = ball_type;
 		if (rand < 0.2f) {
@@ -317,7 +330,8 @@ void NetPhysicsApp::host(){
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		int64_t id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos));
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
+		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
 	}
 
 	worlds->host(port,version) ;

@@ -436,7 +436,7 @@ void setupGameStates() {
 
 int debugMain(int argc, char* argv[]) {
 	CSVLog::findDesync({"server.csv", "client.csv"}, "time", 1.0) ;
-	
+	return 0 ;
 }
 
 int exampleMain(int argc, char* argv[]) {

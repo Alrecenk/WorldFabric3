@@ -449,7 +449,24 @@ int64_t hashRaw(const T& obj) {
 // Convert member function pointer to a key for reverse lookups of id from function pointer
 template <typename T, typename Ret, typename... Args>
 size_t methodPointerToKey(Ret(T::* method)(Args...)) {
-    return hashRaw(method);
+	/*
+	size_t size = sizeof(method);
+	void* buffer = malloc(size);
+	memcpy(buffer, &method, size);
+	int64_t key = (int64_t)murmurHash64((unsigned char*)buffer, size, 0xbebeeffadecabbefULL);
+	printf("Key: %lld, size: %d, Value: %.*s \n", key, (int)size, (int)size, (char*)buffer);
+	for(int k=0;k<size;k++){
+		printf("%d,", ((unsigned char*)buffer)[k]) ;
+	}
+	printf("\n");
+	free(buffer);
+	//return key ;
+   // return hashRaw(method);
+	return *(int64_t*)buffer ;
+	*/
+	int64_t key ;
+	memcpy(&key, &method, sizeof(int64_t)); // The first 8 bytes are the pointer in memory to the function
+	return key ; 
 }
 
 //AbstractVoidMethod type allows differently templated methods to live in the same map in the registry 
