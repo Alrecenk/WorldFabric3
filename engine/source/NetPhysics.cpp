@@ -116,9 +116,9 @@ void RigidBody::runPhysics(){
 		return ;
 	}
 
-	double frame_length = 1.0 / PhysicsCell::ticks_per_second ;
-	double slice_time = frame_length / PhysicsCell::frame_slices;
-	int frame = (int)(time * PhysicsCell::ticks_per_second + slice_time * 0.25) ; // offset makes sure rounding error doesn't cause round down into wrong frame
+	double frame_length = 1.0 / Cell::ticks_per_second ;
+	double slice_time = frame_length / Cell::frame_slices;
+	int frame = (int)(time * Cell::ticks_per_second + slice_time * 0.25) ; // offset makes sure rounding error doesn't cause round down into wrong frame
 	double frame_time = time - frame*frame_length;
 	int frame_step = (int)(frame_time / slice_time + 0.25) ;
 
@@ -145,12 +145,12 @@ void RigidBody::runPhysics(){
 		//TODO apply warming
 		queue(id, frame * frame_length + slice_time * 4, &RigidBody::runPhysics);
 		//printf("warming %lf \n", frame * frame_length + slice_time * 4);
-	}else if(frame_step > 3 && frame_step < 3 + 2 * PhysicsCell::constraint_iterations && frame_step%2 == 0){
+	}else if(frame_step > 3 && frame_step < 3 + 2 * Cell::constraint_iterations && frame_step%2 == 0){
 		//TODO collect impulses
-		int next_step =std::min(frame_step+2, 3 + 2 * PhysicsCell::constraint_iterations) ;
+		int next_step =std::min(frame_step+2, 3 + 2 * Cell::constraint_iterations) ;
 		queue(id, frame*frame_length + slice_time * next_step, &RigidBody::runPhysics);
 		//printf("collect \n");
-	}else if(frame_step == 3 + 2 * PhysicsCell::constraint_iterations){
+	}else if(frame_step == 3 + 2 * Cell::constraint_iterations){
 		integrateVelocity((float)frame_length) ;
 		queue(id, (frame+1) * frame_length, &RigidBody::runPhysics);
 		//printf(" %lf -> velocity -> %lf\n",time, (frame + 1) * frame_length);
@@ -422,14 +422,91 @@ void ManifoldCollision::runPhysics() {
 }
 
 
-void PhysicsCell::addBody(const int64_t& new_body){
+void Cell::addBody(const int64_t& new_body){
 	bodies.push_back(new_body) ;
 	queue(new_body,time,&RigidBody::runPhysics) ;
 }
 
 
+void Cell::updateCollisions() {
+
+	std::unordered_map<int64_t,std::shared_ptr<const RigidBody>> read_bodies ;
+	for(int64_t& id : bodies){
+		std::shared_ptr<const RigidBody> body =read<RigidBody>(id) ;
+		if(body){
+			read_bodies[id] = body ;
+		}
+	}
+
+
+	//Delete existing constraints not found now
+	std::vector<int64_t> to_delete;
+	for (auto& [hash, id] : constraints) {
+		std::shared_ptr<const ManifoldCollision> existing = read<ManifoldCollision>(id);
+		if (!existing) {
+			to_delete.push_back(id);
+		}
+	}
+	for (auto& id : to_delete) {
+		constraints.erase(id);
+	}
+
+	std::unordered_set<int64_t> found_constraints;
+	for (auto& [id1, body_1] : read_bodies) {
+		for (auto& [id2, body_2] : read_bodies) {
+			if (id1 < id2 && // only check each pair once
+				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
+				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
+				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+
+				int index_a = 0 ;
+				int index_b = 0 ;
+				for(const auto& shape_a : body_1->shape){
+					for (const auto& shape_b : body_2->shape) {
+
+						auto simplex = detectCollision(body_1.get(), &shape_a, body_2.get(), &shape_b);
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), &shape_a, body_2.get(), &shape_b);
+							if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+								glm::vec3 point = (sp.a + sp.b) * 0.5f;
+								glm::vec3 normal = glm::normalize(sp.x);
+
+								normal = glm::normalize(normal);
+								int64_t constraint_hash = Collision::getHash(id1, index_a, id2, index_b);
+								found_constraints.insert(constraint_hash); // track found so we can remove not found
+
+								Collision constraint ;
+								constraint.id1 = id1;
+								constraint.shape1 = index_a;
+								constraint.id2 = id2;
+								constraint.shape2 = index_b;
+								constraint.point = point;
+								constraint.normal = normal;
+								constraint.local_a = body_1->inv_pose * glm::vec4(sp.a, 1);
+								constraint.local_b = body_2->inv_pose * glm::vec4(sp.b, 1);
+								constraint.penetration_depth = glm::length(sp.x);
+
+								if (constraints.find(constraint_hash) == constraints.end()) {
+									std::shared_ptr<ManifoldCollision> new_set = std::make_shared<ManifoldCollision>(constraint_hash) ;
+									constraints[constraint_hash] = create(new_set,time);
+								}
+								queue(constraints[constraint_hash],time+time+1E-7,&ManifoldCollision::addConstraint, constraint) ;
+
+							}
+						}
+						index_b++;
+					}
+					index_a++;
+				}
+			}
+		}
+
+	}
+
+}
+
 //Walks through state machine to run each physics step in lockstep with other elements
-void PhysicsCell::runPhysics() {
+void Cell::runPhysics() {
 	//TODO
 }
 
@@ -438,13 +515,14 @@ void registerPhysics(){
 	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	
-	worlds->registerClass<PhysicsCell>("Cell");
-	worlds->registerMethod(&PhysicsCell::addBody,"addBody") ;
-	worlds->registerMethod(&PhysicsCell::runPhysics, "PhysicsCell::runPhysics");
+	worlds->registerClass<Cell>("Cell");
+	worlds->registerMethod(&Cell::addBody,"addBody") ;
+	worlds->registerMethod(&Cell::runPhysics, "Cell::runPhysics");
 
 	worlds->registerClass<ManifoldCollision>("Collision Set");
 	worlds->registerMethod(&ManifoldCollision::addConstraint, "add collision constraint");
 	worlds->registerMethod(&ManifoldCollision::runPhysics, "Collision::runPhysics");
+	
 }
 
 

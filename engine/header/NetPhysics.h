@@ -128,14 +128,14 @@ auto static getStructure(ShapeSet& o ){
 	return std::tie(o.sphere, o.poly) ;
 }
 
-class RigidBody : public WorldObject {
+class RigidBody : public WorldObject, public Physics::PosedBody {
 public:
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
 	glm::vec3 acceleration = glm::vec3(0, 0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
-	glm::mat4 pose = glm::mat4(1);
-	glm::mat4 inv_pose = glm::mat4(1);
+	//glm::mat4 pose = glm::mat4(1);
+	//glm::mat4 inv_pose = glm::mat4(1);
 
 	local_ptr<ShapeSet> shape ;
 	float elasticity = 0.6f;
@@ -367,7 +367,7 @@ auto static getStructure(ManifoldCollision& o) {
 	return std::tie(o.position, o.last_update_time, o.hash, o.points);
 }
 
-class PhysicsCell : public WorldObject {
+class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
@@ -375,12 +375,12 @@ public:
 	static inline int constraint_iterations = 3 ;
 	static inline int frame_slices = 20;
 
-	PhysicsCell(){};
+	Cell(){};
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
 	int getTypeId(Registry* r) const {
-		return r->getIdForType<PhysicsCell>();
+		return r->getIdForType<Cell>();
 	}
 
 	//Functions used on observables or on read objects need to be const
@@ -388,13 +388,14 @@ public:
 		printf("PhysicsCell");
 	}
 
-
 	void addBody(const int64_t& new_body) ;
+
+	void updateCollisions();
 
 	void runPhysics() ;
 };
 
-auto static getStructure(PhysicsCell& o) {
+auto static getStructure(Cell& o) {
 	return std::tie(o.position, o.bodies);
 }
 
