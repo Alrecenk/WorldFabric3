@@ -329,7 +329,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, true, false)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);

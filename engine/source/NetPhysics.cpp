@@ -367,7 +367,7 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 
 
 	
-	next_impulse = impulse + tangent_impulse ;
+	next_impulse += impulse + tangent_impulse ;
 
 }
 
@@ -475,11 +475,16 @@ void ManifoldCollision::setConstraintImpulses() {
 	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
 	RigidBody copy_1 = *body_1.get();
 	RigidBody copy_2 = *body_2.get();
-	//for(int k=0;k<manifold_iterations;k++){
+
+	for (auto& p : points) {
+		p.next_impulse = glm::vec3(0,0,0) ;
+	}
+
+	for(int k=0;k<manifold_iterations;k++){
 		for (auto& p : points) {
 			p.setConstraintImpulse(&copy_1, &copy_2);
 		}
-	//}
+	}
 }
 
 //Walks through state machine to run each physics step in lockstep with other elements
