@@ -131,7 +131,7 @@ auto static getStructure(ShapeSet& o ){
 class RigidBody : public WorldObject, public Physics::PosedBody {
 public:
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::vec3 acceleration = glm::vec3(0, 0, 0);
+	glm::vec3 acceleration = glm::vec3(0, -10, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 	//glm::mat4 pose = glm::mat4(1);

@@ -303,6 +303,7 @@ void NetPhysicsApp::host(){
 	float wall_size = 30.0f; // TODO share between type creation
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	/*
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
@@ -312,11 +313,13 @@ void NetPhysicsApp::host(){
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 
+	*/
 	//Add some random stuff
-	for (int k = 0; k < 10; k++) {
+	for (int k = 0; k < 1; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = randomFloat();
+		rand = 1.0f ;
 		int type = ball_type;
 		if (rand < 0.2f) {
 			type = box_type;
@@ -333,7 +336,7 @@ void NetPhysicsApp::host(){
 		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
 		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
 	}
-
+	
 	worlds->host(port,version) ;
 
 }
