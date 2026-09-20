@@ -141,7 +141,7 @@ public:
 	float elasticity = 0.6f;
 	float friction = 0.6f ;
 	float drag = 0.25f ;
-	float angular_drag = 0 ; // 0.25f ;
+	float angular_drag = 0.25f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
@@ -167,7 +167,7 @@ public:
 
 	void applyConstraintImpulses() ;
 
-	void addConstraint(const int64_t& constraint_id);
+	void addConstraints(const std::vector<int64_t>& new_constraints);
 
 	void setPose(const glm::mat4& p){
 		pose = p ;
@@ -365,8 +365,8 @@ class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 10 ;
-	static inline int constraint_iterations = 2 ;
+	static inline int ticks_per_second = 60 ;
+	static inline int constraint_iterations = 4 ;
 	static inline int frame_slices = 20;
 
 	Cell(){};

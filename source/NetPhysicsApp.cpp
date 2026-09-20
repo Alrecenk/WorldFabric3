@@ -75,42 +75,21 @@ void NetPhysicsApp::run() {
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
-/*
-	std::pair<int64_t, float> trace = cell->activeVisualRaytrace(ray_origin, ray_direction);
-	int64_t clicked = trace.first;
-	if (held_body == -1) {
-		mouse_depth = trace.second;
-	}
 
-
+	
 	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth;
 	
 	glm::mat4 mouse_pose = glm::mat4(1.0f);
 	mouse_pose = glm::translate(mouse_pose, mouse_position);
-	cell->setPose(mouse_body, mouse_pose);
+	//cell->setPose(mouse_body, mouse_pose);
 
 	bool clicking = window->mouseDown(1) && !mouse_down_left;
 	mouse_down_left = window->mouseDown(1);
-	if (clicking && held_body == -1 && clicked != -1) {
-		cell->addPin(clicked, mouse_body, mouse_position);
-		held_body = clicked;
-	}
-	else if (clicking) {
-		cell->deletePins(held_body, mouse_body);
-		cell->disableCollision(held_body, mouse_body);
-		held_body = -1;
-	}
-	*/
+	
 
 	updateCamera();
-	/*
-	cell->runPhysicsFrame(dt, 15);
-	cell->updateGraphics();
-	*/
-
-	/*
-	if (millisBetween(last_ball_time, current_time) > millis_between_balls && cell->bodies.size() < max_balls) {
-		last_ball_time = current_time;
+	
+	if (clicking) {
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
 		glm::mat4 r = glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds() * 0.002), glm::vec3(0, 1, 0));
@@ -130,10 +109,11 @@ void NetPhysicsApp::run() {
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		int64_t id = cell->add(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f));
-		cell->disableCollision(id, mouse_body);
+
+		int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 	}
-	*/
+	
 
 	// Check if escape pressed to exit
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
@@ -304,7 +284,7 @@ void NetPhysicsApp::host(){
 	float wall_size = 30.0f; // TODO share between type creation
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	/*
+	
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
@@ -314,13 +294,13 @@ void NetPhysicsApp::host(){
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 
-	*/
+	
 	//Add some random stuff
 	for (int k = 0; k < 1; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = randomFloat();
-		rand = 1.0f ;
+		//rand = 1.0f ;
 		int type = ball_type;
 		if (rand < 0.2f) {
 			type = box_type;
