@@ -250,7 +250,7 @@ int RigidBodyView::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, con
 
 
 void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
-
+	
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
@@ -287,7 +287,7 @@ void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
 void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 
 
-	float scale = 1.0f / std::max(body_1->constraints.size(), body_2->constraints.size());
+	float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
 
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
@@ -311,10 +311,16 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 	float old_accumulated = glm::dot(warm_impulse, normal);
 	float new_accumulated = std::max(0.0f, old_accumulated + impulse_mag_n);
 	float current_impulse = new_accumulated - old_accumulated;
-	glm::vec3 impulse = normal * current_impulse;
+	glm::vec3 impulse = scale* normal * current_impulse;
+
+
+	body_1->velocity -= impulse * body_1->inv_mass;
+	body_2->velocity += impulse * body_2->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, impulse);
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, impulse);
 
 	//update warm impulse
-	warm_impulse += scale*impulse;
+	warm_impulse += impulse;
 
 	// Recalculate velocities at point after normal impulse
 	contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
@@ -348,14 +354,20 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 		float clamped_magnitude = std::min(friction_magnitude, max_friction);
 		accumulated_friction *= clamped_magnitude / friction_magnitude;
 	}
-	tangent_impulse = accumulated_friction - warm_tangent_impulse;
+	tangent_impulse = scale * (accumulated_friction - warm_tangent_impulse);
+
+
+	body_1->velocity -= tangent_impulse * body_1->inv_mass;
+	body_2->velocity += tangent_impulse * body_2->inv_mass;
+	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, tangent_impulse);
+	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, tangent_impulse);
 
 	//update warm impulse
-	warm_tangent_impulse += scale* tangent_impulse;
+	warm_tangent_impulse += tangent_impulse;
 
 
 	
-	next_impulse = scale * ( impulse + tangent_impulse) ;
+	next_impulse = impulse + tangent_impulse ;
 
 }
 
@@ -463,9 +475,11 @@ void ManifoldCollision::setConstraintImpulses() {
 	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
 	RigidBody copy_1 = *body_1.get();
 	RigidBody copy_2 = *body_2.get();
-	for (auto& p : points) {
-		p.setConstraintImpulse(&copy_1, &copy_2);
-	}
+	//for(int k=0;k<manifold_iterations;k++){
+		for (auto& p : points) {
+			p.setConstraintImpulse(&copy_1, &copy_2);
+		}
+	//}
 }
 
 //Walks through state machine to run each physics step in lockstep with other elements

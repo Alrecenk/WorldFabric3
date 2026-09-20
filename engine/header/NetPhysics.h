@@ -296,6 +296,7 @@ public:
 	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
+	static inline float relaxation = 0.7f ;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
 		return hashBytes(serialize(id1, s1, id2, s2, CONSTRAINT_TYPE));
@@ -326,8 +327,8 @@ public:
 
 	std::vector<Collision> points;
 	static inline float squared_distance_for_match = 1e-5f;
-	static inline int max_collision_points = 1;
-	static inline int manifold_iterations = 2 ;
+	static inline int max_collision_points = 4;
+	static inline int manifold_iterations = 4 ;
 
 	ManifoldCollision(){}
 
@@ -368,7 +369,7 @@ class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 30 ;
+	static inline int ticks_per_second = 120 ;
 	static inline int constraint_iterations = 4 ;
 	static inline int frame_slices = 20;
 
