@@ -275,12 +275,9 @@ public:
 
 };
 
-class Collision : public Constraint {
+class Collision {
 public:
-	int64_t id1 = -1;
-	int shape1 = -1;
-	int64_t id2 = -1;
-	int shape2 = -1;
+	
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
 	std::vector<glm::vec3> tangents;
@@ -305,30 +302,36 @@ public:
 	}
 
 
-	int64_t getHash() const override;
-	void updateConstraint(WorldObject* owner) override;
-	void setConstraintImpulse(WorldObject* owner) override;
+	void updateConstraint(RigidBody* body_1, RigidBody* body_2) ;
+	void setConstraintImpulse(RigidBody* body_1, RigidBody* body_2);
 
 	//Retargets this constraint to the objects after they have moved
 	//Returns whether constraint is still valid
-	bool retargetConstraint(WorldObject* owner);
+	bool retargetConstraint(const RigidBody* body_1,const RigidBody* body_2);
 };
 
 auto static getStructure(Collision& o) {
-	return std::tie(o.id1,o.shape1,o.id2,o.shape2,o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target, o.next_impulse) ;
+	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target, o.next_impulse) ;
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
 class ManifoldCollision : public ConstraintSet {
 public:
 	int64_t hash = -1;
+
+	int64_t id_1 = -1;
+	int shape_1 = -1;
+	int64_t id_2 = -1;
+	int shape_2 = -1;
+
 	std::vector<Collision> points;
 	static inline float squared_distance_for_match = 1e-5f;
-	static inline int max_collision_points = 1; // TODO properly handle multiple constraints
+	static inline int max_collision_points = 1;
+	static inline int manifold_iterations = 2 ;
 
 	ManifoldCollision(){}
 
-	ManifoldCollision(int64_t h) : hash(h) {};
+	ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2);
 
 	//Returns an identifying hash that can be used to group constraints into this set
 	int64_t getHash() const override;
@@ -358,7 +361,7 @@ public:
 };
 
 auto static getStructure(ManifoldCollision& o) {
-	return std::tie(o.position, o.last_update_time, o.hash, o.points);
+	return std::tie(o.position, o.id_1, o.shape_1, o.id_2, o.shape_2, o.last_update_time, o.hash, o.points);
 }
 
 class Cell : public WorldObject {

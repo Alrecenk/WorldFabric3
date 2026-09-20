@@ -118,7 +118,7 @@ void RigidBody::applyConstraintImpulses(){
 		if(manifold){
 			for(const auto& c : manifold->points){
 				glm::vec3 r = c.point - position;
-				if(c.id1 == id){
+				if(manifold->id_1 == id){
 					velocity -= c.next_impulse * inv_mass;
 					angular_velocity -= inv_moment * glm::cross(r, c.next_impulse);
 				}else{
@@ -249,21 +249,8 @@ int RigidBodyView::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, con
 }
 
 
+void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
 
-int64_t Collision::getHash() const {
-	return getHash(id1, shape1, id2, shape2);
-}
-void Collision::updateConstraint(WorldObject* owner) {
-	std::shared_ptr<const RigidBody> body_1 = owner->read<RigidBody>(id1);
-	std::shared_ptr<const RigidBody> body_2 = owner->read<RigidBody>(id2);
-	if(!body_1){
-		printf("Couldn't find constraint body!: %lld\n", id1);
-		return ;
-	}
-	if (!body_2) {
-		printf("Couldn't find constraint body!: %lld\n", id2);
-		return ;
-	}
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
@@ -297,9 +284,8 @@ void Collision::updateConstraint(WorldObject* owner) {
 	//printf("warm impulse: %f, %f, %f\n", next_impulse.x, next_impulse.y, next_impulse.z) ;
 
 }
-void Collision::setConstraintImpulse(WorldObject* owner) {
-	std::shared_ptr<const RigidBody> body_1 = owner->read<RigidBody>(id1) ;
-	std::shared_ptr<const RigidBody> body_2 = owner->read<RigidBody>(id2) ;
+void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
+
 
 	float scale = 1.0f / std::max(body_1->constraints.size(), body_2->constraints.size());
 
@@ -374,9 +360,7 @@ void Collision::setConstraintImpulse(WorldObject* owner) {
 }
 
 //Retargets this constraint to the objects after it has moved
-bool Collision::retargetConstraint(WorldObject* owner) {
-	std::shared_ptr<const RigidBody> body_1 = owner->read<RigidBody>(id1);
-	std::shared_ptr<const RigidBody> body_2 = owner->read<RigidBody>(id2);
+bool Collision::retargetConstraint(const RigidBody* body_1,const RigidBody* body_2) {
 	glm::vec3 a = body_1->pose * glm::vec4(local_a, 1);
 	glm::vec3 b = body_2->pose * glm::vec4(local_b, 1);
 	glm::vec3 x = a - b;
@@ -390,6 +374,14 @@ bool Collision::retargetConstraint(WorldObject* owner) {
 	return true;
 }
 
+ManifoldCollision::ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2){
+	id_1 = id1 ;
+	id_2 = id2;
+	shape_1 = s1;
+	shape_2 = s2;
+	hash = Collision::getHash(id1,s1,id2,s2) ;
+}
+
 //Returns an identifying hash that can be used to group constraints into this set
 int64_t ManifoldCollision::getHash() const {
 	return hash;
@@ -397,12 +389,15 @@ int64_t ManifoldCollision::getHash() const {
 
 //Add a constraint to this set
 void ManifoldCollision::addConstraint(const Collision& new_point) {
+	std::shared_ptr<const RigidBody> body_1 = read<RigidBody>(id_1);
+	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
+
 	std::vector<int> to_keep;
 	int closest = -1;
 	float cd2 = FLT_MAX;
 	bool needs_start = points.size() == 0 ;
 	for (int k = 0; k < points.size(); k++) {
-		bool valid = points[k].retargetConstraint(this);
+		bool valid = points[k].retargetConstraint(body_1.get(), body_2.get());
 		if (valid) {
 			to_keep.push_back(k);
 			if (glm::distance2(points[k].point, new_point.point) < cd2) {
@@ -453,15 +448,23 @@ void ManifoldCollision::addConstraint(const Collision& new_point) {
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
 void ManifoldCollision::updateConstraints() {
+	std::shared_ptr<const RigidBody> body_1 = read<RigidBody>(id_1);
+	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
+	RigidBody copy_1 = *body_1.get() ;
+	RigidBody copy_2 = *body_2.get();
 	for (auto& p : points) {
-		p.updateConstraint(this);
+		p.updateConstraint(&copy_1, &copy_2);
 	}
 }
 
 //Applies impulses to velocity of involved bodies to satisfy these constraints
 void ManifoldCollision::setConstraintImpulses() {
+	std::shared_ptr<const RigidBody> body_1 = read<RigidBody>(id_1);
+	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
+	RigidBody copy_1 = *body_1.get();
+	RigidBody copy_2 = *body_2.get();
 	for (auto& p : points) {
-		p.setConstraintImpulse(this);
+		p.setConstraintImpulse(&copy_1, &copy_2);
 	}
 }
 
@@ -579,10 +582,6 @@ void Cell::updateCollisions() {
 								int64_t constraint_hash = Collision::getHash(id1, index_a, id2, index_b);
 
 								Collision constraint ;
-								constraint.id1 = id1;
-								constraint.shape1 = index_a;
-								constraint.id2 = id2;
-								constraint.shape2 = index_b;
 								constraint.point = point;
 								constraint.normal = normal;
 								constraint.local_a = body_1->inv_pose * glm::vec4(sp.a, 1);
@@ -592,7 +591,7 @@ void Cell::updateCollisions() {
 								//printf("collision point %lld, %lld: %f, %f, %f\n", id1, id2, point.x, point.y,point.z) ;
 								
 								if (constraints.find(constraint_hash) == constraints.end()) {
-									std::shared_ptr<ManifoldCollision> new_set = std::make_shared<ManifoldCollision>(constraint_hash) ;
+									std::shared_ptr<ManifoldCollision> new_set = std::make_shared<ManifoldCollision>(id1, index_a, id2, index_b) ;
 									new_set->position = point ;
 									constraints[constraint_hash] = create(new_set,time);
 									//printf("Contraint requested on frame: %d\n", frame) ;
