@@ -267,11 +267,12 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->createWorld(WORLD, 1E4f, 1E-6f, 20);
+	worlds->createWorld(WORLD, 1E4f, 1E-6f, 10000);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
 	cell_id = worlds->create(WORLD,std::make_shared<NetPhysics::Cell>()) ;
+	worlds->queue(WORLD,cell_id,&NetPhysics::Cell::runPhysics) ;
 
 
 	glm::vec3 mid = (min + max) * 0.5f;

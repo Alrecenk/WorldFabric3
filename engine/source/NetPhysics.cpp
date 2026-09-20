@@ -28,6 +28,7 @@ namespace NetPhysics{
 			inv_mass = 1.0f/ mass ;
 		}
 
+		integrateVelocity(0);
 	}
 
 	//Create a rigid body from the static object type list on the RigidBodyView
@@ -55,6 +56,7 @@ namespace NetPhysics{
 			inv_mass = 1.0f / mass;
 		}
 
+		integrateVelocity(0);
 	}
 
 void RigidBody::integrateVelocity(float dt){
@@ -113,6 +115,7 @@ void RigidBody::integrateAcceleration(float dt){
 void RigidBody::runPhysics(){
 
 	if(inv_mass == 0){ // don't run movement on events on immoveable objects
+		printf("%lld run disabled because it is immoveable\n", id);
 		return ;
 	}
 
@@ -140,24 +143,25 @@ void RigidBody::runPhysics(){
 	if(frame_step == 0 ){
 		integrateAcceleration((float)frame_length) ;
 		queue(id, frame * frame_length + slice_time * 2, &RigidBody::runPhysics) ;
-		//printf("acceleration %lf \n", frame * frame_length + slice_time * 2);
+		printf("%lld acceleration %lf \n",id, frame * frame_length + slice_time * 2);
 	}else if(frame_step == 2){
 		//TODO apply warming
 		queue(id, frame * frame_length + slice_time * 4, &RigidBody::runPhysics);
-		//printf("warming %lf \n", frame * frame_length + slice_time * 4);
+		printf("%lld,warming %lf \n",id, frame * frame_length + slice_time * 4);
 	}else if(frame_step > 3 && frame_step < 3 + 2 * Cell::constraint_iterations && frame_step%2 == 0){
 		//TODO collect impulses
 		int next_step =std::min(frame_step+2, 3 + 2 * Cell::constraint_iterations) ;
 		queue(id, frame*frame_length + slice_time * next_step, &RigidBody::runPhysics);
-		//printf("collect \n");
+		printf("%lld,collect \n", id);
 	}else if(frame_step == 3 + 2 * Cell::constraint_iterations){
 		integrateVelocity((float)frame_length) ;
 		queue(id, (frame+1) * frame_length, &RigidBody::runPhysics);
-		//printf(" %lf -> velocity -> %lf\n",time, (frame + 1) * frame_length);
+		printf("%lld, %lf -> velocity -> %lf\n",id, time, (frame + 1) * frame_length);
 	}else{ // We're off step, wait until next frame and try again
 		queue(id, (frame + 1) * frame_length, &RigidBody::runPhysics);
-		//printf("%lf -> out of sync %d -> %lf\n",time,frame_step, (frame + 1) * frame_length);
+		printf("%lld, %lf -> out of sync %d -> %lf\n",id, time,frame_step, (frame + 1) * frame_length);
 	}
+
 }
 
 //created is called when an objectis observed that ws no observed last time view was called on the world
@@ -432,9 +436,11 @@ void Cell::updateCollisions() {
 
 	std::unordered_map<int64_t,std::shared_ptr<const RigidBody>> read_bodies ;
 	for(int64_t& id : bodies){
-		std::shared_ptr<const RigidBody> body =read<RigidBody>(id) ;
+		std::shared_ptr<const RigidBody> body = read<RigidBody>(id) ;
 		if(body){
 			read_bodies[id] = body ;
+		}else{
+			printf("read failed for ody: %lld\n", id) ;
 		}
 	}
 
@@ -458,12 +464,11 @@ void Cell::updateCollisions() {
 				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
 				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
-
 				int index_a = 0 ;
 				int index_b = 0 ;
 				for(const auto& shape_a : body_1->shape){
 					for (const auto& shape_b : body_2->shape) {
-
+						
 						auto simplex = detectCollision(body_1.get(), &shape_a, body_2.get(), &shape_b);
 						if (simplex.size() > 0) {
 							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), &shape_a, body_2.get(), &shape_b);
@@ -486,18 +491,21 @@ void Cell::updateCollisions() {
 								constraint.local_b = body_2->inv_pose * glm::vec4(sp.b, 1);
 								constraint.penetration_depth = glm::length(sp.x);
 
+								printf("collision point %lld, %lld: %f, %f, %f\n", id1, id2, point.x, point.y,point.z) ;
+								
 								if (constraints.find(constraint_hash) == constraints.end()) {
 									std::shared_ptr<ManifoldCollision> new_set = std::make_shared<ManifoldCollision>(constraint_hash) ;
 									constraints[constraint_hash] = create(new_set,time);
 								}
 								queue(constraints[constraint_hash],time+time+1E-7,&ManifoldCollision::addConstraint, constraint) ;
-
+								
 							}
 						}
 						index_b++;
 					}
 					index_a++;
 				}
+				
 			}
 		}
 
@@ -507,7 +515,32 @@ void Cell::updateCollisions() {
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void Cell::runPhysics() {
-	//TODO
+
+	double frame_length = 1.0 / Cell::ticks_per_second;
+	double slice_time = frame_length / Cell::frame_slices;
+	int frame = (int)(time * Cell::ticks_per_second + slice_time * 0.25); // offset makes sure rounding error doesn't cause round down into wrong frame
+	//double frame_time = time - frame * frame_length;
+	//int frame_step = (int)(frame_time / slice_time + 0.25);
+
+
+
+
+	//Steps:
+	// 0 = integrate acceleraton
+	// 1 = update constraint targets
+	// 2 = apply warming
+	// for 0 <=k < constraint_iterations 
+	// 3 + 2k = apply constraint
+	//3 + 2k + 1 = collect impulses
+	//3 + 2 * constrant_iterations = integrate velocity
+	//3 + 2 * constrant_iterations + 1 to frame time  = update collisionsand find constraints
+	
+
+	updateCollisions();
+	printf("running cell physics at %lf\n", time) ;
+	//TODO collect impulses
+	int next_step =  ((3 + 2 * Cell::constraint_iterations) + Cell::frame_slices)/2;
+	queue(id, (frame+1) * frame_length + slice_time * next_step, &Cell::runPhysics);
 }
 
 void registerPhysics(){
