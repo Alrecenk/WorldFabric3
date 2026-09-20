@@ -296,7 +296,7 @@ public:
 
 	static inline const int CONSTRAINT_TYPE = 1;
 	static inline float penetration_spring_coefficient = 1.0f;
-	static inline float allowed_collision_depth = 0.03f;
+	static inline float allowed_collision_depth = 0.15f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
@@ -390,7 +390,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.bodies);
+	return std::tie(o.position, o.bodies, o.constraints);
 }
 
 

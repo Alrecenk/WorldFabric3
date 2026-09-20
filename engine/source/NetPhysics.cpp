@@ -116,10 +116,15 @@ void RigidBody::applyConstraintImpulses(){
 		std::shared_ptr<const ManifoldCollision> manifold= read<ManifoldCollision>(c_id);
 		if(manifold){
 			for(const auto& c : manifold->points){
-				velocity -= c.next_impulse * inv_mass;
 				glm::vec3 r = c.point - position;
-				angular_velocity -= inv_moment * glm::cross(r, c.next_impulse);
-				//printf("  Applying impulse: %f, %f, %f\n", c.next_impulse.x, c.next_impulse.y, c.next_impulse.z) ;
+				if(c.id1 == id){
+					velocity -= c.next_impulse * inv_mass;
+					angular_velocity -= inv_moment * glm::cross(r, c.next_impulse);
+				}else{
+					velocity += c.next_impulse * inv_mass;
+					angular_velocity += inv_moment * glm::cross(r, c.next_impulse);
+				}
+				printf("  Applying impulse: %f, %f, %f\n", c.next_impulse.x, c.next_impulse.y, c.next_impulse.z) ;
 			}
 			new_constraints.push_back(c_id) ; // only keep constraints we could read
 		}
@@ -252,9 +257,11 @@ void Collision::updateConstraint(WorldObject* owner) {
 	std::shared_ptr<const RigidBody> body_2 = owner->read<RigidBody>(id2);
 	if(!body_1){
 		printf("Couldn't find constraint body!: %lld\n", id1);
+		return ;
 	}
 	if (!body_2) {
 		printf("Couldn't find constraint body!: %lld\n", id2);
+		return ;
 	}
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
@@ -283,12 +290,17 @@ void Collision::updateConstraint(WorldObject* owner) {
 	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
 	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
 
+	
 	next_impulse = warm_impulse + warm_tangent_impulse;
+
+	printf("warm impulse: %f, %f, %f\n", next_impulse.x, next_impulse.y, next_impulse.z) ;
 
 }
 void Collision::setConstraintImpulse(WorldObject* owner) {
 	std::shared_ptr<const RigidBody> body_1 = owner->read<RigidBody>(id1) ;
 	std::shared_ptr<const RigidBody> body_2 = owner->read<RigidBody>(id2) ;
+
+	float scale = 1.0f / std::max(body_1->constraints.size(), body_1->constraints.size());
 
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
@@ -315,7 +327,7 @@ void Collision::setConstraintImpulse(WorldObject* owner) {
 	glm::vec3 impulse = normal * current_impulse;
 
 	//update warm impulse
-	warm_impulse += impulse;
+	warm_impulse += scale*impulse;
 
 	// Recalculate velocities at point after normal impulse
 	contact_velocity_1 = body_1->velocity + glm::cross(body_1->angular_velocity, r1);
@@ -352,10 +364,10 @@ void Collision::setConstraintImpulse(WorldObject* owner) {
 	tangent_impulse = accumulated_friction - warm_tangent_impulse;
 
 	//update warm impulse
-	warm_tangent_impulse = accumulated_friction;
+	warm_tangent_impulse += scale* tangent_impulse;
 
 
-	float scale = 1.0f/ std::max(body_1->constraints.size(), body_1->constraints.size()) ;
+	
 	next_impulse = scale * ( impulse + tangent_impulse) ;
 
 }
@@ -428,7 +440,7 @@ void ManifoldCollision::addConstraint(const Collision& new_point) {
 		int frame = (int)(time * Cell::ticks_per_second + slice_time * 0.25); // offset makes sure rounding error doesn't cause round down into wrong frame
 		double frame_time = time - frame * frame_length;
 		int frame_step = (int)(frame_time / slice_time + 0.25);
-
+		printf("Constraint created on frame : %d\n", frame) ;
 		queue(id, (frame + 1) * frame_length + slice_time * 1, &ManifoldCollision::runPhysics);
 	}
 
@@ -464,6 +476,7 @@ void ManifoldCollision::runPhysics() {
 	//Ifwre didn't get a constrairt update within the last frame, then not coliding anymore
 	if(time - last_update_time > frame_length){
 		destroyed = true ;
+		printf("Constraint timed out without access! %lf, %lf frame: %d\n", time, last_update_time, frame);
 		return ;
 	}
 
@@ -508,6 +521,11 @@ void Cell::addBody(const int64_t& new_body){
 
 void Cell::updateCollisions() {
 
+	double frame_length = 1.0 / Cell::ticks_per_second;
+	double slice_time = frame_length / Cell::frame_slices;
+	int frame = (int)(time * Cell::ticks_per_second + slice_time * 0.25); // offset makes sure rounding error doesn't cause round down into wrong frame
+
+
 	std::unordered_map<int64_t,std::shared_ptr<const RigidBody>> read_bodies ;
 	for(int64_t& id : bodies){
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id) ;
@@ -519,13 +537,12 @@ void Cell::updateCollisions() {
 		}
 	}
 
-
 	//Delete existing constraints not found now
 	std::vector<int64_t> to_delete;
 	for (auto& [hash, id] : constraints) {
 		std::shared_ptr<const ManifoldCollision> existing = read<ManifoldCollision>(id);
 		if (!existing) {
-			to_delete.push_back(id);
+			to_delete.push_back(hash);
 		}
 	}
 	for (auto& id : to_delete) {
@@ -574,10 +591,13 @@ void Cell::updateCollisions() {
 									std::shared_ptr<ManifoldCollision> new_set = std::make_shared<ManifoldCollision>(constraint_hash) ;
 									new_set->position = point ;
 									constraints[constraint_hash] = create(new_set,time);
+									printf("Contraint requested on frame: %d\n", frame) ;
 									//queue(id1,time,&RigidBody::addConstraint, constraints[constraint_hash]) ;
 									//queue(id2, time, &RigidBody::addConstraint, constraints[constraint_hash]);
 									new_body_collisions[id1].push_back(constraints[constraint_hash]) ;
 									new_body_collisions[id2].push_back(constraints[constraint_hash]);
+								}else{
+									printf("Found existing constraint on frame: %d\n", frame);
 								}
 								queue(constraints[constraint_hash],time+time+1E-7,&ManifoldCollision::addConstraint, constraint) ;
 								
@@ -597,6 +617,8 @@ void Cell::updateCollisions() {
 	for(auto& [ body_id, new_constraints] :new_body_collisions){
 		queue(body_id, time, &RigidBody::addConstraints, new_constraints);
 	}
+	
+	
 
 }
 
@@ -624,7 +646,7 @@ void Cell::runPhysics() {
 	
 
 	updateCollisions();
-	//printf("running cell physics at %lf\n", time) ;
+	printf("running cell physics at %lf  frame:%d\n", time, frame) ;
 	//TODO collect impulses
 	int next_step =  ((3 + 2 * Cell::constraint_iterations) + Cell::frame_slices)/2;
 	queue(id, (frame+1) * frame_length + slice_time * next_step, &Cell::runPhysics);

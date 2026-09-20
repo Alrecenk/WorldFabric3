@@ -110,8 +110,17 @@ void NetPhysicsApp::run() {
 			type = jar_type;
 		}
 
-		int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
-		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+		if (cell_id == -1) {
+			std::shared_ptr<const NetPhysics::Cell> cell = worlds->observeNearest<NetPhysics::Cell>(WORLD);
+			if (cell) {
+				cell_id = cell->id;
+			}
+		}
+
+		if(cell_id != -1){
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+		}
 	}
 	
 
@@ -247,7 +256,7 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->createWorld(WORLD, 1E4f, 1E-6f, 10000);
+	worlds->createWorld(WORLD, 1E7f, 1E-7f, 1000);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
@@ -294,7 +303,11 @@ void NetPhysicsApp::host(){
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 
-	
+
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)));
+	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+
+	/*
 	//Add some random stuff
 	for (int k = 0; k < 1; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
@@ -317,6 +330,7 @@ void NetPhysicsApp::host(){
 		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
 		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
 	}
+*/
 	
 	worlds->host(port,version) ;
 
