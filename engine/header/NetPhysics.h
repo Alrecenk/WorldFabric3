@@ -165,6 +165,10 @@ public:
 
 	void integrateAcceleration(float dt);
 
+	void applyConstraintImpulses() ;
+
+	void addConstraint(const int64_t& constraint_id);
+
 	void setPose(const glm::mat4& p){
 		pose = p ;
 		inv_pose = glm::inverse(p);
@@ -249,9 +253,6 @@ public:
 	//Update the constraint target based on information at the start of the frame
 	virtual void updateConstraint(WorldObject* owner) = 0;
 
-	//Updates the next impulse ot be applied to be the warming impulse
-	virtual void setWarmingImpulse(WorldObject* owner) = 0;
-
 	//Updates the next impulse to be applied by while iterating the constraint
 	virtual void setConstraintImpulse(WorldObject* owner) = 0;
 };
@@ -268,9 +269,6 @@ public:
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
 	virtual void updateConstraints() = 0;
-
-	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	virtual void setWarmingImpulses() = 0;
 
 	//Applies impulses to velocity of involved bodies to satisfy these constraints
 	virtual void setConstraintImpulses() = 0;
@@ -309,7 +307,6 @@ public:
 
 	int64_t getHash() const override;
 	void updateConstraint(WorldObject* owner) override;
-	void setWarmingImpulse(WorldObject* owner) override;
 	void setConstraintImpulse(WorldObject* owner) override;
 
 	//Retargets this constraint to the objects after they have moved
@@ -318,7 +315,7 @@ public:
 };
 
 auto static getStructure(Collision& o) {
-	return std::tie(o.id1,o.shape1,o.id1,o.shape2,o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target, o.next_impulse) ;
+	return std::tie(o.id1,o.shape1,o.id2,o.shape2,o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target, o.next_impulse) ;
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
@@ -342,9 +339,6 @@ public:
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
 	void updateConstraints() override;
-
-	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	void setWarmingImpulses() override;
 
 	//Applies impulses to velocity of involved bodies to satisfy these constraints
 	void setConstraintImpulses() override;
