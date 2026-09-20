@@ -296,7 +296,7 @@ public:
 
 	static inline const int CONSTRAINT_TYPE = 1;
 	static inline float penetration_spring_coefficient = 1.0f;
-	static inline float allowed_collision_depth = 0.15f;
+	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
@@ -324,7 +324,7 @@ public:
 	int64_t hash = -1;
 	std::vector<Collision> points;
 	static inline float squared_distance_for_match = 1e-5f;
-	static inline int max_collision_points = 4;
+	static inline int max_collision_points = 1; // TODO properly handle multiple constraints
 
 	ManifoldCollision(){}
 
@@ -365,7 +365,7 @@ class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 60 ;
+	static inline int ticks_per_second = 30 ;
 	static inline int constraint_iterations = 4 ;
 	static inline int frame_slices = 20;
 
