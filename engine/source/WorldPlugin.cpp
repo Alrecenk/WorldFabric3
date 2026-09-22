@@ -103,7 +103,7 @@ void WorldPlugin::run(){
 		world.pending_local_events.clear();
 	}
 	
-	lock.unlock();
+	//lock.unlock(); // TODO figure out how to lock less agressively
 
 	// Run all the active timelines
 	for(auto& [name, world] : worlds){
@@ -112,14 +112,14 @@ void WorldPlugin::run(){
 		world.system_time_of_current_time = now();
 		world.next_event_time = world.current_time + world.timeline->min_event_duration;
 		world.timeline->run(world.vantage_point,world.current_time) ; // Note we are not locked when actually doing the running which is 95% of time
-		lock.lock();
+		//lock.lock();
 		observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); // buffer observations immediately after run so rollback can't be observed
 		viewCreateDestroy(name); // Make sure views are always inline with observations
-		lock.unlock();
+		//lock.unlock();
 		//printf("Runs: %d  Unruns: %d\n", Timeline::event_runs, Timeline::event_unruns) ;
 	}
 
-	lock.lock();
+	//lock.lock();
 	// Send my updates to the connections
 	double hash_time = 0 ; // TODO check for errors using a hash at fixed intervals?
 	for (auto& [name, world] : worlds) {

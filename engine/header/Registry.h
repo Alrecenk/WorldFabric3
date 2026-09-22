@@ -548,7 +548,7 @@ inline glm::mat4 interpolate(const glm::mat4& A, const glm::mat4& B, float t){
 
 	glm::quat rot = glm::slerp(rotA, rotB, t);
 
-	//linearly interpolate componentwise for scale andshear
+	//linearly interpolate componentwise for scale and shear
 	glm::mat3 stretch ;
 	for(int k = 0; k < 3;k++){
 		for(int j=0;j<3;j++){
@@ -661,8 +661,7 @@ public:
 
     // Adds a class to the registry
     template<typename T>
-    inline int registerClass(const std::string& debug_name) {
-        //std::cout << "Registering class: " << typeid(T).name() << "\n";
+    inline int registerClass(const std::string& debug_name) {   
         //check if the class being registered has a getStructure implementation that returns a nonempty Tuple
         T new_object;
         auto structure = getStructure(new_object);
@@ -684,6 +683,7 @@ public:
 
         type_to_id[std::type_index(typeid(T))] = id;
 		class_name[id] = debug_name;
+		std::cout << "Registering class: " << typeid(T).name() << " == " << debug_name << " id = " << id << "\n";
         return id;
     }
 

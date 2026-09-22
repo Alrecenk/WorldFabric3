@@ -256,7 +256,7 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
-	worlds->createWorld(WORLD, 1E7f, 1E-7f, 1000);
+	worlds->createWorld(WORLD, 1E4f, 1E-7f, 100);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
