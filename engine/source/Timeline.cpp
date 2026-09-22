@@ -260,8 +260,6 @@ void Timeline::CreateEvent::run(std::shared_ptr<WorldEvent> this_event) {
 	//float time_at_obj = fmax(target_run_time, dispatch_time + glm::distance(new_object->position, dispatch_position) / max_info_speed);
 
 	// make a new instance by copying with the serializer
-	//std::shared_ptr<WorldObject> new_latest = new_object->deepCopy(world->registry.get());
-	std::shared_ptr<WorldObject> new_latest = std::static_pointer_cast<WorldObject>(world->registry->deepCopy(new_object.get(), new_object->getTypeId(world->registry.get())));
 	new_object->time = actual_run_time + world->min_event_duration; // create events still have event duration but the object couldn't move so it's just the min
 	new_object->id = object_id; // time and id aren't expected to be in the serializer so we have to set them manually
 	new_object->writing_event = this_event;
@@ -446,7 +444,7 @@ std::shared_ptr<const WorldObject> Timeline::readFar(int64_t object_id, const gl
 
 //Runs all events that could run before the given vantage
 void Timeline::run(const glm::vec3 vantage, double vantage_time) {
-
+	auto start_time = now();
 	applyPendingRollbacks();
 
 	//runBatched(vantage, vantage_time);
@@ -460,6 +458,8 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	
 	//only clean the history periodically since it's kind of expensive and having a little extra is fine
 	if (vantage_time - last_clean_time > history_kept * 0.5f) {
+		auto mid_time = now() ;
+		
 		double clear_time = vantage_time - history_kept;
 		for (auto& [id, history] : objects) {
 			history.cleanHistory(clear_time);
@@ -494,11 +494,12 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 		}
 
 		last_clean_time = vantage_time;
+		printf("Cleaning histroy on run %d took %d microseconds, other this frame took %d\n", runs,microsBetween(mid_time, now()), microsBetween(start_time, mid_time));
 	}
 
 	
 	world_lock.unlock();
-
+	runs++;
 }
 
 // Runs the next event that can run from the given vantage point if there is one
@@ -905,12 +906,15 @@ std::vector<std::shared_ptr<const WorldObject>> Timeline::observe(const glm::vec
 	world_lock.lock();
 	std::vector<std::shared_ptr<const WorldObject>> observed;
 	for (auto& [id, o] : objects) {
-		std::shared_ptr<const WorldObject> i = readFar(id, vantage, vantage_time);
-		if (i) {
-			observed.push_back(i);
+		if(o.observation_enabled){
+			std::shared_ptr<const WorldObject> i = o.readFar(vantage, vantage_time);
+			if (i) {
+				observed.push_back(i);
+			}
 		}
 	}
 	world_lock.unlock();
+	//printf("Observed: %d\n",(int)observed.size()) ;
 	return observed;
 }
 

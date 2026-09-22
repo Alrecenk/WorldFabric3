@@ -81,6 +81,10 @@ public:
 			return std::static_pointer_cast<WorldObject>(world->registry->deepCopy(this, getTypeId(world->registry.get())));
 		}
 
+		virtual bool observationEnabled(){
+			return true ;
+		}
+
 		//Read another object in the timeline, speed of info will be enforced
 		//Returns nullptr if the object doesn't exist or isn't yet readable
 		std::shared_ptr<const WorldObject> read(int64_t read_id) const;
@@ -205,6 +209,7 @@ public:
 
 		ObjectHistory(std::shared_ptr<WorldObject> first_instant) {
 			addInstant(first_instant);
+			observation_enabled = first_instant->observationEnabled();
 		}
 
 		// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed and max_read_distance
@@ -234,12 +239,13 @@ public:
 
 		std::map<double, std::shared_ptr<WorldObject>> history; // maps time to a state change of an object
 		std::shared_ptr<WorldObject> latest;
-
+		bool observation_enabled = true ;
 	};
 
 	double last_vantage_time = 0; // in seconds since beginning of scenario
 	glm::vec3 last_vantage = glm::vec3(0, 0, 0);
 	double last_clean_time = -1.0;
+	int runs = 0 ;
 
 	std::unordered_map<int64_t, ObjectHistory> objects; // All objects currently in the timeline and their history
 	std::unordered_set<std::shared_ptr<WorldEvent>> pending_events; // Events pending run in no particular order

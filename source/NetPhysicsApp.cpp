@@ -265,12 +265,11 @@ void NetPhysicsApp::host(){
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
-	/*
 	glm::vec3 chain_pos = mid;
 	float chain_angle = 0;
 	float y_step = 0.7f;
 	float angle_step = 1.5f;
-	int num_links = 15;
+	int num_links = 8;
 	for (int k = 1; k <= num_links; k++) {
 		std::shared_ptr<NetPhysics::RigidBody> link = std::make_shared<NetPhysics::RigidBody>(chain_type, chain_pos);
 		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
@@ -279,14 +278,13 @@ void NetPhysicsApp::host(){
 			link->inv_moment = glm::mat3(0);
 		}
 		int64_t link_id = worlds->create(WORLD, link);
-		worlds->queue(WORLD, cell_id, &NetPhysics::PhysicsCell::addBody, link_id);
+		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, link_id);
 
 		chain_angle += angle_step;
 		chain_pos.y += y_step;
 		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
 		chain_pos += off;
 	}
-*/
 
 	int64_t body_id ;
 	// Add the container blocks
@@ -305,11 +303,12 @@ void NetPhysicsApp::host(){
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 	
 
+	/*
 	auto box = std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)) ;
 	box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
 	body_id = worlds->create(WORLD,box);
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-
+	*/
 	/*
 	//Add some random stuff
 	for (int k = 0; k < 1; k++) {
