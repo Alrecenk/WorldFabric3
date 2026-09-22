@@ -287,7 +287,6 @@ void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
 void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 
 
-	float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
 
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
@@ -311,7 +310,7 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 	float old_accumulated = glm::dot(warm_impulse, normal);
 	float new_accumulated = std::max(0.0f, old_accumulated + impulse_mag_n);
 	float current_impulse = new_accumulated - old_accumulated;
-	glm::vec3 impulse = scale* normal * current_impulse;
+	glm::vec3 impulse = normal * current_impulse;
 
 
 	body_1->velocity -= impulse * body_1->inv_mass;
@@ -354,7 +353,7 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 		float clamped_magnitude = std::min(friction_magnitude, max_friction);
 		accumulated_friction *= clamped_magnitude / friction_magnitude;
 	}
-	tangent_impulse = scale * (accumulated_friction - warm_tangent_impulse);
+	tangent_impulse = accumulated_friction - warm_tangent_impulse;
 
 
 	body_1->velocity -= tangent_impulse * body_1->inv_mass;
@@ -476,8 +475,10 @@ void ManifoldCollision::setConstraintImpulses() {
 	RigidBody copy_1 = *body_1.get();
 	RigidBody copy_2 = *body_2.get();
 
+	std::vector<std::pair<glm::vec3,glm::vec3>> warm ;
 	for (auto& p : points) {
 		p.next_impulse = glm::vec3(0,0,0) ;
+		warm.emplace_back(p.warm_impulse, p.warm_tangent_impulse) ;
 	}
 
 	for(int k=0;k<manifold_iterations;k++){
@@ -485,6 +486,18 @@ void ManifoldCollision::setConstraintImpulses() {
 			p.setConstraintImpulse(&copy_1, &copy_2);
 		}
 	}
+
+
+	//Scale impulse to avoid overshoot
+	float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
+	int k = 0 ;
+	for (auto& p : points) {
+		p.next_impulse *= scale ;
+		p.warm_impulse = warm[k].first  + scale * (p.warm_impulse - warm[k].first) ;
+		p.warm_tangent_impulse = warm[k].second + scale * (p.warm_tangent_impulse - warm[k].second);
+		k++;
+	}
+	
 }
 
 //Walks through state machine to run each physics step in lockstep with other elements
