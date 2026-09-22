@@ -449,7 +449,9 @@ int64_t hashRaw(const T& obj) {
 // Convert member function pointer to a key for reverse lookups of id from function pointer
 template <typename T, typename Ret, typename... Args>
 size_t methodPointerToKey(Ret(T::* method)(Args...)) {
-    return hashRaw(method);
+	// The first 8 bytes are the pointer in memory to the function
+	// Any subsequent bytes can vary based on inheritance or casting, so we want to ignore them so it always maatches one registered function
+	return *reinterpret_cast<size_t*>(&method) ;
 }
 
 //AbstractVoidMethod type allows differently templated methods to live in the same map in the registry 
@@ -546,7 +548,7 @@ inline glm::mat4 interpolate(const glm::mat4& A, const glm::mat4& B, float t){
 
 	glm::quat rot = glm::slerp(rotA, rotB, t);
 
-	//linearly interpolate componentwise for scale andshear
+	//linearly interpolate componentwise for scale and shear
 	glm::mat3 stretch ;
 	for(int k = 0; k < 3;k++){
 		for(int j=0;j<3;j++){
@@ -659,8 +661,7 @@ public:
 
     // Adds a class to the registry
     template<typename T>
-    inline int registerClass(const std::string& debug_name) {
-        //std::cout << "Registering class: " << typeid(T).name() << "\n";
+    inline int registerClass(const std::string& debug_name) {   
         //check if the class being registered has a getStructure implementation that returns a nonempty Tuple
         T new_object;
         auto structure = getStructure(new_object);
@@ -682,6 +683,7 @@ public:
 
         type_to_id[std::type_index(typeid(T))] = id;
 		class_name[id] = debug_name;
+		std::cout << "Registering class: " << typeid(T).name() << " == " << debug_name << " id = " << id << "\n";
         return id;
     }
 

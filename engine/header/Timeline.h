@@ -77,6 +77,10 @@ public:
 		// returns the type id of the object in the given registry
 		virtual int getTypeId(Registry* r) const = 0 ;
 
+		virtual std::shared_ptr<WorldObject> deepCopy(){
+			return std::static_pointer_cast<WorldObject>(world->registry->deepCopy(this, getTypeId(world->registry.get())));
+		}
+
 		//Read another object in the timeline, speed of info will be enforced
 		//Returns nullptr if the object doesn't exist or isn't yet readable
 		std::shared_ptr<const WorldObject> read(int64_t read_id) const;

@@ -1084,10 +1084,10 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::v
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const RigidBody* A, const int shapeA, const RigidBody* B, const int shapeB) {
+SupportPoint findSupportPoint(const glm::vec3 direction, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB) {
 	SupportPoint sp;
-	sp.a = A->pose * glm::vec4( A->shape[shapeA]->support(A->inv_pose* glm::vec4(direction,0)), 1);
-	sp.b = B->pose * glm::vec4(B->shape[shapeB]->support(B->inv_pose * glm::vec4(-direction, 0)), 1);
+	sp.a = A->pose * glm::vec4(shapeA->support(A->inv_pose* glm::vec4(direction,0)), 1);
+	sp.b = B->pose * glm::vec4(shapeB->support(B->inv_pose * glm::vec4(-direction, 0)), 1);
 	sp.x = sp.a - sp.b;
 	return sp;
 }
@@ -1114,7 +1114,7 @@ void buildSupportSimplex(const SupportTriangle triangle, const SupportPoint& D, 
 //Uses GJK to detect whether two convex shapes collide
 //If they collide this returns a simplex in Minkowski diference space enclosing the collision point
 //If they do not collide, this returns an empty vector
-std::vector<SupportTriangle> detectCollision(const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
+std::vector<SupportTriangle> detectCollision(const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB, int max_iterations) {
 	// arbitrary first direction
 	glm::vec3 search_direction = glm::vec3(1, 0, 0);
 	const glm::vec3 origin(0, 0, 0);
@@ -1187,7 +1187,7 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 
 // Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
-SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const RigidBody* A, int shapeA, const RigidBody* B, int shapeB, int max_iterations) {
+SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB, int max_iterations) {
 	static std::vector<SupportTriangle> polytope;
 	static std::vector<SupportEdge> edge_list;
 	polytope = collision_result;
@@ -1342,9 +1342,9 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 				for(int shapeA = 0; shapeA < body_1->shape.size(); shapeA++){
 					for (int shapeB = 0; shapeB < body_2->shape.size(); shapeB++) {
 
-						auto simplex = Physics::detectCollision(body_1.get(), shapeA, body_2.get(), shapeB);
+						auto simplex = Physics::detectCollision(body_1.get(), body_1->shape[shapeA].get(), body_2.get(), body_2->shape[shapeB].get());
 						if (simplex.size() > 0) {
-							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(),shapeA,body_2.get(), shapeB);
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_1->shape[shapeA].get(),body_2.get(), body_2->shape[shapeB].get());
 							if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
 								glm::vec3 point = (sp.a + sp.b) * 0.5f;
 								glm::vec3 normal = glm::normalize(sp.x);
