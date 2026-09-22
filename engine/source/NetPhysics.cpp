@@ -199,12 +199,6 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
 	glm::mat4 pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, body->position);
 	pose = pose * glm::mat4_cast(body->orientation);
-	
-	float s = glm::length(body->orientation) ;
-	if(fabs(s - 1.0f) > 0.01f && fabs(s) > 0.01f){
-		printf("Object has scaling in quaternion!\n");
-	}
-
 	pose = pose * types[body->render_type].render_transform;
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene_id = scene->createInstance(types[body->render_type].model, pose);

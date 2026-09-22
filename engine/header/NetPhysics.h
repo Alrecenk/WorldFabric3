@@ -363,6 +363,10 @@ public:
 		return std::make_shared<ManifoldCollision>(*this);
 	}
 
+	bool observationEnabled() override {
+		return false;
+	}
+
 	//Functions used on observables or on read objects need to be const
 	void print() const override {
 		printf("ManifoldCollision");

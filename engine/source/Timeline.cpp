@@ -260,8 +260,6 @@ void Timeline::CreateEvent::run(std::shared_ptr<WorldEvent> this_event) {
 	//float time_at_obj = fmax(target_run_time, dispatch_time + glm::distance(new_object->position, dispatch_position) / max_info_speed);
 
 	// make a new instance by copying with the serializer
-	//std::shared_ptr<WorldObject> new_latest = new_object->deepCopy(world->registry.get());
-	std::shared_ptr<WorldObject> new_latest = std::static_pointer_cast<WorldObject>(world->registry->deepCopy(new_object.get(), new_object->getTypeId(world->registry.get())));
 	new_object->time = actual_run_time + world->min_event_duration; // create events still have event duration but the object couldn't move so it's just the min
 	new_object->id = object_id; // time and id aren't expected to be in the serializer so we have to set them manually
 	new_object->writing_event = this_event;
@@ -905,12 +903,15 @@ std::vector<std::shared_ptr<const WorldObject>> Timeline::observe(const glm::vec
 	world_lock.lock();
 	std::vector<std::shared_ptr<const WorldObject>> observed;
 	for (auto& [id, o] : objects) {
-		std::shared_ptr<const WorldObject> i = readFar(id, vantage, vantage_time);
-		if (i) {
-			observed.push_back(i);
+		if(o.observation_enabled){
+			std::shared_ptr<const WorldObject> i = o.readFar(vantage, vantage_time);
+			if (i) {
+				observed.push_back(i);
+			}
 		}
 	}
 	world_lock.unlock();
+	//printf("Observed: %d\n",(int)observed.size()) ;
 	return observed;
 }
 
