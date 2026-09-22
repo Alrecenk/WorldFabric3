@@ -227,7 +227,7 @@ void Timeline::VoidEvent::run(std::shared_ptr<WorldEvent> this_event) {
 		return ;
 	}
 	// make a new instance by copying wit the serializer
-	std::shared_ptr<WorldObject> new_latest = std::static_pointer_cast<WorldObject>(world->registry->deepCopy(latest.get(), latest->getTypeId(world->registry.get())));
+	std::shared_ptr<WorldObject> new_latest = latest->deepCopy() ;
 	// mark the object and event with the run time and position
 	new_latest->time = actual_run_time; // can be read when executing event, and should contain event time in that case
 	new_latest->id = latest->id; // id is not saved so won't be copied with deepCopy

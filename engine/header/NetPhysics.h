@@ -184,6 +184,10 @@ public:
 		return r->getIdForType<RigidBody>();
 	}
 
+	std::shared_ptr<WorldObject> deepCopy() override {
+		return std::make_shared<RigidBody>(*this) ;
+	}
+
 	//Functions used on observables or on read objects need to be const
 	void print() const override{
 		printf("RigidyBody");
@@ -355,6 +359,10 @@ public:
 		return r->getIdForType<ManifoldCollision>();
 	}
 
+	std::shared_ptr<WorldObject> deepCopy() override {
+		return std::make_shared<ManifoldCollision>(*this);
+	}
+
 	//Functions used on observables or on read objects need to be const
 	void print() const override {
 		printf("ManifoldCollision");
@@ -379,6 +387,10 @@ public:
 	// Just change the template parameter to match your class
 	int getTypeId(Registry* r) const {
 		return r->getIdForType<Cell>();
+	}
+
+	std::shared_ptr<WorldObject> deepCopy() override {
+		return std::make_shared<Cell>(*this);
 	}
 
 	//Functions used on observables or on read objects need to be const
