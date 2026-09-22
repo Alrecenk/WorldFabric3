@@ -245,6 +245,7 @@ public:
 	double last_vantage_time = 0; // in seconds since beginning of scenario
 	glm::vec3 last_vantage = glm::vec3(0, 0, 0);
 	double last_clean_time = -1.0;
+	int runs = 0 ;
 
 	std::unordered_map<int64_t, ObjectHistory> objects; // All objects currently in the timeline and their history
 	std::unordered_set<std::shared_ptr<WorldEvent>> pending_events; // Events pending run in no particular order

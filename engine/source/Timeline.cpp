@@ -444,7 +444,7 @@ std::shared_ptr<const WorldObject> Timeline::readFar(int64_t object_id, const gl
 
 //Runs all events that could run before the given vantage
 void Timeline::run(const glm::vec3 vantage, double vantage_time) {
-
+	auto start_time = now();
 	applyPendingRollbacks();
 
 	//runBatched(vantage, vantage_time);
@@ -458,6 +458,8 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	
 	//only clean the history periodically since it's kind of expensive and having a little extra is fine
 	if (vantage_time - last_clean_time > history_kept * 0.5f) {
+		auto mid_time = now() ;
+		
 		double clear_time = vantage_time - history_kept;
 		for (auto& [id, history] : objects) {
 			history.cleanHistory(clear_time);
@@ -492,11 +494,12 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 		}
 
 		last_clean_time = vantage_time;
+		printf("Cleaning histroy on run %d took %d microseconds, other this frame took %d\n", runs,microsBetween(mid_time, now()), microsBetween(start_time, mid_time));
 	}
 
 	
 	world_lock.unlock();
-
+	runs++;
 }
 
 // Runs the next event that can run from the given vantage point if there is one
