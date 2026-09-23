@@ -235,7 +235,7 @@ public:
 		void deleteAfter(double base_time);
 
 		void addInstant(std::shared_ptr<WorldObject>& instant);
-
+		
 
 		std::map<double, std::shared_ptr<WorldObject>> history; // maps time to a state change of an object
 		std::shared_ptr<WorldObject> latest;
@@ -259,6 +259,7 @@ public:
 		}
 
 		ObjectHistory2(std::shared_ptr<WorldObject> first_instant) {
+			resize(10) ;
 			addInstant(first_instant, -FLT_MAX);
 			observation_enabled = first_instant->observationEnabled();
 		}
@@ -292,6 +293,8 @@ public:
 		//Resize the looping vector to this size
 		void resize(const int& size);
 
+		bool empty();
+
 	};
 
 	double last_vantage_time = 0; // in seconds since beginning of scenario
@@ -299,7 +302,7 @@ public:
 	double last_clean_time = -1.0;
 	int runs = 0 ;
 
-	std::unordered_map<int64_t, ObjectHistory> objects; // All objects currently in the timeline and their history
+	std::unordered_map<int64_t, ObjectHistory2> objects; // All objects currently in the timeline and their history
 	std::unordered_set<std::shared_ptr<WorldEvent>> pending_events; // Events pending run in no particular order
 	std::unordered_set<std::shared_ptr<WorldEvent>> event_history; // Events that have been executed but could be rolled back
 	std::vector<std::shared_ptr<WorldEvent>> external_events; // Events injected from outside the timeline that need to be included in network updates
