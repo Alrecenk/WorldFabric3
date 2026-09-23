@@ -382,8 +382,8 @@ public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
 	static inline int ticks_per_second = 120 ;
-	static inline int constraint_iterations = 8 ;
-	static inline int frame_slices = 36;
+	static inline int constraint_iterations = 4 ;
+	static inline int frame_slices = 20;
 
 	Cell(){};
 
