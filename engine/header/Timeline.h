@@ -242,6 +242,58 @@ public:
 		bool observation_enabled = true ;
 	};
 
+
+	class ObjectHistory2 {
+
+	public:
+
+		//List loops around vector, if last > next, then list goes from last to end, then end to head -1
+		//if last == next the list is empty
+		std::vector<std::shared_ptr<WorldObject>> history ; // time is in object->time
+		int next = 0 ; // location of next element placement (exclusive)
+		int last = 0 ; // location of oldest active element (inclusive)
+		bool observation_enabled = true; // whether observations are generated automatically for the buffer
+
+		ObjectHistory2() {
+			throw std::runtime_error("Object history is being cvreated empty!");
+		}
+
+		ObjectHistory2(std::shared_ptr<WorldObject> first_instant) {
+			addInstant(first_instant, -FLT_MAX);
+			observation_enabled = first_instant->observationEnabled();
+		}
+
+		// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed and max_read_distance
+		std::shared_ptr<const WorldObject> read(const glm::vec3& vantage, const double& time);
+
+		// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed but not obeying max read distance
+		std::shared_ptr<const WorldObject> readFar(const glm::vec3& vantage, const double& time);
+
+		// Returns the state of this object at the given time (used for base state where time warp is not used)
+		std::shared_ptr<WorldObject> getStateAt(const double& time);
+
+		//Returns all states of this history of this object in the given time range
+		//will be ordered from oldest to newest
+		std::vector<std::shared_ptr<WorldObject>> getStateRange(const double& start_time, const double& end_time);
+
+		// returns the time and value of the latest instance of this object
+		std::shared_ptr<WorldObject> getLatest();
+
+		// Returns if the history object is safe to delete entirely
+		bool cleanHistory(const double& base_time);
+
+		// Removes all instants after the given time
+		void deleteAfter(const double& base_time);
+
+		//Adds a new instant to the head of the list
+		//May delete an old instant if it is older than clear_time
+		void addInstant(std::shared_ptr<WorldObject>& instant, const double& clear_time);
+
+		//Resize the looping vector to this size
+		void resize(const int& size);
+
+	};
+
 	double last_vantage_time = 0; // in seconds since beginning of scenario
 	glm::vec3 last_vantage = glm::vec3(0, 0, 0);
 	double last_clean_time = -1.0;

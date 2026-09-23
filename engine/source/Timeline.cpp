@@ -111,7 +111,7 @@ std::shared_ptr<WorldObject> Timeline::ObjectHistory::getStateAt(const double ti
 //will be ordered from newest to oldest
 std::vector<std::shared_ptr<WorldObject>> Timeline::ObjectHistory::getStateRange(const double start_time, const double end_time) {
 	if (history.empty()) {
-		throw std::runtime_error("Object history is emprty on getStateRange.");
+		throw std::runtime_error("Object history is empty on getStateRange!");
 	}
 	std::vector<std::shared_ptr<WorldObject>> result;
 	auto it = history.rbegin();
@@ -180,6 +180,134 @@ void Timeline::ObjectHistory::deleteAfter(double time) {
 void Timeline::ObjectHistory::addInstant(std::shared_ptr<WorldObject>& instant) {
 	history[instant->time] = instant;
 	latest = instant ;
+}
+
+
+// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed and max_read_distance
+std::shared_ptr<const WorldObject> Timeline::ObjectHistory2::read(const glm::vec3& vantage, const double& time){
+	if (next == last) {
+		return std::shared_ptr<const WorldObject>(); // list is empty
+	}
+	int i = (next + history.size() - 1) % history.size();
+	while (true) {
+		std::shared_ptr<WorldObject> o = history[i];
+		double distance = preciseDistance(o->position, vantage) ;
+		double readable_time = o->time + distance  / world->max_info_speed;
+		if (readable_time <= time) {
+			if (o->destroyed || distance > world->max_read_distance) {
+				return std::shared_ptr<const WorldObject>();
+			}
+			else {
+				return o;
+			}
+		}
+		else if (i != last) { // can't read it, keep looking
+			i = (i + history.size() - 1) % history.size();
+		}
+		else { // we reached last and it wasn't readable
+			return std::shared_ptr<const WorldObject>();
+		}
+	}
+}
+
+// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed but not obeying max read distance
+std::shared_ptr<const WorldObject> Timeline::ObjectHistory2::readFar(const glm::vec3& vantage, const double& time){
+	if(next == last){
+		return std::shared_ptr<const WorldObject>() ; // list is empty
+	}
+	int i = (next + history.size() - 1) % history.size() ;
+	while (true) {
+		std::shared_ptr<WorldObject> o = history[i] ;
+		double readable_time = o->time + preciseDistance(o->position, vantage) / world->max_info_speed;
+		if(readable_time <= time){
+			if(o->destroyed){
+				return std::shared_ptr<const WorldObject>();
+			}else{
+				return o ;
+			}
+		}else if(i != last){ // can't read it, keep looking
+			i = (i + history.size() - 1) % history.size();
+		}else{ // we reached last and it wasn't readable
+			return std::shared_ptr<const WorldObject>();
+		}
+	}
+}
+
+// Returns the state of this object at the given time (used for base state where time warp is not used)
+std::shared_ptr<WorldObject> Timeline::ObjectHistory2::getStateAt(const double& time){
+	if (last == next) {
+		throw std::runtime_error("Object history is empty on getStateRange!");
+	}
+	int i = next ;
+	while (i != last && history[(i + history.size() - 1) % history.size()]->time > time) {
+		i = (i + history.size() - 1) % history.size();
+	}
+	return history[i] ;
+}
+
+//Returns all states of this history of this object in the given time range
+//will be ordered from newest to oldest
+std::vector<std::shared_ptr<WorldObject>> Timeline::ObjectHistory2::getStateRange(const double& start_time, const double& end_time){
+	if(last == next){
+		throw std::runtime_error("Object history is empty on getStateRange!");
+	}
+	std::vector<std::shared_ptr<WorldObject>> result;
+	int i = last;
+	while (i!= next && history[i]->time <= end_time) {
+		if(history[i]->time >= start_time){
+			result.push_back(history[i]) ;
+		}	
+		i = (i+1) % history.size() ;	
+	}
+	return result;
+}
+
+// returns the time and value of the latest instance of this object
+std::shared_ptr<WorldObject> Timeline::ObjectHistory2::getLatest(){
+	return history[(next + history.size() - 1) % history.size()] ;
+}
+
+bool Timeline::ObjectHistory2::cleanHistory(const double& base_time){
+	//Empty or has exactly 1 element which is destroyed
+	return last == next || ((last+1)%history.size() == next && history[last]->destroyed) ;
+}
+
+// Removes all instants after the given time
+void Timeline::ObjectHistory2::deleteAfter(const double& base_time){
+	while(next != last && history[(next+history.size()-1)%history.size()]->time > base_time){
+		next = (next + history.size() - 1) % history.size() ;
+	}
+}
+
+void Timeline::ObjectHistory2::addInstant(std::shared_ptr<WorldObject>& instant,const double& clear_time){
+	int new_next = (next+ 1) % history.size() ;
+	if(new_next != last){ // at least 2 empty space in vector
+		history[next] = instant ;
+		next = new_next ;
+	}else if(history[new_next]->time < clear_time){ // insufficient empty space but oldest element can be deleted
+		history[next] = instant;
+		next = new_next;
+		last = (last + 1) % history.size();
+	}else{ // No space, need a bigger array
+		resize((history.size()*3)/2) ;
+		history[next] = instant;
+		next++;
+	}
+}
+
+//Resize the looping vector to this size
+void Timeline::ObjectHistory2::resize(const int& size){
+	std::vector<std::shared_ptr<WorldObject>> new_history(size);
+	int new_next = 0 ;
+	int i = last ;
+	while(i != next){
+		new_history[new_next] = history[i] ;
+		new_next++;
+		i = (i + 1)%history.size() ;
+	}
+	history = std::move(new_history) ;
+	last = 0;
+	next = new_next;
 }
 
 // Runs an event that should be in pending_events and moves it to event_history
@@ -447,7 +575,7 @@ std::shared_ptr<const WorldObject> Timeline::readFar(int64_t object_id, const gl
 
 //Runs all events that could run before the given vantage
 void Timeline::run(const glm::vec3 vantage, double vantage_time) {
-	//auto start_time = now();
+	auto start_time = now();
 	applyPendingRollbacks();
 
 	//runBatched(vantage, vantage_time);
@@ -460,7 +588,7 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 
 	
 	int clean_cycles =10 ;
-	//auto mid_time = now() ;
+	auto mid_time = now() ;
 		
 	double clear_time = vantage_time - history_kept;
 	std::vector<int64_t> object_deletes ;
@@ -476,7 +604,7 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	}
 
 
-	//auto mid_time2 = now();
+	auto mid_time2 = now();
 //only clean the history periodically since it's kind of expensive and having a little extra is fine
 	if (vantage_time - last_clean_time > history_kept * 0.5f) {
 		std::map<double,std::vector<std::shared_ptr<WorldEvent>>> event_deletes; // map on time allows to be sorted by actual game time
@@ -506,9 +634,11 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 			}
 		}
 
+		printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
+		//printf("Num objects: %d\n", (int)objects.size()) ;
+
 	}
-	//printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
-	//printf("Num objects: %d\n", (int)objects.size()) ;
+	
 	
 	
 	
@@ -1185,8 +1315,8 @@ Timeline::CopyPacket Timeline::copy(double earliest_time) {
 			update.objects.push_back(serializeWorldObject(o));
 		}
 		std::vector<std::shared_ptr<WorldObject>> instants = history.getStateRange(earliest_time, FLT_MAX);
-
-		for (int k = (int)instants.size() -1; k >=0; k--) {//get state range is newest to oldest bbut for packet we need oldest to newest
+	//TODO flip for ObjectHistory2!
+		for (int k = (int)instants.size() -1; k >=0; k--) {//get state range is newest to oldest but for packet we need oldest to newest
 			update.objects.push_back(serializeWorldObject(instants[k]));
 		}
 	}
