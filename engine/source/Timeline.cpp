@@ -599,7 +599,7 @@ std::shared_ptr<const WorldObject> Timeline::readFar(int64_t object_id, const gl
 
 //Runs all events that could run before the given vantage
 void Timeline::run(const glm::vec3 vantage, double vantage_time) {
-	auto start_time = now();
+	//auto start_time = now();
 	applyPendingRollbacks();
 
 	//runBatched(vantage, vantage_time);
@@ -611,8 +611,8 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	last_vantage = vantage;
 
 	
-	int clean_cycles =10 ;
-	auto mid_time = now() ;
+	int clean_cycles = 10 ;
+	//auto mid_time = now() ;
 		
 	double clear_time = vantage_time - history_kept;
 	std::vector<int64_t> object_deletes ;
@@ -628,8 +628,8 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	}
 
 
-	auto mid_time2 = now();
-//only clean the history periodically since it's kind of expensive and having a little extra is fine
+	//auto mid_time2 = now();
+	//only clean the history periodically since it's kind of expensive and having a little extra is fine
 	if (vantage_time - last_clean_time > history_kept * 0.5f) {
 		std::map<double,std::vector<std::shared_ptr<WorldEvent>>> event_deletes; // map on time allows to be sorted by actual game time
 		for (auto& event : event_history) {
@@ -658,7 +658,7 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 			}
 		}
 
-		printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
+		//printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
 		//printf("Num objects: %d\n", (int)objects.size()) ;
 
 	}
