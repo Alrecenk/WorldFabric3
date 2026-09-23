@@ -282,8 +282,8 @@ void NetPhysicsApp::host(){
 
 		chain_angle += angle_step;
 		chain_pos.y += y_step;
-		glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
-		chain_pos += off;
+		//glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
+		//chain_pos += off;
 	}
 
 	int64_t body_id ;

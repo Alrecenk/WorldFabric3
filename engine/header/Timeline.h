@@ -229,7 +229,7 @@ public:
 		std::shared_ptr<WorldObject> getLatest();
 
 		// removes all but one element of the history before the given base_time
-		void cleanHistory(double base_time);
+		bool cleanHistory(double base_time);
 
 		// Removes all instants after the given time
 		void deleteAfter(double base_time);

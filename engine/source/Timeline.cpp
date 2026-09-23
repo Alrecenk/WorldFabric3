@@ -137,11 +137,11 @@ std::shared_ptr<WorldObject> Timeline::ObjectHistory::getLatest() {
 
 
 // removes all but one element of the history before the given base_time
-void Timeline::ObjectHistory::cleanHistory(double base_time) {
+bool Timeline::ObjectHistory::cleanHistory(double base_time) {
 	int s = (int)history.size();
-	auto it = history.lower_bound(base_time); // first element greater than or equal to time
-	if (it != history.begin()) {
-		auto keep = std::prev(it); // last element not greater than time so keep one more so we definitely have it at time
+	auto keep = history.lower_bound(base_time); // first element greater than or equal to time
+	if (keep != history.begin()) {
+		keep = std::prev(keep); // last element not greater than time so keep one more so we definitely have it at time
 		if (keep != history.begin()) {
 			history.erase(history.begin(), keep);
 		}
@@ -149,6 +149,9 @@ void Timeline::ObjectHistory::cleanHistory(double base_time) {
 	if (history.size() == 0) {
 		printf("history cleaned to 0? it was %d.\n", s);
 	}
+
+	//Return true if there is one element left and it is destroyed
+	return history.size() == 1 && keep->second->destroyed ;
 }
 
 // Removes all instants after the given time
@@ -444,7 +447,7 @@ std::shared_ptr<const WorldObject> Timeline::readFar(int64_t object_id, const gl
 
 //Runs all events that could run before the given vantage
 void Timeline::run(const glm::vec3 vantage, double vantage_time) {
-	auto start_time = now();
+	//auto start_time = now();
 	applyPendingRollbacks();
 
 	//runBatched(vantage, vantage_time);
@@ -456,16 +459,26 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	last_vantage = vantage;
 
 	
-	//only clean the history periodically since it's kind of expensive and having a little extra is fine
-	if (vantage_time - last_clean_time > history_kept * 0.5f) {
-		auto mid_time = now() ;
+	int clean_cycles =10 ;
+	//auto mid_time = now() ;
 		
-		double clear_time = vantage_time - history_kept;
-		for (auto& [id, history] : objects) {
-			history.cleanHistory(clear_time);
+	double clear_time = vantage_time - history_kept;
+	std::vector<int64_t> object_deletes ;
+	for (auto& [id, history] : objects) {
+		if(id%clean_cycles == runs%clean_cycles){
+			if(history.cleanHistory(clear_time)){
+				object_deletes.push_back(id) ;
+			}
 		}
-		
+	}
+	for(auto& id : object_deletes){
+		objects.erase(id) ;
+	}
 
+
+	//auto mid_time2 = now();
+//only clean the history periodically since it's kind of expensive and having a little extra is fine
+	if (vantage_time - last_clean_time > history_kept * 0.5f) {
 		std::map<double,std::vector<std::shared_ptr<WorldEvent>>> event_deletes; // map on time allows to be sorted by actual game time
 		for (auto& event : event_history) {
 			if (event->actual_run_time < clear_time) {
@@ -493,10 +506,11 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 			}
 		}
 
-		last_clean_time = vantage_time;
-		printf("Cleaning histroy on run %d took %d microseconds, other this frame took %d\n", runs,microsBetween(mid_time, now()), microsBetween(start_time, mid_time));
 	}
-
+	//printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
+	//printf("Num objects: %d\n", (int)objects.size()) ;
+	
+	
 	
 	world_lock.unlock();
 	runs++;
