@@ -203,50 +203,6 @@ public:
 
 	public:
 
-		ObjectHistory() {
-			throw std::runtime_error("Object history is being cvreated empty!");
-		}
-
-		ObjectHistory(std::shared_ptr<WorldObject> first_instant) {
-			addInstant(first_instant);
-			observation_enabled = first_instant->observationEnabled();
-		}
-
-		// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed and max_read_distance
-		std::shared_ptr<const WorldObject> read(const glm::vec3& vantage, const double time);
-
-		// Returns the most recent version of the object that can be read from the given vantage point obeying max_info_speed but not obeying max read distance
-		std::shared_ptr<const WorldObject> readFar(const glm::vec3& vantage, const double time);
-
-		// Returns the state of this object at the given time (used for base state where time warp is not used)
-		std::shared_ptr<WorldObject> getStateAt(const double time);
-
-		//Returns all states of this history of this object in the given time range
-		//will be ordered from newest to oldest
-		std::vector<std::shared_ptr<WorldObject>> getStateRange(const double start_time, const double end_time);
-
-		// returns the time and value of the latest instance of this object
-		std::shared_ptr<WorldObject> getLatest();
-
-		// removes all but one element of the history before the given base_time
-		bool cleanHistory(double base_time);
-
-		// Removes all instants after the given time
-		void deleteAfter(double base_time);
-
-		void addInstant(std::shared_ptr<WorldObject>& instant);
-		
-
-		std::map<double, std::shared_ptr<WorldObject>> history; // maps time to a state change of an object
-		std::shared_ptr<WorldObject> latest;
-		bool observation_enabled = true ;
-	};
-
-
-	class ObjectHistory2 {
-
-	public:
-
 		//List loops around vector, if last > next, then list goes from last to end, then end to head -1
 		//if last == next the list is empty
 		std::vector<std::shared_ptr<WorldObject>> history ; // time is in object->time
@@ -254,11 +210,11 @@ public:
 		int last = 0 ; // location of oldest active element (inclusive)
 		bool observation_enabled = true; // whether observations are generated automatically for the buffer
 
-		ObjectHistory2() {
+		ObjectHistory() {
 			throw std::runtime_error("Object history is being cvreated empty!");
 		}
 
-		ObjectHistory2(std::shared_ptr<WorldObject> first_instant) {
+		ObjectHistory(std::shared_ptr<WorldObject> first_instant) {
 			resize(10) ;
 			addInstant(first_instant, -FLT_MAX);
 			observation_enabled = first_instant->observationEnabled();
@@ -302,7 +258,7 @@ public:
 	double last_clean_time = -1.0;
 	int runs = 0 ;
 
-	std::unordered_map<int64_t, ObjectHistory2> objects; // All objects currently in the timeline and their history
+	std::unordered_map<int64_t, ObjectHistory> objects; // All objects currently in the timeline and their history
 	std::unordered_set<std::shared_ptr<WorldEvent>> pending_events; // Events pending run in no particular order
 	std::unordered_set<std::shared_ptr<WorldEvent>> event_history; // Events that have been executed but could be rolled back
 	std::vector<std::shared_ptr<WorldEvent>> external_events; // Events injected from outside the timeline that need to be included in network updates
