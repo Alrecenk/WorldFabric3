@@ -176,6 +176,7 @@ void NarballMenu::run() {
 		hosting = false;
 		has_player = false;
 		showRight(lobby_menu);
+		printf("Join succeeded\n") ;
 	}else if(waiting_on_join && millisBetween(join_start,now()) > 3000){// pending connection has timed out
 		printf("Timed out trying to join.\n");
 		waiting_on_join = false ;
@@ -932,18 +933,24 @@ void NarballMenu::pressPanel(int panel, int element, int button){
 
 
 		if(pressed->action == "Private Host"){
-			SteamworksPlugin::SteamServerInfo info;
-			info.name = "Narball Server";
-			info.map = "The Pool";
-			info.max_players = 64;
-			info.game_mode = "Classic";
-			info.product_name = "Narball";
-			info.product_description = "Be a narwhal. Hit a ball.";
-			info.game_directory = "Narball" ;
-			info.version = NARBALL_VERSION;
-			std::shared_ptr<Socket> steam_socket = steam->hostPrivateLobby(info);
-
-			if (worlds->host(steam_socket, NARBALL_VERSION)) {
+			bool host_succeeded = false;
+			if(local_debug_mode){
+				host_succeeded = worlds->host(port, NARBALL_VERSION) ;
+			}else{
+				SteamworksPlugin::SteamServerInfo info;
+				info.name = "Narball Server";
+				info.map = "The Pool";
+				info.max_players = 64;
+				info.game_mode = "Classic";
+				info.product_name = "Narball";
+				info.product_description = "Be a narwhal. Hit a ball.";
+				info.game_directory = "Narball" ;
+				info.version = NARBALL_VERSION;
+				std::shared_ptr<Socket> steam_socket = steam->hostPrivateLobby(info);
+				host_succeeded = worlds->host(steam_socket, NARBALL_VERSION) ;
+				
+			}
+			if (host_succeeded) {
 				hosting = true;
 				joined = false;
 
@@ -962,11 +969,21 @@ void NarballMenu::pressPanel(int panel, int element, int button){
 			else {
 				printf("Hosting failed for some reason?\n");
 			}
+
 		}
 
 		if (pressed->action == "Join") {
-			//showRight(join_menu);
-			SteamFriends()->ActivateGameOverlay("servers");
+			if(local_debug_mode){
+				WorldPlugin* worlds = getTool<WorldPlugin>();
+				worlds->connect("127.0.0.1", port, Narball::NARBALL_VERSION);
+				join_start = now();
+				lobby_id = -1;// we'll have to wait until we actually get the packet to find the lobby id and add ourselves
+				waiting_on_join = true;
+				join_start = now();
+			}else{
+				//showRight(join_menu);
+				SteamFriends()->ActivateGameOverlay("servers");
+			}
 		}
 
 		if (pressed->action == "Options") {

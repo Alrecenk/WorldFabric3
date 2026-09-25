@@ -464,7 +464,7 @@ inline int gameMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str()) ;
 
-	
+	SteamworksPlugin::enabled = !NarballMenu::local_debug_mode ;
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
