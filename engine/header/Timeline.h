@@ -253,6 +253,20 @@ public:
 
 	};
 
+	class EventHistory{
+	public:
+		static inline double time_slice= 1/60.0 ;
+		std::map<double, std::unordered_set<std::shared_ptr<WorldEvent>>> history;
+
+		//Get time rounded up to the nearest slice
+		double getTimeSlice(double time) ;
+
+		void insert(const std::shared_ptr<WorldEvent>& event);
+
+		void erase(const std::shared_ptr<WorldEvent>& event);
+
+	};
+
 	double last_vantage_time = 0; // in seconds since beginning of scenario
 	glm::vec3 last_vantage = glm::vec3(0, 0, 0);
 	double last_clean_time = -1.0;
@@ -260,7 +274,7 @@ public:
 
 	std::unordered_map<int64_t, ObjectHistory> objects; // All objects currently in the timeline and their history
 	std::unordered_set<std::shared_ptr<WorldEvent>> pending_events; // Events pending run in no particular order
-	std::unordered_set<std::shared_ptr<WorldEvent>> event_history; // Events that have been executed but could be rolled back
+	EventHistory event_history; // Events that have been executed but could be rolled back
 	std::vector<std::shared_ptr<WorldEvent>> external_events; // Events injected from outside the timeline that need to be included in network updates
 	std::unordered_set<std::shared_ptr<WorldEvent>> new_events; //Events created by the last run event
 	std::shared_ptr<Registry> registry; // Registry of objects and functions that can be serialized
@@ -349,9 +363,6 @@ public:
 
 	//returns whether an event could effect another event
 	bool couldEffect(const std::shared_ptr<WorldEvent>& cause, const std::shared_ptr<WorldEvent>& effect);
-
-	//rolls back all events and object changes that have occured withing the light cone of the trigger
-	void rollback(const glm::vec3& trigger_position, double trigger_time);
 
 	void applyPendingRollbacks();
 

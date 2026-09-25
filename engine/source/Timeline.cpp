@@ -186,6 +186,19 @@ bool Timeline::ObjectHistory::empty(){
 	return last == next ;
 }
 
+//Get time rounded down to the nearest slive
+double Timeline::EventHistory::getTimeSlice(double time){
+	return std::ceil(time /time_slice) * time_slice ;
+}
+
+void Timeline::EventHistory::insert(const std::shared_ptr<WorldEvent>& event){
+	history[getTimeSlice(event->actual_run_time)].insert(event);
+}
+
+void Timeline::EventHistory::erase(const std::shared_ptr<WorldEvent>& event) {
+	history[getTimeSlice(event->actual_run_time)].erase(event);
+}
+
 // Runs an event that should be in pending_events and moves it to event_history
 void Timeline::runEvent(std::shared_ptr<WorldEvent> event) {
 	//debug check
@@ -466,11 +479,11 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	int clean_cycles = 10 ;
 	//auto mid_time = now() ;
 		
-	double clear_time = vantage_time - history_kept;
+	double clean_time = vantage_time - history_kept;
 	std::vector<int64_t> object_deletes ;
 	for (auto& [id, history] : objects) {
 		if(id%clean_cycles == runs%clean_cycles){
-			if(history.cleanHistory(clear_time)){
+			if(history.cleanHistory(clean_time)){
 				object_deletes.push_back(id) ;
 			}
 		}
@@ -482,42 +495,21 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 
 	//auto mid_time2 = now();
 	//only clean the history periodically since it's kind of expensive and having a little extra is fine
-	if (vantage_time - last_clean_time > history_kept * 0.5f) {
-		std::map<double,std::vector<std::shared_ptr<WorldEvent>>> event_deletes; // map on time allows to be sorted by actual game time
-		for (auto& event : event_history) {
-			if (event->actual_run_time < clear_time) {
-					event_deletes[event->actual_run_time].push_back(event);
-			}
-		}
-		for (auto&[time, event_list] : event_deletes) { // log in gametime order
-			for(auto&event : event_list){
-				if (WorldPlugin::log_type == WorldPlugin::FINAL_EVENTS) {
-					std::shared_ptr<WorldObject> o = objects[event->object_id].getLatest(); 
-					std::string cls = registry->class_name[o->getTypeId(registry.get())] ;
-					VoidEvent* void_event = dynamic_cast<VoidEvent*>(event.get());
-					if (void_event != nullptr) {
-						std::string mth = registry->method_name[void_event->method_id] ;
-						WorldPlugin::log->log(cls + "::" + mth, event->object_id, event->actual_run_time, event->target_run_time, event->dispatch_time, event->actual_run_position.x, event->actual_run_position.y, event->actual_run_position.z);
-					}
-					CreateEvent* create_event = dynamic_cast<CreateEvent*>(event.get());
-					if (create_event != nullptr) {
-						WorldPlugin::log->log(cls + "::" + cls, event->object_id, event->actual_run_time, event->target_run_time, event->dispatch_time, event->actual_run_position.x, event->actual_run_position.y, event->actual_run_position.z);
-					}
-				}
-				//actually delete the event after logging
+	std::vector<double> bucket_deletes; // map on time allows to be sorted by actual game time
+	for(auto& [end_time, event_bucket]: event_history.history){
+		if(end_time < clean_time) { // if bucket is entirely before clean time
+			bucket_deletes.push_back(end_time) ;
+			for (auto& event : event_bucket) {
 				event->parent.reset(); // break the chain of event parents which would otherwise outlive the events indefinitely
-				event_history.erase(event);
 			}
 		}
-
-		//printf("Cleaning histroy on run %d took %d microseconds (objects) and %d (events), other this frame took %d\n", runs, microsBetween(mid_time, mid_time2), microsBetween(mid_time2, now()), microsBetween(start_time, mid_time));
-		//printf("Num objects: %d\n", (int)objects.size()) ;
-
 	}
 	
-	
-	
-	
+	//TODO log events on delete in time order for desync checker
+	for (double end_time : bucket_deletes){
+		event_history.history.erase(end_time) ;
+	}
+
 	world_lock.unlock();
 	runs++;
 }
@@ -862,65 +854,6 @@ bool Timeline::couldEffect(const std::shared_ptr<WorldEvent>& cause, const std::
 	}
 }
 
-//rolls back all events and object changes that have occured withing the light cone of the trigger
-void Timeline::rollback(const glm::vec3& trigger_position, double trigger_time) {
-	world_lock.lock();
-	//printf("Rolling back to %f\n", trigger_time) ;
-	std::unordered_set<std::shared_ptr<WorldEvent>> event_rollbacks;
-	std::map<int64_t, double> object_rollbacks; // earliest event time on each object that needs rolled back
-	for (auto& h_event : event_history) {
-		// Is an already ran event in the light cone of the rollback?
-		if (h_event->actual_run_time  >= trigger_time + vantage_warp_fraction * preciseDistance(h_event->actual_run_position, trigger_position) / max_info_speed) {
-			event_unruns++;
-			event_rollbacks.insert(h_event);
-			// Keep track of how far we need to makerollbacks to objects affected by these events
-			auto it = object_rollbacks.find(h_event->object_id);
-			if (it == object_rollbacks.end()) {
-				object_rollbacks[h_event->object_id] = h_event->actual_run_time;
-			}
-			else {
-				it->second = fmin(it->second, h_event->actual_run_time);
-			}
-		}
-	}
-
-	//Find events that are pending that were spawned by an event that was rolled back
-	std::vector<std::shared_ptr<WorldEvent>> pending_rollbacks;
-	for (auto& p_event : pending_events) {
-		if (event_rollbacks.find(p_event->parent) != event_rollbacks.end()) {
-			pending_rollbacks.push_back(p_event);
-		}
-	}
-	// unpend events spawned by now rolled back events
-	for (auto& p_event : pending_rollbacks) {
-		pending_events.erase(p_event);
-	}
-
-	for (auto& event : event_rollbacks) {
-		event_history.erase(event); // remove form history
-		event->rollbacks++;
-		event->actual_run_time = -1.0 ;
-
-		// only repend if it wasn't spawned by another rolled back event
-		if (event_rollbacks.find(event->parent) == event_rollbacks.end()) {
-			pending_events.insert(event);
-		}
-	}
-
-	//Rollback the objects
-	for (auto& [id, time] : object_rollbacks) {
-		//printf("Deleting object %lld after %f\n", id, time);
-		objects[id].deleteAfter(time);
-		if (objects[id].history.empty()) {
-			objects.erase(id);
-		}
-	}
-
-	//last_vantage_time = trigger_time;
-	//runBatched(last_vantage,last_vantage_time) ;
-	world_lock.unlock();
-}
-
 //Returns all readable entities from the given vantage
 std::vector<std::shared_ptr<const WorldObject>> Timeline::observe(const glm::vec3& vantage, double vantage_time) {
 	world_lock.lock();
@@ -956,25 +889,24 @@ void Timeline::applyPendingRollbacks(){
 	//printf(" %d Rolling back to %f\n", (int)pending_rollbacks.size(),earliest_trigger) ;
 	std::unordered_set<std::shared_ptr<WorldEvent>> event_rollbacks;
 	std::map<int64_t, double> object_rollbacks; // earliest event time on each object that needs rolled back
-	for (auto& h_event : event_history) {
-		// Is an already ran event in the light cone of a rollback?
-		if (h_event->actual_run_time >= earliest_trigger){
-			bool rolling_back = false;
-			for (auto& r : pending_rollbacks) {
-				rolling_back |= h_event->actual_run_time >= r.second + vantage_warp_fraction * preciseDistance(h_event->actual_run_position, r.first) / max_info_speed ;
-			}
-		
-
-			if(rolling_back) {
-				event_unruns++;
-				event_rollbacks.insert(h_event);
-				// Keep track of how far we need to makerollbacks to objects affected by these events
-				auto it = object_rollbacks.find(h_event->object_id);
-				if (it == object_rollbacks.end()) {
-					object_rollbacks[h_event->object_id] = h_event->actual_run_time;
+	for (auto& [end_time, event_bucket] : event_history.history) {
+		if (end_time >= earliest_trigger) { // only check buckets that aren't completely before earliest rollback
+			for (auto& h_event : event_bucket) {
+				bool rolling_back = false;
+				for (auto& r : pending_rollbacks) {
+					rolling_back |= h_event->actual_run_time >= r.second + vantage_warp_fraction * preciseDistance(h_event->actual_run_position, r.first) / max_info_speed ;
 				}
-				else {
-					it->second = fmin(it->second, h_event->actual_run_time);
+				if(rolling_back) {
+					event_unruns++;
+					event_rollbacks.insert(h_event);
+					// Keep track of how far we need to makerollbacks to objects affected by these events
+					auto it = object_rollbacks.find(h_event->object_id);
+					if (it == object_rollbacks.end()) {
+						object_rollbacks[h_event->object_id] = h_event->actual_run_time;
+					}
+					else {
+						it->second = fmin(it->second, h_event->actual_run_time);
+					}
 				}
 			}
 		}
@@ -1143,7 +1075,7 @@ Timeline::Timeline(std::shared_ptr<Registry>& r, CopyPacket& packet){
 			std::shared_ptr<VoidEvent> event = std::make_shared<VoidEvent>(object_id, method_id, target_time, arg_serial);
 			event->dispatch_position = dispatch_position;
 			event->dispatch_time = dispatch_time;
-			event_history.emplace(event);
+			event_history.insert(event);
 		}
 		else if (event_type == CREATE_EVENT) {
 			const auto& [dispatch_position, dispatch_time, object_id, target_time, type_id, object_data] = deserialize<glm::vec3, double, int64_t, double, int, std::vector<char>>(event_serial);
@@ -1151,7 +1083,7 @@ Timeline::Timeline(std::shared_ptr<Registry>& r, CopyPacket& packet){
 			std::shared_ptr<CreateEvent> event = std::make_shared<CreateEvent>(object_id, obj, target_time);
 			event->dispatch_position = dispatch_position;
 			event->dispatch_time = dispatch_time;
-			event_history.emplace(event);
+			event_history.insert(event);
 
 		}
 	}
@@ -1178,10 +1110,15 @@ Timeline::CopyPacket Timeline::copy(double earliest_time) {
 	}
 
 	
-	for (auto& event : event_history) {
-		//event->print();
-		if (event->actual_run_time >= earliest_time) {
-			update.event_history.emplace_back(serializeWorldEvent(event));
+
+	for (auto& [end_time, event_bucket] : event_history.history) {
+		if (end_time >= earliest_time) { // only check buckets that aren't completely before earliest time
+			for (auto& event : event_bucket) {
+				//event->print();
+				if (event->actual_run_time >= earliest_time) {
+					update.event_history.emplace_back(serializeWorldEvent(event));
+				}
+			}
 		}
 	}
 
