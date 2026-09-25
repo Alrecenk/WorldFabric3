@@ -205,11 +205,13 @@ std::shared_ptr<SteamworksPlugin::SteamSocket> SteamworksPlugin::hostPrivateLobb
 }
 
 void SteamworksPlugin::disconnect(){
-	if(steam_socket){
-		steam_socket->close(); // reset may close but we manually close in case there are any stored references
-		steam_socket.reset() ;
+	if(enabled){
+		if(steam_socket){
+			steam_socket->close(); // reset may close but we manually close in case there are any stored references
+			steam_socket.reset() ;
+		}
+		SteamMatchmaking()->LeaveLobby(lobby_info.id) ;
 	}
-	SteamMatchmaking()->LeaveLobby(lobby_info.id) ;
 }
 
 
