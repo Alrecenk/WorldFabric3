@@ -151,11 +151,11 @@ void Timeline::ObjectHistory::deleteAfter(const double& base_time){
 
 void Timeline::ObjectHistory::addInstant(std::shared_ptr<WorldObject>& instant,const double& clear_time){
 	int size = (int)history.size();
-	int new_next = (next+ 1) % size ;
-	if(new_next != last){ // at least 2 empty space in vector
+	int new_next = (next + 1) % size;
+	 if(new_next != last){ // at least 2 empty space in vector
 		history[next] = instant ;
 		next = new_next ;
-	}else if(history[new_next]->time < clear_time){ // insufficient empty space but oldest element can be deleted
+	}else if(history[last]->time < clear_time && history[(last+1)%size]->time < clear_time){ // insufficient empty space but oldest element can be deleted
 		history[next] = instant;
 		next = new_next;
 		last = (last + 1) % size;
