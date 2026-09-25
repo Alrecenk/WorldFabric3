@@ -1133,7 +1133,7 @@ Timeline::CopyPacket Timeline::copy(double earliest_time) {
 		}
 	}
 	external_events.clear(); // these aren't external anymore if we're doing a full copy after
-	//printf("Objects in copy packet: %d\n", (int)update.objects.size()) ;
+	printf("Objects in copy packet: %d  Events: %d\n", (int)update.objects.size(), (int)update.event_history.size()) ;
 	world_lock.unlock();
 	return update;
 

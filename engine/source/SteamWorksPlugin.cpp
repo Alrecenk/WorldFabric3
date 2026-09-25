@@ -834,6 +834,7 @@ bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char
 
 	EResult res ;
 	if(is_dedicated){
+		//printf("Packet size: %d\n", (uint32_t)data.size()) ;
 		res = SteamGameServerNetworkingSockets()->SendMessageToConnection(connections[receiver_id], data.data(), (uint32_t)data.size(), k_nSteamNetworkingSend_ReliableNoNagle, nullptr);
 	}else{
 		res = SteamNetworkingSockets()->SendMessageToConnection(connections[receiver_id], data.data(), (uint32_t)data.size(), k_nSteamNetworkingSend_ReliableNoNagle, nullptr);
@@ -854,6 +855,7 @@ bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char
 			return false;
 		case k_EResultLimitExceeded:
 			printf("Failed sending data : There was already too much data queued to be sent\n");
+			
 			return false;
 		default:
 		{
