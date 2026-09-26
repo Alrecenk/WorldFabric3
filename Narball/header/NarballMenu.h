@@ -27,7 +27,7 @@ class NarballMenu : public MachineState, public PanelPlugin::PanelListener, publ
 
 public:
 
-	static inline bool local_debug_mode = true ;
+	static inline bool local_debug_mode = false ;
 	int port = 4225 ;
 	
 	static inline int64_t lobby_id = -1 ; // fetched on host or join

@@ -137,9 +137,8 @@ std::shared_ptr<WorldObject> Timeline::ObjectHistory::getLatest(){
 }
 
 bool Timeline::ObjectHistory::cleanHistory(const double& base_time){
-	//Empty or has exactly 1 element which is destroyed
-	int size = (int)history.size();
-	return last == next || ((last+1)%(int)history.size() == next && history[last]->destroyed) ;
+	auto latest = getLatest();
+	return  latest->destroyed && latest->time < base_time ;
 }
 
 // Removes all instants after the given time
@@ -152,11 +151,11 @@ void Timeline::ObjectHistory::deleteAfter(const double& base_time){
 
 void Timeline::ObjectHistory::addInstant(std::shared_ptr<WorldObject>& instant,const double& clear_time){
 	int size = (int)history.size();
-	int new_next = (next+ 1) % size ;
-	if(new_next != last){ // at least 2 empty space in vector
+	int new_next = (next + 1) % size;
+	 if(new_next != last){ // at least 2 empty space in vector
 		history[next] = instant ;
 		next = new_next ;
-	}else if(history[new_next]->time < clear_time){ // insufficient empty space but oldest element can be deleted
+	}else if(history[last]->time < clear_time && history[(last+1)%size]->time < clear_time){ // insufficient empty space but oldest element can be deleted
 		history[next] = instant;
 		next = new_next;
 		last = (last + 1) % size;
@@ -482,14 +481,14 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 	double clean_time = vantage_time - history_kept;
 	std::vector<int64_t> object_deletes ;
 	for (auto& [id, history] : objects) {
-		if(id%clean_cycles == runs%clean_cycles){
+		if(std::abs(id)%clean_cycles == runs%clean_cycles){
 			if(history.cleanHistory(clean_time)){
 				object_deletes.push_back(id) ;
 			}
 		}
 	}
 	for(auto& id : object_deletes){
-		objects.erase(id) ;
+		objects.erase(id) ;	
 	}
 
 
@@ -937,7 +936,7 @@ void Timeline::applyPendingRollbacks(){
 
 	//Rollback the objects
 	for (auto& [id, time] : object_rollbacks) {
-		//printf("Deleting object %lld after %f\n", id, time);
+		//printf("Deleting object %lld after %lf\n", id, time);
 		objects[id].deleteAfter(time);
 		if (objects[id].empty()) {
 			objects.erase(id);
