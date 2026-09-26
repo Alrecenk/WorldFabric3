@@ -37,7 +37,7 @@ namespace Narball{
 
 enum AppType { GAME, DEDICATED_SERVER, DESYNC_CHECKER} ;
 
-inline AppType which_app = GAME;
+inline AppType which_app = DEDICATED_SERVER;
 
 inline std::shared_ptr<RenderTarget> createRenderTarget(int width, int height, VulkanPlugin* window) {
 
