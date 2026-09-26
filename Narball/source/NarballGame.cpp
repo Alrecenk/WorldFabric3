@@ -85,9 +85,6 @@ void NarballGame::enter(std::shared_ptr<MachineState> from) {
 		fancy_interpolation = false;
 	}
 
-	grid_width =1 ;
-	grid_height = 1 ;
-
 	//Host initializes the field and balls
 	if(worlds->amHosting()){
 		double current_time = worlds->getWorldTime(NARBALL);
