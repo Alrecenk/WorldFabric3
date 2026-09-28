@@ -4,6 +4,7 @@
 #include "Physics.h"
 #include "WorldPlugin.h"
 #include "local_ptr.h"
+#include "ActionMap.h"
 
 
 
@@ -204,13 +205,15 @@ auto static getStructure(RigidBody& o){
 		o.pose, o.inv_pose, o.inv_moment, o.AABB) ; // TODO the could be computed with onDeserialize to reduce network load
 }
 
-class RigidBodyView : public ObjectView<RigidBody> {
+class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
 public:
 
 
 	int64_t id;
 	int scene_id = -1;
+	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
+	glm::mat4 pose ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
@@ -223,6 +226,9 @@ public:
 	void destroyed() override;
 
 	~RigidBodyView() = default;
+
+	void receiveAction(RayGrab* action, ActionTrigger* trigger) override;
+	void receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) override;
 
 
 	class ObjectType {
@@ -382,8 +388,8 @@ public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
 	static inline int ticks_per_second = 120 ;
-	static inline int constraint_iterations = 4 ;
-	static inline int frame_slices = 20;
+	static inline int constraint_iterations = 8 ;
+	static inline int frame_slices = 36;
 
 	Cell(){};
 

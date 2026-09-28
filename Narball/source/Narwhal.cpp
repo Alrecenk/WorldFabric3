@@ -553,7 +553,7 @@ void NarwhalView::destroyed() {
 	}
 }
 
-void NarwhalView::receiveAction(std::shared_ptr<NarwhalControlAction>& control, std::shared_ptr<ActionTrigger>& trigger){
+void NarwhalView::receiveAction(NarwhalControlAction* control, ActionTrigger* trigger){
 	if(control->player_id == last_view.player_id){ // if I am owned by the player submitting the action
 		WorldPlugin* worlds = getTool<WorldPlugin>();
 		worlds->queue(NARBALL,id,&Narwhal::setControls,control->left_stick, control->right_stick,control->input_num) ;

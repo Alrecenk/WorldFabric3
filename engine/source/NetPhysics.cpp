@@ -195,32 +195,76 @@ void RigidBody::runPhysics(){
 
 //created is called when an objectis observed that ws no observed last time view was called on the world
 void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
 	last_view = body;
-	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, body->position);
 	pose = pose * glm::mat4_cast(body->orientation);
 	pose = pose * types[body->render_type].render_transform;
-	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene_id = scene->createInstance(types[body->render_type].model, pose);
+	std::shared_ptr<GLTF> model = scene->getModelController(types[body->render_type].model) ;
+	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1), this));
+	trigger_id = action_map->addTrigger(trigger);
 }
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
 void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body){
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
 	last_view = body;
-	glm::mat4 pose = glm::mat4(1.0f);
+	pose = glm::mat4(1.0f); // TODO interpolate ,extrapolate for actual time
 	pose = glm::translate(pose, body->position);
 	pose = pose * glm::mat4_cast(body->orientation);
 	pose = pose * types[body->render_type].render_transform;
-	ScenePlugin* scene = getTool<ScenePlugin>();
 	scene->setPose(scene_id, pose);
+	std::shared_ptr<GLTF> model = scene->getModelController(types[body->render_type].model);
+	action_map->moveTrigger(trigger_id, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1));
 }
 
 //Destroyed is called when an observation that was present in the last observation is no longer observed
 //This view will be deleted immediately after this call (it's destructor will be called after this)
 void RigidBodyView::destroyed(){
 	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
 	scene->deleteInstance(scene_id);
+	action_map->removeTrigger(trigger_id);
 }
+
+
+void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
+	if (action->held == -1 && last_view->inv_mass > 0) { // no piece currently held and this body is grabbable
+		ScenePlugin* scene = getTool<ScenePlugin>();
+		std::shared_ptr<GLTF> model = scene->getModelController(types[last_view->render_type].model);
+
+		glm::mat4 scene_to_model_space = glm::inverse(pose);
+		glm::vec3 model_origin = scene_to_model_space * glm::vec4(action->origin, 1); // positions have 1 in slot 4 to include translation
+		glm::vec3 model_direction = scene_to_model_space * glm::vec4(action->direction, 0);
+
+		float t = model->rayTrace(model_origin, model_direction);
+		if (t > 0 && t < action->hover_depth) {// Only act if the actual model was hit and the closest
+			action->hover = last_view->id;
+			action->hover_depth = t;
+			if (action->clicked) {
+				action->next_held = last_view->id;
+				action->active_item = trigger ;
+			}
+		}
+	}
+}
+
+void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
+	if(signal == RayGrab::CLICKED){
+		printf("grabbed: %lld\n", last_view->id);
+	}else if(signal == RayGrab::RELEASED){
+		action->active_item = nullptr ;
+		action->next_held = -1 ;
+		printf("released: %lld\n", last_view->id) ;
+	}else if(signal == RayGrab::UPDATED){
+		printf("updating: %lld\n", last_view->id);
+	}
+}
+
 
 
 int RigidBodyView::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
