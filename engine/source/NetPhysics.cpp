@@ -60,6 +60,17 @@ namespace NetPhysics{
 	}
 
 void RigidBody::integrateVelocity(float dt){
+	float speed = glm::length(velocity) ;
+	if(speed > max_speed){
+		velocity *= max_speed / speed ;
+	}
+
+	float angular_speed = glm::length(angular_velocity);
+	if (speed > max_angular_speed) {
+		angular_velocity *= max_angular_speed / angular_speed;
+	}
+
+
 	position += velocity * dt;
 	//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
 	// Update orientation quaternion
@@ -112,6 +123,27 @@ void RigidBody::integrateAcceleration(float dt){
 }
 
 void RigidBody::applyConstraintImpulses(){
+
+	if(pin_enabled){
+		glm::vec3 a = pose * glm::vec4(pin_local, 1);
+		glm::vec3 error = pin_world - a;
+		float l = glm::length(error) ;
+		if( l > 0.01f){
+			//printf("velocity: %f,%f,%f\n", velocity.x, velocity.y, velocity.z);
+			//printf("angular velocity: %f,%f,%f\n", angular_velocity.x, angular_velocity.y, angular_velocity.z);
+			//printf("pin_local: %f,%f,%f\n", pin_local.x, pin_local.y, pin_local.z);
+			//printf("pin_world: %f,%f,%f\n", pin_world.x, pin_world.y, pin_world.z);
+			//printf("error: %f,%f,%f\n", error.x, error.y, error.z);
+			glm::vec3 target_velocity = (error) * pin_coefficient ;
+			glm::vec3 r = pin_world - position;
+			glm::vec3 v = velocity + glm::cross(angular_velocity, r);
+			glm::vec3 impulse = (target_velocity - v) * pin_strength ;
+			//printf("impulse: %f,%f,%f\n", impulse.x, impulse.y,impulse.z) ;
+			velocity += impulse * inv_mass;
+			angular_velocity += inv_moment * glm::cross(r, impulse);
+		}
+	}
+
 	std::vector<int64_t> new_constraints ;
 	for(const int64_t& c_id : constraints){
 		std::shared_ptr<const ManifoldCollision> manifold= read<ManifoldCollision>(c_id);
@@ -256,12 +288,19 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
 	if(signal == RayGrab::CLICKED){
 		printf("grabbed: %lld\n", last_view->id);
+		grab_distance = action->hover_depth ;
+		glm::vec3 world_point = action->origin + action->direction *  grab_distance;
+		local_point = last_view->inv_pose * glm::vec4(world_point,1.0) ;
+		getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setPin, world_point, local_point) ;
 	}else if(signal == RayGrab::RELEASED){
 		action->active_item = nullptr ;
 		action->next_held = -1 ;
 		printf("released: %lld\n", last_view->id) ;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::disablePin);
 	}else if(signal == RayGrab::UPDATED){
-		printf("updating: %lld\n", last_view->id);
+		//printf("updating: %lld\n", last_view->id);
+		glm::vec3 world_point = action->origin + action->direction * grab_distance;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setPin, world_point, local_point);
 	}
 }
 
@@ -329,8 +368,6 @@ void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
 
 }
 void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
-
-
 
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
@@ -741,7 +778,8 @@ void registerPhysics(){
 	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
 	worlds->registerMethod(&RigidBody::addConstraints, "RigidBody add constraints");
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
-	
+	worlds->registerMethod(&RigidBody::setPin, "RigidBody::setPin");
+	worlds->registerMethod(&RigidBody::disablePin, "RigidBody::disablePin");
 	
 	worlds->registerClass<Cell>("Cell");
 	worlds->registerMethod(&Cell::addBody,"addBody") ;

@@ -154,6 +154,14 @@ public:
 
 	std::vector<int64_t> constraints ;
 
+	bool pin_enabled = false;
+	glm::vec3 pin_world;
+	glm::vec3 pin_local ;
+	static inline float pin_coefficient = 10.0f;
+	static inline float pin_strength = 0.05f;
+	static inline float max_speed = 40.0f;
+	static inline float max_angular_speed = 20.0f ;
+
 
 	RigidBody(){}
 
@@ -196,13 +204,25 @@ public:
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics() ;
+
+	void setPin(const glm::vec3& world_point, const glm::vec3& local_point){
+		pin_enabled = true;
+		pin_world = world_point ;
+		pin_local = local_point ;
+	}
+
+	void disablePin(){
+		pin_enabled = false;
+	}
 };
 
 
 auto static getStructure(RigidBody& o){
 	return std::tie(o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o. render_type, o.shape, o.constraints,
 		o.elasticity, o.friction, o.drag, o.angular_drag, o.inv_mass, o.base_inv_moment, // TODO these could be grouped into a local_ptr to reduce network load
-		o.pose, o.inv_pose, o.inv_moment, o.AABB) ; // TODO the could be computed with onDeserialize to reduce network load
+		o.pose, o.inv_pose, o.inv_moment, o.AABB,// TODO the could be computed with onDeserialize to reduce network load
+		o.pin_enabled, o.pin_world, o.pin_local // TODO yeah, these shouldn't be here either, no wonder it's so slow
+		) ; 
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
@@ -214,6 +234,8 @@ public:
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
 	glm::mat4 pose ;
+	glm::vec3 local_point ;
+	float grab_distance = 0 ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;

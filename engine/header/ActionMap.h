@@ -223,6 +223,7 @@ public:
 	bool released = false; // if the mouse was just released this frame
 	bool pressed = false;
 	int hits = 0 ;
+	std::string world ;
 
 	ActionTrigger* active_item; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
 	static inline int RELEASED = 1 ;

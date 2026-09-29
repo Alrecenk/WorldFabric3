@@ -44,6 +44,8 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 		cell->disableCollision(id, mouse_body);
 	}
 	*/
+
+	mouse_action->world = WORLD ;
 }
 
 //Called every frame while the state is active
