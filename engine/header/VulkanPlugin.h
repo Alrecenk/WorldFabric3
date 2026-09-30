@@ -324,7 +324,11 @@ public:
 	
 	std::shared_ptr<RenderTarget> window_target;
 
+	bool fullscreen = true ;
+	std::thread SDL_thread ;
+	bool sdl_ready  = false;
 	static inline int last_sdl_input_num = -1 ; // version user inputs so input latency can be measured
+	
 
 	// Creates a window and connects to controllers and other hardware
 	VulkanPlugin(const std::string& title, bool vsync, bool fullscreen);
@@ -334,6 +338,8 @@ public:
 	void initialize() override;
 
 	void run() override;
+
+	void runSDLThread() ;
 
 	// returns the key code of the last key pressed
 	int getLastKeyPress();

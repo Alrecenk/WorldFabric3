@@ -55,6 +55,8 @@ void AsyncPlugin::stopPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins
 		if (p->async_enabled) {
 			p->stop();
 			p->cv.notify_one();
+		}else{
+			p->stopped = true ;
 		}
 	}
 	bool any_active = true;

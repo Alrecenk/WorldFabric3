@@ -252,6 +252,11 @@ void WorldPlugin::run(const std::string& world_name, double dt){
 // Returns if successful (may fail if world_name is taken already or parameters are invalid
 bool WorldPlugin::createWorld(const std::string& world_name, float info_speed, float min_event_duration, float max_read_distance){
 	lock.lock() ;
+
+	if (clear_worlds) {
+		actuallyClearWorlds();
+	}
+
 	if(worlds.find(world_name) != worlds.end()){
 		lock.unlock();
 		return false;

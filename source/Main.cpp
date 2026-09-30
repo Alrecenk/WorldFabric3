@@ -41,7 +41,7 @@
 #include <thread>
 
 using std::string;
-
+using namespace std::chrono_literals;
 
 
 std::shared_ptr<RenderTarget> createRenderTarget(int width, int height, VulkanPlugin* window) {
@@ -329,7 +329,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, true, false)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -553,6 +553,9 @@ int exampleMain(int argc, char* argv[]) {
 	thread_signals->signalAll();
 	printf("joining threads...\n");
 	AsyncPlugin::stopPlugins(plugins);
+	
+	ContentAddressedStorage::shutting_down = true; // prevents cricular reference crash on shutdowm
+	
 
 	// World Plugin makes more threads with its sockets that need to be cleaned up to not get an error on exit
 	WorldPlugin* worlds = getTool<WorldPlugin>();
@@ -561,7 +564,10 @@ int exampleMain(int argc, char* argv[]) {
 		worlds->disconnect();
 	}
 
-	ContentAddressedStorage::shutting_down = true ; // prevents cricular reference crash on shutdowm
+	VulkanPlugin* window = getTool<VulkanPlugin>();
+	while(window->sdl_ready){ // wait for SDL event processing to stop
+		std::this_thread::sleep_for(10ms);
+	}
 
 	return 0;
 }
