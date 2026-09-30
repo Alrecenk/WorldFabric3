@@ -44,6 +44,8 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 		cell->disableCollision(id, mouse_body);
 	}
 	*/
+
+	mouse_action->world = WORLD ;
 }
 
 //Called every frame while the state is active
@@ -76,6 +78,8 @@ void NetPhysicsApp::run() {
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
 
+	mouse_action->performAction(ray_origin, ray_direction, window->mouseDown(1)) ;
+
 	
 	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth;
 	
@@ -89,7 +93,7 @@ void NetPhysicsApp::run() {
 
 	updateCamera();
 	
-	if (clicking) {
+	if (window->keyDown(SDLK_SPACE) && !space_down) {
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
 		glm::mat4 r = glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds() * 0.002), glm::vec3(0, 1, 0));
@@ -122,6 +126,7 @@ void NetPhysicsApp::run() {
 			worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 		}
 	}
+	space_down = window->keyDown(SDLK_SPACE);
 	
 
 	// Check if escape pressed to exit

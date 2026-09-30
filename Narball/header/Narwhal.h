@@ -147,7 +147,7 @@ public:
 	//Computes the scene pose of a ball
 	glm::mat4 computePose(std::shared_ptr<const Narwhal>& nawhal);
 
-	void receiveAction(std::shared_ptr<NarwhalControlAction>& control, std::shared_ptr<ActionTrigger>& trigger) override;
+	void receiveAction(NarwhalControlAction* control, ActionTrigger* trigger) override;
 	
 };
 

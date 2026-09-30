@@ -58,7 +58,7 @@ void VulkanPlugin::initialize() {
 
 // pushes image on render target onto window and updates button and mouse
 void VulkanPlugin::run() {
-
+	printf("calling run: %lld\n", timeMilliseconds());
 	// Clear out any images and buffers whose shared_ptr handles have been lost
 	VulkanBuffer::buffer_lock.lock();
 	std::chrono::high_resolution_clock::time_point current_time = now();
@@ -688,10 +688,9 @@ void VulkanPlugin::processInput(){
 
 
 void VulkanPlugin::draw(){
-
 	auto current_frame = frames[frame_number % CHAIN_FRAMES];
 	//wait until the gpu has finished rendering the last frame. Timeout in micros
-	VK_CHECK(vkWaitForFences(device, 1, &current_frame.render_fence, true, 500000000));
+	VK_CHECK(vkWaitForFences(device, 1, &current_frame.render_fence, true, 10000000)); // continue in 1/100th of a second regardless to not block other plugins
 	logTimes();
 
 	//current_frame._deletionQueue.flush();

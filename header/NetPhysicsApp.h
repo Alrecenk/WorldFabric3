@@ -38,6 +38,10 @@ private:
 	int light_id = -1; // Scene light
 	float mouse_depth = 11.0f;
 	float mouse_size = 0.1f;
+	int mouse_particle_id = -1; 
+	std::shared_ptr<RayGrab> mouse_action = std::make_shared<RayGrab>() ;
+	bool space_down = false;
+
 	std::chrono::high_resolution_clock::time_point last_run_time;
 	std::chrono::high_resolution_clock::time_point current_time;
 
@@ -45,9 +49,6 @@ private:
 	std::string version = "np0.01" ;
 	std::chrono::high_resolution_clock::time_point connect_time = now();
 	int64_t cell_id = -1 ;
-
-	int64_t held_body = -1;
-	int64_t mouse_body = -1;
 
 
 	glm::vec3 min = { -4,-4,-4 };
