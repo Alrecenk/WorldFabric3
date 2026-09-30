@@ -19,35 +19,23 @@
 #include "stb_image.h"
 
 
+using namespace std::chrono_literals;
+
 // Boots SteamVR and sets up openGL and links to controllers and other hardware
 VulkanPlugin::VulkanPlugin(const std::string& title, bool vsync, bool fullscreen) {
 		this->title = title;
 		vsync_enabled = vsync ;
-		// We initialize SDL and create a window with it. 
-		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
-
-		SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
-
-		window = SDL_CreateWindow(
-			title.c_str(),
-			window_width,
-			window_height,
-			window_flags
-		);
-
-		if(fullscreen){
-			SDL_SetWindowFullscreen(window, SDL_TRUE);
-			SDL_GetWindowSize(window, &window_width, &window_height);
-		}
-
-		if (window == NULL) {
-			printf("%s - Window could not be created! SDL Error: %s\n", __FUNCTION__, SDL_GetError());
-		}
-		using namespace std::chrono_literals;
+		this->fullscreen = fullscreen ;
+		
+		SDL_thread = std::thread(&VulkanPlugin::runSDLThread, this);
+		SDL_thread.detach();
+		
 		std::this_thread::sleep_for(100ms) ;
+		while(!sdl_ready){
+			std::this_thread::sleep_for(20ms);
+		}
 
 		initVulkan();
-		SDL_StartTextInput();
 		async_enabled = false; // Needs to run on main thread to access vulkan
 }
 
@@ -56,9 +44,43 @@ void VulkanPlugin::initialize() {
 	
 }
 
+void VulkanPlugin::runSDLThread(){
+	// We initialize SDL and create a window with it. 
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
+
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+	window = SDL_CreateWindow(
+		title.c_str(),
+		window_width,
+		window_height,
+		window_flags
+	);
+
+	if (fullscreen) {
+		SDL_SetWindowFullscreen(window, SDL_TRUE);
+		SDL_GetWindowSize(window, &window_width, &window_height);
+	}
+
+	if (window == NULL) {
+		printf("%s - Window could not be created! SDL Error: %s\n", __FUNCTION__, SDL_GetError());
+	}
+	using namespace std::chrono_literals;
+	std::this_thread::sleep_for(100ms);
+
+	SDL_StartTextInput();
+	sdl_ready = true ;
+
+	
+	while(!stopped){
+		processInput(); 
+		std::this_thread::sleep_for(5ms);
+	}
+	sdl_ready = false;
+}
+
 // pushes image on render target onto window and updates button and mouse
 void VulkanPlugin::run() {
-	printf("calling run: %lld\n", timeMilliseconds());
 	// Clear out any images and buffers whose shared_ptr handles have been lost
 	VulkanBuffer::buffer_lock.lock();
 	std::chrono::high_resolution_clock::time_point current_time = now();
@@ -116,13 +138,10 @@ void VulkanPlugin::run() {
 	lock.unlock();
 
 
-	processInput(); // process input both before and after draw to reduce input latency
-
 	if(!minimized){
 		draw();
 	}
 	
-	processInput(); // process input both before and after draw to reduce input latency
 
 	lock.lock();
 	if (resize_requested) {
