@@ -493,8 +493,8 @@ int exampleMain(int argc, char* argv[]) {
 		window->enableRenderTiming(concat("./performance_log_", t) + ".csv");
 	}
 
-	//WorldPlugin::enableEventLogging(concat("./event_log_", t) +" .csv", WorldPlugin::FINAL_EVENTS);
-	//WorldPlugin::enableEventLogging(concat("./event_log_", t) + " .csv", concat("./extended_log_", t) + " .csv", WorldPlugin::FINAL_EVENTS);
+	WorldPlugin::enableEventLogging(concat("./event_log_", t) +".csv", WorldPlugin::FINAL_EVENTS);
+	//WorldPlugin::enableEventLogging(concat("./event_log_", t) + ".csv", concat("./extended_log_", t) + " .csv", WorldPlugin::FINAL_EVENTS);
 
 	std::map<int, std::string > plugin_name;
 	plugin_name[0] = "openXR";
@@ -577,4 +577,5 @@ int main(int argc, char* argv[]) {
 	_set_error_mode(_OUT_TO_STDERR);
 	//Narball::main(argc, argv);
 	exampleMain(argc, argv);
+	//CSVLog::findDesync({ "event_log_1.csv", "event_log_2.csv" }, "time", 1.0);
 }
