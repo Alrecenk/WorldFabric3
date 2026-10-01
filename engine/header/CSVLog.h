@@ -51,7 +51,7 @@ public:
 	std::ofstream file; //TODO use a general stream to enable sending logging data over the network?
 	
 	//holds log lines in a time sorted order so they can be output in that time order instead of when logged
-	std::map<double, std::vector<std::string>> sort_buffer ;
+	std::map<double, std::set<std::string>> sort_buffer ;
 	static inline double max_buffer_time = 2.0; // how deep in time the buffer can get before being pushed to the log file
 
 	template <class... Values>
@@ -76,8 +76,8 @@ public:
 	template <class... Values>
 	void logOrdered(double time, const Values&... values) {
 		std::string line = getLogLine(std::forward<const Values&>(values)...) ;
-		sort_buffer[time].push_back(line) ;
-		// Pop everything offthe buffer that is older than max_bufer_time
+		sort_buffer[time].insert(line) ;
+		// Pop everything off the buffer that is older than max_bufer_time
 		auto it = sort_buffer.begin() ;
 		while(it->first < time - max_buffer_time){
 			for(auto& line : it->second){
@@ -139,8 +139,11 @@ public:
 
 	static inline std::vector<std::pair<double, std::string>> loadTimedRows(const std::string& file_path,const std::string& time_header){
 		std::ifstream fin(file_path);
-		if (!fin)
+		if (!fin){
+			printf("Cannot open CSV file: %s\n", file_path.c_str()) ;
 			throw std::runtime_error("Cannot open CSV file: " + file_path);
+
+		}
 
 		std::string headerLine;
 		if (!std::getline(fin, headerLine))

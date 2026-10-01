@@ -487,24 +487,32 @@ void Timeline::run(const glm::vec3 vantage, double vantage_time) {
 			}
 		}
 	}
-	for(auto& id : object_deletes){
-		objects.erase(id) ;	
+	for (auto& id : object_deletes) {
+		objects.erase(id);
 	}
 
-
-	//auto mid_time2 = now();
-	//only clean the history periodically since it's kind of expensive and having a little extra is fine
 	std::vector<double> bucket_deletes; // map on time allows to be sorted by actual game time
 	for(auto& [end_time, event_bucket]: event_history.history){
 		if(end_time < clean_time) { // if bucket is entirely before clean time
 			bucket_deletes.push_back(end_time) ;
 			for (auto& event : event_bucket) {
+				if (WorldPlugin::log_type == WorldPlugin::FINAL_EVENTS && event->actual_run_time >= 0) { // connection events have no runtime and aren't logged
+					VoidEvent* void_event = dynamic_cast<VoidEvent*>(event.get());
+					if (void_event != nullptr) {
+						std::string mth = registry->method_name[void_event->method_id];
+						WorldPlugin::log->logOrdered(event->actual_run_time,mth, event->object_id, event->actual_run_time, event->actual_run_position.x, event->actual_run_position.y, event->actual_run_position.z);
+					}
+					CreateEvent* create_event = dynamic_cast<CreateEvent*>(event.get());
+					if (create_event != nullptr) {
+						std::string cls = registry->class_name[create_event->new_object->getTypeId(registry.get())] ;
+						WorldPlugin::log->logOrdered(event->actual_run_time, "create " + cls, event->object_id, event->actual_run_time, event->actual_run_position.x, event->actual_run_position.y, event->actual_run_position.z);
+					}
+				}
 				event->parent.reset(); // break the chain of event parents which would otherwise outlive the events indefinitely
 			}
 		}
 	}
 	
-	//TODO log events on delete in time order for desync checker
 	for (double end_time : bucket_deletes){
 		event_history.history.erase(end_time) ;
 	}

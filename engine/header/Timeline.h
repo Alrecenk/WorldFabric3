@@ -211,7 +211,7 @@ public:
 		bool observation_enabled = true; // whether observations are generated automatically for the buffer
 
 		ObjectHistory() {
-			throw std::runtime_error("Object history is being cvreated empty!");
+			throw std::runtime_error("Object history is being created empty!");
 		}
 
 		ObjectHistory(std::shared_ptr<WorldObject> first_instant) {
