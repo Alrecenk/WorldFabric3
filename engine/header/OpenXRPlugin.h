@@ -144,7 +144,7 @@ public:
 	// Returns the current value a single valued action(like a trigger)
 	float getValue(std::string action_name);
 
-	// Returns the current value a vector action (like a joystick)
+	// Returns the current value of a vector action (like a joystick)
 	glm::vec2 getVector(std::string action_name);
 
 	// Returns the value of a boolean action (like a button press)
