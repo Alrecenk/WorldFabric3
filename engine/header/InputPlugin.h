@@ -44,14 +44,25 @@ public:
 		InputType type;
 		std::string name;
 		std::vector<InputSource> bind;
+
+		bool last_frame_bool = false;
+		int last_frame = 0 ;
+		bool last_bool  = false;
+
 	};
 		
 	
-	void parseInputFile(const std::string action_file_json) ;
+	void parseConfig(Variant& config_file) ;
 
 	int getActionID(const std::string& action) ;
 
 	bool getBoolean(int action_id);
+
+	//If bool true this frame but not last frame
+	bool getPressed(int action_id);
+
+	//If bool false this frame but not last frame
+	bool getReleased(int action_id);
 
 	float getFloat(int action_id);
 
@@ -64,6 +75,7 @@ public:
 
 private:
 	int frame = 0 ;
+	Variant action_file;
 	std::unordered_map<std::string, int> name_to_action_id ;
 	std::unordered_map<int, Action> actions ;
 
@@ -76,6 +88,6 @@ private:
 	std::unordered_map<int, std::vector<int>> sdl_mouse;
 	std::unordered_map<int, std::vector<std::pair<int,int>>> sdl_gamepad;
 
-
+	Variant action_file ;
 };
 #endif // #ifndef _INPUT_PLUGIN_H_
