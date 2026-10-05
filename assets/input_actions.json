@@ -11,6 +11,20 @@
       ]
     },
     {
+      "name": "create",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "space"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "c"
+        }
+      ]
+     },
+    {
       "name": "rotate",
       "type": "boolean",
       "binding": [
@@ -26,7 +40,7 @@
       "binding": [
         {
           "source": "SDL_KEY",
-          "path": "d"
+          "path": "w"
         },
         {
           "source": "SDL_KEY",
@@ -73,16 +87,6 @@
         {
           "source": "SDL_KEY",
           "path": "right"
-        }
-      ]
-    },
-    {
-      "name": "create",
-      "type": "boolean",
-      "binding": [
-        {
-          "source": "SDL_KEY",
-          "path": "space"
         }
       ]
     },

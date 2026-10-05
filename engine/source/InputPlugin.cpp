@@ -7,6 +7,7 @@
 //Takes as input a path on disk to a json action file that matches the spec
 InputPlugin::InputPlugin(const std::string input_action_file){
 	action_file = Variant::loadJSONFile(input_action_file) ;
+	//action_file.printFormatted();
 	parseConfig(action_file);
 }
 
@@ -31,7 +32,6 @@ void InputPlugin::parseConfig(Variant& config_file){
 		act.name = action_file["actions"][a]["name"].getString() ;
 		act.type = type_string_to_enum[toLower(action_file["actions"][a]["type"].getString())];
 		int num_bindings = action_file["actions"][a]["binding"].getArrayLength();
-		std::set<InputSource> sorces ;
 		for(int b = 0 ;b < num_bindings;b++){
 			Variant bind = action_file["actions"][a]["binding"][b] ;
 			InputSource source = source_string_to_enum[toLower(bind["source"].getString())] ;
@@ -41,15 +41,15 @@ void InputPlugin::parseConfig(Variant& config_file){
 				if(bind["path"].type_ == Variant::INT){
 					int key_code = bind["path"].getInt();
 					sdl_key[a].push_back((SDL_KeyCode)key_code) ;
-					printf("bound key code :%d\n", key_code);
+					//printf("bound key code :%d\n", key_code);
 				}else if(bind["path"].type_ == Variant::STRING){
 					sdl_key[a].push_back(toKeycode(bind["path"].getString())) ;
-					printf("bound key code :%d\n", sdl_key[a][sdl_key[a].size()-1]);
+					//printf("bound key code :%d\n", sdl_key[a][sdl_key[a].size()-1]);
 				}
 			}else if(source == SDL_MOUSE){
 				if (bind["path"].type_ == Variant::INT) {
 					sdl_mouse[a].push_back(bind["path"].getInt());
-					printf("bound mouse key:%d\n", bind["path"].getInt()) ;
+					//printf("bound mouse key:%d\n", bind["path"].getInt()) ;
 				}else{
 					sdl_mouse[a].push_back(sdl_mouse_to_index[toLower(bind["path"].getString())]) ;
 				}
