@@ -79,23 +79,19 @@ void NetPhysicsApp::run() {
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
-
-	mouse_action->performAction(ray_origin, ray_direction, window->mouseDown(1)) ;
+	bool grabbing = input->getBoolean("grab") ;
+	mouse_action->performAction(ray_origin, ray_direction, grabbing) ;
 
 	
 	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth;
 	
 	glm::mat4 mouse_pose = glm::mat4(1.0f);
 	mouse_pose = glm::translate(mouse_pose, mouse_position);
-	//cell->setPose(mouse_body, mouse_pose);
 
-	bool clicking = window->mouseDown(1) && !mouse_down_left;
-	mouse_down_left = window->mouseDown(1);
-	
 
 	updateCamera();
 	
-	if (window->keyDown(SDLK_SPACE) && !space_down) {
+	if (input->getPressed("create")) {
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
 		glm::mat4 r = glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds() * 0.002), glm::vec3(0, 1, 0));
@@ -132,27 +128,19 @@ void NetPhysicsApp::run() {
 	
 
 	// Check if escape pressed to exit
-	if (window->getLastKeyPress() == SDLK_ESCAPE) {
+	if (input->getPressed("exit")) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
 
-	if(input->getPressed("forward")){
+	int forward = input->getActionID("forward") ;
+	if(input->getPressed(forward)){
 		printf("pressed forward!\n");
 	}
-	if (input->getPressed("jump") ){
-		printf("pressed jump!\n");
-	}
-	if (input->getPressed("grab")) {
-		printf("pressed grab!\n");
+
+	if (input->getReleased(forward)) {
+		printf("released forward!\n");
 	}
 
-	if (input->getReleased("grab") ){
-		printf("released grab!\n");
-	}
-
-	if (input->getBoolean("grab")) {
-		printf("grab down!\n");
-	}
 }
 
 // Called when switching out of this state after the last time run is called
