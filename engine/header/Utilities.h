@@ -147,6 +147,14 @@ inline std::string replaceAll(const std::string& s, std::string const& to_replac
 	return buf;
 }
 
+inline std::string toLower(const std::string& s){
+	std::string result = s;
+	for (char& c : result) {
+		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	}
+	return result;
+}
+
 // Allow global tools to be fetched by type
 template <typename T>
 std::shared_ptr<T> tool = nullptr ;

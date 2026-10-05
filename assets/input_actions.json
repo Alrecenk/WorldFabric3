@@ -1,0 +1,101 @@
+{
+  "actions": [
+    {
+      "name": "grab",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_MOUSE",
+          "path": 1
+        }
+      ]
+    },
+    {
+      "name": "rotate",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_MOUSE",
+          "path": 2
+        }
+      ]
+    },
+    {
+      "name": "forward",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "d"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "up"
+        }
+      ]
+    },
+    {
+      "name": "backward",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "s"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "down"
+        }
+      ]
+    },
+    {
+      "name": "left",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "a"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "left"
+        }
+      ]
+    },
+    {
+      "name": "right",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "f"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "right"
+        }
+      ]
+    },
+    {
+      "name": "jump",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "space"
+        }
+      ]
+    },
+    {
+      "name": "exit",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "escape"
+        }
+      ]
+    }
+
+  ]
+}

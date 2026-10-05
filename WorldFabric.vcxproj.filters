@@ -1566,6 +1566,9 @@
     <ClInclude Include="engine\header\NetPhysics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="engine\header\InputPlugin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2192,6 +2195,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="engine\source\NetPhysics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\source\InputPlugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

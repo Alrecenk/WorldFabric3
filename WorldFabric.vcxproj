@@ -180,6 +180,7 @@
     <ClInclude Include="engine\header\FileInterface.h" />
     <ClInclude Include="engine\header\FlagSet.h" />
     <ClInclude Include="engine\header\GLTF.h" />
+    <ClInclude Include="engine\header\InputPlugin.h" />
     <ClInclude Include="engine\header\LinearPredictiveCode.h" />
     <ClInclude Include="engine\header\local_ptr_test.h" />
     <ClInclude Include="engine\header\MachineState.h" />
@@ -881,6 +882,7 @@
     <ClCompile Include="engine\source\ConvexShape.cpp" />
     <ClCompile Include="engine\source\ConvexSolid.cpp" />
     <ClCompile Include="engine\source\GLTF.cpp" />
+    <ClCompile Include="engine\source\InputPlugin.cpp" />
     <ClCompile Include="engine\source\NetPhysics.cpp" />
     <ClCompile Include="engine\source\OpenXRPlugin.cpp" />
     <ClCompile Include="engine\source\OptimizationProblem.cpp" />

@@ -1,6 +1,7 @@
 #include "NetPhysicsApp.h"
 #include "ParticlePlugin.h"
 #include "ScenePlugin.h"
+#include "InputPlugin.h"
 #include "FlagSet.h"
 
 NetPhysicsApp::NetPhysicsApp() {}
@@ -54,6 +55,7 @@ void NetPhysicsApp::run() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
+	InputPlugin* input = getTool<InputPlugin>();
 
 
 	if(!worlds->amHosting() && !worlds->connected()){
@@ -132,6 +134,24 @@ void NetPhysicsApp::run() {
 	// Check if escape pressed to exit
 	if (window->getLastKeyPress() == SDLK_ESCAPE) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
+	}
+
+	if(input->getPressed("forward")){
+		printf("pressed forward!\n");
+	}
+	if (input->getPressed("jump") ){
+		printf("pressed jump!\n");
+	}
+	if (input->getPressed("grab")) {
+		printf("pressed grab!\n");
+	}
+
+	if (input->getReleased("grab") ){
+		printf("released grab!\n");
+	}
+
+	if (input->getBoolean("grab")) {
+		printf("grab down!\n");
 	}
 }
 
