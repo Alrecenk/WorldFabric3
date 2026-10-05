@@ -9,6 +9,7 @@
 #include "SavePlugin.h"
 #include "StatePlugin.h"
 #include "ViewPlugin.h"
+#include "InputPlugin.h"
 #include "local_ptr.h"
 
 #include "BallTestApp.h"
@@ -374,6 +375,9 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	std::shared_ptr<PanelPlugin> panels(setUpPanels(window.get()));
 	addTool(panels);
 
+	std::shared_ptr<InputPlugin> input = std::make_shared<InputPlugin>("./assets/input_actions.json") ;
+	addTool(input);
+	
 	plugins.push_back(openXR);
 	plugins.push_back(window);
 	plugins.push_back(worlds);
@@ -385,6 +389,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	plugins.push_back(panels);
 	plugins.push_back(steamworks);
 	plugins.push_back(view);
+	plugins.push_back(input);
 }
 
 
@@ -508,6 +513,7 @@ int exampleMain(int argc, char* argv[]) {
 	plugin_name[8] = "panels";
 	plugin_name[9] = "steam";
 	plugin_name[10] = "view";
+	plugin_name[11] = "input";
 	
 	AsyncPlugin::startPlugins(plugins);
 

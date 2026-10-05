@@ -1,0 +1,105 @@
+{
+  "actions": [
+    {
+      "name": "grab",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_MOUSE",
+          "path": 1
+        }
+      ]
+    },
+    {
+      "name": "create",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "space"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "c"
+        }
+      ]
+     },
+    {
+      "name": "rotate",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_MOUSE",
+          "path": 2
+        }
+      ]
+    },
+    {
+      "name": "forward",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "w"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "up"
+        }
+      ]
+    },
+    {
+      "name": "backward",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "s"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "down"
+        }
+      ]
+    },
+    {
+      "name": "left",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "a"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "left"
+        }
+      ]
+    },
+    {
+      "name": "right",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "f"
+        },
+        {
+          "source": "SDL_KEY",
+          "path": "right"
+        }
+      ]
+    },
+    {
+      "name": "exit",
+      "type": "boolean",
+      "binding": [
+        {
+          "source": "SDL_KEY",
+          "path": "escape"
+        }
+      ]
+    }
+
+  ]
+}
