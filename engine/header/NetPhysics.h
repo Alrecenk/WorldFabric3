@@ -139,11 +139,7 @@ public:
 	//glm::mat4 inv_pose = glm::mat4(1);
 
 	local_ptr<ShapeSet> shape ;
-	float elasticity = 0.6f;
-	float friction = 0.6f ;
-	float drag = 0.25f ;
-	float angular_drag = 0.25f ;
-
+	
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
 	glm::mat3 base_inv_moment ;
@@ -151,16 +147,18 @@ public:
 	std::pair<glm::vec3, glm::vec3> AABB;
 
 	int render_type = 0 ;
+	bool receives_impulse = true;
+	bool applies_impulse = true ;
 
 	std::vector<int64_t> constraints ;
 
-	bool pin_enabled = false;
-	glm::vec3 pin_world;
-	glm::vec3 pin_local ;
-	static inline float pin_coefficient = 10.0f;
-	static inline float pin_strength = 0.05f;
+	//TODO make thse configurable per object in a local_ptr struct
 	static inline float max_speed = 40.0f;
 	static inline float max_angular_speed = 20.0f ;
+	static inline float elasticity = 0.6f;
+	static inline float friction = 0.6f;
+	static inline float drag = 0.25f;
+	static inline float angular_drag = 0.25f;
 
 
 	RigidBody(){}
@@ -174,6 +172,8 @@ public:
 
 	void integrateAcceleration(float dt);
 
+	void updatePose() ;
+
 	void applyConstraintImpulses() ;
 
 	void addConstraints(const std::vector<int64_t>& new_constraints);
@@ -185,6 +185,19 @@ public:
 		position = p * glm::vec4(0,0,0,1);
 		velocity = glm::vec3(0);
 		angular_velocity = glm::vec3(0) ;
+	}
+
+	void setState(const glm::vec3& p , const glm::vec3& v, const glm::quat& o, const glm::vec3& av){
+		position = p ;
+		velocity = v ;
+		orientation = o ;
+		angular_velocity = av ;
+		updatePose();
+	}
+
+	void setInteractions(const bool& receives,const bool& applies){
+		receives_impulse = receives ;
+		applies_impulse = applies ;
 	}
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
@@ -205,23 +218,12 @@ public:
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics() ;
 
-	void setPin(const glm::vec3& world_point, const glm::vec3& local_point){
-		pin_enabled = true;
-		pin_world = world_point ;
-		pin_local = local_point ;
-	}
-
-	void disablePin(){
-		pin_enabled = false;
-	}
 };
 
 
 auto static getStructure(RigidBody& o){
-	return std::tie(o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o. render_type, o.shape, o.constraints,
-		o.elasticity, o.friction, o.drag, o.angular_drag, o.inv_mass, o.base_inv_moment, // TODO these could be grouped into a local_ptr to reduce network load
-		o.pose, o.inv_pose, o.inv_moment, o.AABB,// TODO the could be computed with onDeserialize to reduce network load
-		o.pin_enabled, o.pin_world, o.pin_local // TODO yeah, these shouldn't be here either, no wonder it's so slow
+	return std::tie(o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o. render_type, o.shape, o.constraints,o.receives_impulse,o.applies_impulse,
+		o.inv_mass, o.base_inv_moment, o.pose, o.inv_pose, o.inv_moment, o.AABB // TODO these could be grouped into a local_ptr or handled in onDeserialize to reduce network load
 		) ; 
 }
 
@@ -234,8 +236,11 @@ public:
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
 	glm::mat4 pose ;
-	glm::vec3 local_point ;
+	glm::vec3 last_point ;
+	glm::vec3 grab_offset ;
+	double last_time = 0 ;
 	float grab_distance = 0 ;
+	float max_grab_velocity = 15.0f ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
@@ -362,6 +367,10 @@ public:
 	static inline int manifold_iterations = 3 ;
 	static inline float relaxation = 0.7f;
 
+	//whether the objects should apply the impulse
+	bool receives_impulse_1 = true;
+	bool receives_impulse_2 = true;
+
 	ManifoldCollision(){}
 
 	ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2);
@@ -402,7 +411,7 @@ public:
 };
 
 auto static getStructure(ManifoldCollision& o) {
-	return std::tie(o.position, o.id_1, o.shape_1, o.id_2, o.shape_2, o.last_update_time, o.hash, o.points);
+	return std::tie(o.position, o.id_1, o.shape_1, o.id_2, o.shape_2, o.last_update_time, o.hash, o.points, o.receives_impulse_1, o.receives_impulse_2);
 }
 
 class Cell : public WorldObject {

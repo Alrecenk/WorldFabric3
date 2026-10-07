@@ -23,6 +23,7 @@ namespace NetPhysics{
 		if(mass <=0){ // immobile objects have 0 mass and inv_mass
 			base_inv_moment = glm::mat3(0);
 			inv_mass = 0 ;
+			receives_impulse = false;
 		}else{
 			base_inv_moment = glm::inverse(moment);
 			inv_mass = 1.0f/ mass ;
@@ -38,8 +39,8 @@ namespace NetPhysics{
 		position = p ;
 		velocity = v, 
 		angular_velocity = av ;
-		elasticity = RigidBodyView::types[render_type].elasticity ;
-		friction = RigidBodyView::types[render_type].friction;
+		//elasticity = RigidBodyView::types[render_type].elasticity ;
+		//friction = RigidBodyView::types[render_type].friction;
 
 		float mass = 0;
 		glm::mat3 moment(0);
@@ -60,24 +61,33 @@ namespace NetPhysics{
 	}
 
 void RigidBody::integrateVelocity(float dt){
-	float speed = glm::length(velocity) ;
-	if(speed > max_speed){
-		velocity *= max_speed / speed ;
+	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
+		
+		float speed = glm::length(velocity) ;
+		if(speed > max_speed){
+			velocity *= max_speed / speed ;
+		}
+
+		float angular_speed = glm::length(angular_velocity);
+		if (angular_speed > max_angular_speed) {
+			angular_velocity *= max_angular_speed / angular_speed;
+		}
+
+
+		position += velocity * dt;
+		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
+		// Update orientation quaternion
+		// dq/dt = 0.5 * omega * q
+		glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
+		orientation += (omega_quat * orientation) * (0.5f * dt);
+		orientation = glm::normalize(orientation);
+
 	}
 
-	float angular_speed = glm::length(angular_velocity);
-	if (speed > max_angular_speed) {
-		angular_velocity *= max_angular_speed / angular_speed;
-	}
+	updatePose();
+}
 
-
-	position += velocity * dt;
-	//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
-	// Update orientation quaternion
-	// dq/dt = 0.5 * omega * q
-	glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
-	orientation += (omega_quat * orientation) * (0.5f * dt);
-	orientation = glm::normalize(orientation);
+void RigidBody::updatePose(){
 
 	pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, position);
@@ -87,19 +97,20 @@ void RigidBody::integrateVelocity(float dt){
 	glm::mat3 r = glm::mat3_cast(orientation);
 	inv_moment = r * base_inv_moment * glm::transpose(r);
 	AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
-	for(auto& s : shape){
+	for (auto& s : shape) {
 		auto  sAABB = s.getAABB(pose);
-		AABB.first.x = fmin(AABB.first.x, sAABB.first.x) ;
+		AABB.first.x = fmin(AABB.first.x, sAABB.first.x);
 		AABB.second.x = fmax(AABB.second.x, sAABB.second.x);
 		AABB.first.y = fmin(AABB.first.y, sAABB.first.y);
 		AABB.second.y = fmax(AABB.second.y, sAABB.second.y);
 		AABB.first.z = fmin(AABB.first.z, sAABB.first.z);
 		AABB.second.z = fmax(AABB.second.z, sAABB.second.z);
 	}
+
 }
 
 void RigidBody::integrateAcceleration(float dt){
-	if (inv_mass <= 0) { // don't accelerate objects with infinite mass
+	if (inv_mass <= 0 || !receives_impulse) { // don't accelerate objects with infinite mass
 		return;
 	}
 	velocity += acceleration * dt;
@@ -123,41 +134,26 @@ void RigidBody::integrateAcceleration(float dt){
 }
 
 void RigidBody::applyConstraintImpulses(){
-
-	if(pin_enabled){
-		glm::vec3 a = pose * glm::vec4(pin_local, 1);
-		glm::vec3 error = pin_world - a;
-		float l = glm::length(error) ;
-		if( l > 0.01f){
-			//printf("velocity: %f,%f,%f\n", velocity.x, velocity.y, velocity.z);
-			//printf("angular velocity: %f,%f,%f\n", angular_velocity.x, angular_velocity.y, angular_velocity.z);
-			//printf("pin_local: %f,%f,%f\n", pin_local.x, pin_local.y, pin_local.z);
-			//printf("pin_world: %f,%f,%f\n", pin_world.x, pin_world.y, pin_world.z);
-			//printf("error: %f,%f,%f\n", error.x, error.y, error.z);
-			glm::vec3 target_velocity = (error) * pin_coefficient ;
-			glm::vec3 r = pin_world - position;
-			glm::vec3 v = velocity + glm::cross(angular_velocity, r);
-			glm::vec3 impulse = (target_velocity - v) * pin_strength ;
-			//printf("impulse: %f,%f,%f\n", impulse.x, impulse.y,impulse.z) ;
-			velocity += impulse * inv_mass;
-			angular_velocity += inv_moment * glm::cross(r, impulse);
-		}
-	}
-
 	std::vector<int64_t> new_constraints ;
 	for(const int64_t& c_id : constraints){
 		std::shared_ptr<const ManifoldCollision> manifold= read<ManifoldCollision>(c_id);
 		if(manifold){
-			for(const auto& c : manifold->points){
-				glm::vec3 r = c.point - position;
-				if(manifold->id_1 == id){
+			if (manifold->id_1 == id && manifold->receives_impulse_1) {
+				for (const auto& c : manifold->points) {
+					glm::vec3 r = c.point - position;
 					velocity -= c.next_impulse * inv_mass;
 					angular_velocity -= inv_moment * glm::cross(r, c.next_impulse);
-				}else{
+					
+					//printf("  Applying impulse: %f, %f, %f\n", c.next_impulse.x, c.next_impulse.y, c.next_impulse.z) ;
+				}
+			}else if(manifold->id_2 == id && manifold->receives_impulse_2){
+				for (const auto& c : manifold->points) {
+					glm::vec3 r = c.point - position;
 					velocity += c.next_impulse * inv_mass;
 					angular_velocity += inv_moment * glm::cross(r, c.next_impulse);
+					
+					//printf("  Applying impulse: %f, %f, %f\n", c.next_impulse.x, c.next_impulse.y, c.next_impulse.z) ;
 				}
-				//printf("  Applying impulse: %f, %f, %f\n", c.next_impulse.x, c.next_impulse.y, c.next_impulse.z) ;
 			}
 			new_constraints.push_back(c_id) ; // only keep constraints we could read
 		}
@@ -290,17 +286,34 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 		printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_depth ;
 		glm::vec3 world_point = action->origin + action->direction *  grab_distance;
-		local_point = last_view->inv_pose * glm::vec4(world_point,1.0) ;
-		getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setPin, world_point, local_point) ;
+		grab_offset = last_view->position - world_point ;
+		last_point = last_view->position ;
+		last_time = last_view->time ;
+		getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setInteractions, false, true) ;
 	}else if(signal == RayGrab::RELEASED){
 		action->active_item = nullptr ;
 		action->next_held = -1 ;
 		printf("released: %lld\n", last_view->id) ;
-		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::disablePin);
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}else if(signal == RayGrab::UPDATED){
 		//printf("updating: %lld\n", last_view->id);
-		glm::vec3 world_point = action->origin + action->direction * grab_distance;
-		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setPin, world_point, local_point);
+
+		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance ;
+		double dt = last_view->time - last_time ;
+
+		if(dt > 1e-4f){
+
+			glm::vec3 v = (world_point-last_point)/dt ;
+			float speed = glm::length(v) ;
+			if(speed > max_grab_velocity){
+				v *= max_grab_velocity/speed ;
+				world_point = last_point + v*dt ;
+			}
+			getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setState, world_point,v,last_view->orientation, glm::vec3(0,0,0));
+			last_point = world_point;
+			last_time = last_view->time;
+		}
+		
 	}
 }
 
@@ -368,7 +381,6 @@ void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2) {
 
 }
 void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
-
 	//lever arms for torque
 	glm::vec3 r1 = point - body_1->position;
 	glm::vec3 r2 = point - body_2->position;
@@ -379,11 +391,18 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal);
-	float rot_term2 = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, normal), r2), normal);
-	float effective_mass = body_1->inv_mass + body_2->inv_mass + rot_term1 + rot_term2;
+	float effective_mass = 0 ;
+	if(body_1->receives_impulse && body_2->applies_impulse){
+		float rot_term1 = glm::dot(glm::cross(body_1->inv_moment * glm::cross(r1, normal), r1), normal);
+		effective_mass += body_1->inv_mass + rot_term1 ;
+	}
+	if(body_1->applies_impulse && body_2->receives_impulse){
+		float rot_term2 = glm::dot(glm::cross(body_2->inv_moment * glm::cross(r2, normal), r2), normal);
+		effective_mass += body_2->inv_mass + rot_term2;
+	}
 	if (effective_mass <= 1e-6f) {
-		return; // two immovable objects
+		next_impulse = glm::vec3(0,0,0) ;
+		return; // no impulses will be applied
 	}
 
 	//Calculate current change needed based on already applied
@@ -436,17 +455,17 @@ void Collision::setConstraintImpulse(RigidBody* body_1, RigidBody* body_2) {
 	}
 	tangent_impulse = accumulated_friction - warm_tangent_impulse;
 
-
-	body_1->velocity -= tangent_impulse * body_1->inv_mass;
-	body_2->velocity += tangent_impulse * body_2->inv_mass;
-	body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, tangent_impulse);
-	body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, tangent_impulse);
+	if (body_1->receives_impulse && body_2->applies_impulse) {
+		body_1->velocity -= tangent_impulse * body_1->inv_mass;
+		body_1->angular_velocity -= body_1->inv_moment * glm::cross(r1, tangent_impulse);
+	}
+	if (body_1->applies_impulse && body_2->receives_impulse) {
+		body_2->velocity += tangent_impulse * body_2->inv_mass;
+		body_2->angular_velocity += body_2->inv_moment * glm::cross(r2, tangent_impulse);
+	}
 
 	//update warm impulse
 	warm_tangent_impulse += tangent_impulse;
-
-
-	
 	next_impulse += impulse + tangent_impulse ;
 
 }
@@ -553,30 +572,34 @@ void ManifoldCollision::updateConstraints() {
 void ManifoldCollision::setConstraintImpulses() {
 	std::shared_ptr<const RigidBody> body_1 = read<RigidBody>(id_1);
 	std::shared_ptr<const RigidBody> body_2 = read<RigidBody>(id_2);
-	RigidBody copy_1 = *body_1.get();
-	RigidBody copy_2 = *body_2.get();
+	
+	receives_impulse_1 = body_1->receives_impulse && body_2->applies_impulse;
+	receives_impulse_2 = body_2->receives_impulse && body_1->applies_impulse;
+	if (receives_impulse_1 || receives_impulse_2) {
+		RigidBody copy_1 = *body_1.get();
+		RigidBody copy_2 = *body_2.get();
 
-	std::vector<std::pair<glm::vec3,glm::vec3>> warm ;
-	for (auto& p : points) {
-		p.next_impulse = glm::vec3(0,0,0) ;
-		warm.emplace_back(p.warm_impulse, p.warm_tangent_impulse) ;
-	}
-
-	for(int k=0;k<manifold_iterations;k++){
+		std::vector<std::pair<glm::vec3,glm::vec3>> warm ;
 		for (auto& p : points) {
-			p.setConstraintImpulse(&copy_1, &copy_2);
+			p.next_impulse = glm::vec3(0,0,0) ;
+			warm.emplace_back(p.warm_impulse, p.warm_tangent_impulse) ;
 		}
-	}
+	
+		for(int k=0;k<manifold_iterations;k++){
+			for (auto& p : points) {
+				p.setConstraintImpulse(&copy_1, &copy_2);
+			}
+		}
 
-
-	//Scale impulse to avoid overshoot
-	float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
-	int k = 0 ;
-	for (auto& p : points) {
-		p.next_impulse *= scale ;
-		p.warm_impulse = warm[k].first  + scale * (p.warm_impulse - warm[k].first) ;
-		p.warm_tangent_impulse = warm[k].second + scale * (p.warm_tangent_impulse - warm[k].second);
-		k++;
+		//Scale impulse to avoid overshoot
+		float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
+		int k = 0 ;
+		for (auto& p : points) {
+			p.next_impulse *= scale ;
+			p.warm_impulse = warm[k].first  + scale * (p.warm_impulse - warm[k].first) ;
+			p.warm_tangent_impulse = warm[k].second + scale * (p.warm_tangent_impulse - warm[k].second);
+			k++;
+		}
 	}
 	
 }
@@ -778,8 +801,9 @@ void registerPhysics(){
 	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
 	worlds->registerMethod(&RigidBody::addConstraints, "RigidBody add constraints");
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
-	worlds->registerMethod(&RigidBody::setPin, "RigidBody::setPin");
-	worlds->registerMethod(&RigidBody::disablePin, "RigidBody::disablePin");
+	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions") ;
+	worlds->registerMethod(&RigidBody::setPose, "RigidBody::setPose");
+	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
 	
 	worlds->registerClass<Cell>("Cell");
 	worlds->registerMethod(&Cell::addBody,"addBody") ;
