@@ -61,24 +61,33 @@ namespace NetPhysics{
 	}
 
 void RigidBody::integrateVelocity(float dt){
-	float speed = glm::length(velocity) ;
-	if(speed > max_speed){
-		velocity *= max_speed / speed ;
+	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
+		
+		float speed = glm::length(velocity) ;
+		if(speed > max_speed){
+			velocity *= max_speed / speed ;
+		}
+
+		float angular_speed = glm::length(angular_velocity);
+		if (angular_speed > max_angular_speed) {
+			angular_velocity *= max_angular_speed / angular_speed;
+		}
+
+
+		position += velocity * dt;
+		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
+		// Update orientation quaternion
+		// dq/dt = 0.5 * omega * q
+		glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
+		orientation += (omega_quat * orientation) * (0.5f * dt);
+		orientation = glm::normalize(orientation);
+
 	}
 
-	float angular_speed = glm::length(angular_velocity);
-	if (speed > max_angular_speed) {
-		angular_velocity *= max_angular_speed / angular_speed;
-	}
+	updatePose();
+}
 
-
-	position += velocity * dt;
-	//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
-	// Update orientation quaternion
-	// dq/dt = 0.5 * omega * q
-	glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
-	orientation += (omega_quat * orientation) * (0.5f * dt);
-	orientation = glm::normalize(orientation);
+void RigidBody::updatePose(){
 
 	pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, position);
@@ -88,19 +97,20 @@ void RigidBody::integrateVelocity(float dt){
 	glm::mat3 r = glm::mat3_cast(orientation);
 	inv_moment = r * base_inv_moment * glm::transpose(r);
 	AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
-	for(auto& s : shape){
+	for (auto& s : shape) {
 		auto  sAABB = s.getAABB(pose);
-		AABB.first.x = fmin(AABB.first.x, sAABB.first.x) ;
+		AABB.first.x = fmin(AABB.first.x, sAABB.first.x);
 		AABB.second.x = fmax(AABB.second.x, sAABB.second.x);
 		AABB.first.y = fmin(AABB.first.y, sAABB.first.y);
 		AABB.second.y = fmax(AABB.second.y, sAABB.second.y);
 		AABB.first.z = fmin(AABB.first.z, sAABB.first.z);
 		AABB.second.z = fmax(AABB.second.z, sAABB.second.z);
 	}
+
 }
 
 void RigidBody::integrateAcceleration(float dt){
-	if (inv_mass <= 0) { // don't accelerate objects with infinite mass
+	if (inv_mass <= 0 || !receives_impulse) { // don't accelerate objects with infinite mass
 		return;
 	}
 	velocity += acceleration * dt;
@@ -276,17 +286,34 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 		printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_depth ;
 		glm::vec3 world_point = action->origin + action->direction *  grab_distance;
-		local_point = last_view->inv_pose * glm::vec4(world_point,1.0) ;
-		//getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setPin, world_point, local_point) ;
+		grab_offset = last_view->position - world_point ;
+		last_point = last_view->position ;
+		last_time = last_view->time ;
+		getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setInteractions, false, true) ;
 	}else if(signal == RayGrab::RELEASED){
 		action->active_item = nullptr ;
 		action->next_held = -1 ;
 		printf("released: %lld\n", last_view->id) ;
-		//getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::disablePin);
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}else if(signal == RayGrab::UPDATED){
 		//printf("updating: %lld\n", last_view->id);
-		glm::vec3 world_point = action->origin + action->direction * grab_distance;
-		//getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setPin, world_point, local_point);
+
+		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance ;
+		double dt = last_view->time - last_time ;
+
+		if(dt > 1e-4f){
+
+			glm::vec3 v = (world_point-last_point)/dt ;
+			float speed = glm::length(v) ;
+			if(speed > max_grab_velocity){
+				v *= max_grab_velocity/speed ;
+				world_point = last_point + v*dt ;
+			}
+			getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setState, world_point,v,last_view->orientation, glm::vec3(0,0,0));
+			last_point = world_point;
+			last_time = last_view->time;
+		}
+		
 	}
 }
 
@@ -774,6 +801,9 @@ void registerPhysics(){
 	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
 	worlds->registerMethod(&RigidBody::addConstraints, "RigidBody add constraints");
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
+	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions") ;
+	worlds->registerMethod(&RigidBody::setPose, "RigidBody::setPose");
+	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
 	
 	worlds->registerClass<Cell>("Cell");
 	worlds->registerMethod(&Cell::addBody,"addBody") ;

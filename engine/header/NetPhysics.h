@@ -172,6 +172,8 @@ public:
 
 	void integrateAcceleration(float dt);
 
+	void updatePose() ;
+
 	void applyConstraintImpulses() ;
 
 	void addConstraints(const std::vector<int64_t>& new_constraints);
@@ -183,6 +185,19 @@ public:
 		position = p * glm::vec4(0,0,0,1);
 		velocity = glm::vec3(0);
 		angular_velocity = glm::vec3(0) ;
+	}
+
+	void setState(const glm::vec3& p , const glm::vec3& v, const glm::quat& o, const glm::vec3& av){
+		position = p ;
+		velocity = v ;
+		orientation = o ;
+		angular_velocity = av ;
+		updatePose();
+	}
+
+	void setInteractions(const bool& receives,const bool& applies){
+		receives_impulse = receives ;
+		applies_impulse = applies ;
 	}
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
@@ -221,8 +236,11 @@ public:
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
 	glm::mat4 pose ;
-	glm::vec3 local_point ;
+	glm::vec3 last_point ;
+	glm::vec3 grab_offset ;
+	double last_time = 0 ;
 	float grab_distance = 0 ;
+	float max_grab_velocity = 15.0f ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
