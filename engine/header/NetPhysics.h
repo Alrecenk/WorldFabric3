@@ -178,27 +178,11 @@ public:
 
 	void addConstraints(const std::vector<int64_t>& new_constraints);
 
-	void setPose(const glm::mat4& p){
-		pose = p ;
-		inv_pose = glm::inverse(p);
-		orientation = glm::quat_cast(pose);
-		position = p * glm::vec4(0,0,0,1);
-		velocity = glm::vec3(0);
-		angular_velocity = glm::vec3(0) ;
-	}
+	void setPose(const glm::mat4& p);
 
-	void setState(const glm::vec3& p , const glm::vec3& v, const glm::quat& o, const glm::vec3& av){
-		position = p ;
-		velocity = v ;
-		orientation = o ;
-		angular_velocity = av ;
-		updatePose();
-	}
+	void setState(const glm::vec3& p , const glm::vec3& v, const glm::quat& o, const glm::vec3& av);
 
-	void setInteractions(const bool& receives,const bool& applies){
-		receives_impulse = receives ;
-		applies_impulse = applies ;
-	}
+	void setInteractions(const bool& receives,const bool& applies);
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
@@ -206,7 +190,7 @@ public:
 		return r->getIdForType<RigidBody>();
 	}
 
-	std::shared_ptr<WorldObject> deepCopy() override {
+	std::shared_ptr<WorldObject> deepCopy() const override {
 		return std::make_shared<RigidBody>(*this) ;
 	}
 
@@ -236,7 +220,6 @@ public:
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
 	glm::mat4 pose ;
-	glm::vec3 last_point ;
 	glm::vec3 grab_offset ;
 	double last_time = 0 ;
 	float grab_distance = 0 ;
@@ -357,11 +340,13 @@ public:
 	int64_t hash = -1;
 
 	int64_t id_1 = -1;
-	int shape_1 = -1;
+	char shape_1 = -1;
 	int64_t id_2 = -1;
-	int shape_2 = -1;
+	char shape_2 = -1;
 
 	std::vector<Collision> points;
+	char most_recent = 0 ;
+
 	static inline float squared_distance_for_match = 1e-5f;
 	static inline int max_collision_points = 4;
 	static inline int manifold_iterations = 3 ;
@@ -390,13 +375,17 @@ public:
 
 	void runPhysics();
 
+	glm::vec3 getPoint() const;
+	glm::vec3 getNormal() const;
+	glm::vec3 getProjection() const;
+
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
 	int getTypeId(Registry* r) const {
 		return r->getIdForType<ManifoldCollision>();
 	}
 
-	std::shared_ptr<WorldObject> deepCopy() override {
+	std::shared_ptr<WorldObject> deepCopy() const override {
 		return std::make_shared<ManifoldCollision>(*this);
 	}
 
@@ -407,11 +396,11 @@ public:
 	//Functions used on observables or on read objects need to be const
 	void print() const override {
 		printf("ManifoldCollision");
-	}
+	}	
 };
 
 auto static getStructure(ManifoldCollision& o) {
-	return std::tie(o.position, o.id_1, o.shape_1, o.id_2, o.shape_2, o.last_update_time, o.hash, o.points, o.receives_impulse_1, o.receives_impulse_2);
+	return std::tie(o.position, o.id_1, o.shape_1, o.id_2, o.shape_2, o.most_recent,o.last_update_time, o.hash, o.points, o.receives_impulse_1, o.receives_impulse_2);
 }
 
 class Cell : public WorldObject {
@@ -430,7 +419,7 @@ public:
 		return r->getIdForType<Cell>();
 	}
 
-	std::shared_ptr<WorldObject> deepCopy() override {
+	std::shared_ptr<WorldObject> deepCopy() const override {
 		return std::make_shared<Cell>(*this);
 	}
 
@@ -444,6 +433,12 @@ public:
 	void updateCollisions();
 
 	void runPhysics() ;
+
+
+	//Returns the nearest position to the target that the given body could be placed without colliding
+	//with the contents of this cell from the perspective of the active vantage point in the given world
+	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
+	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) ;
 };
 
 auto static getStructure(Cell& o) {
