@@ -163,6 +163,41 @@ set_target_properties(WorldFabric PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT WorldFabric)
 
+# Shaders compile to <name>.spv next to their source, because the app loads them from ./shader and ./Narball/shader.
+# The .spv files are committed, so building without glslc still works.
+find_program(WF_GLSLC NAMES glslc HINTS ${Vulkan_GLSLC_EXECUTABLE} "$ENV{VULKAN_SDK}/Bin" DOC "glslc shader compiler")
+option(WF_COMPILE_SHADERS "Compile GLSL shaders to SPIR-V during the build" ON)
+file(GLOB WF_SHADER_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.vert
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.frag
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.comp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.vert
+    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.frag
+    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.comp)
+if(WF_COMPILE_SHADERS AND WF_GLSLC)
+    message(STATUS "Compiling shaders with ${WF_GLSLC}")
+    set(WF_SHADER_OUTPUTS)
+    foreach(shader ${WF_SHADER_SOURCES})
+        file(RELATIVE_PATH shader_rel ${CMAKE_CURRENT_SOURCE_DIR} ${shader})
+        set(spv ${shader}.spv)
+        set(depfile ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_rel}.d)
+        get_filename_component(depfile_dir ${depfile} DIRECTORY)
+        add_custom_command(
+            OUTPUT ${spv}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${depfile_dir}
+            COMMAND ${WF_GLSLC} -MD -MF ${depfile} ${shader} -o ${spv}
+            DEPENDS ${shader}
+            DEPFILE ${depfile}
+            COMMENT "Compiling shader ${shader_rel}"
+            VERBATIM)
+        list(APPEND WF_SHADER_OUTPUTS ${spv})
+    endforeach()
+    add_custom_target(shaders ALL DEPENDS ${WF_SHADER_OUTPUTS} SOURCES ${WF_SHADER_SOURCES})
+    add_dependencies(WorldFabric shaders)
+elseif(WF_COMPILE_SHADERS)
+    message(WARNING "glslc not found (install the Vulkan SDK or set WF_GLSLC); using the committed .spv files")
+endif()
+
 file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
 add_custom_command(TARGET WorldFabric POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WF_RUNTIME_DLLS} $<TARGET_FILE_DIR:WorldFabric>
