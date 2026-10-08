@@ -789,18 +789,18 @@ public:
 	bool num_instances_changed = false; // changign he size of the buffer requires changign the binding descriptor
 
 	// Buffer to hold the command for indirect drawing
-	VkBuffer draw_indirect_buffer;
-	VkDeviceMemory draw_indirect_buffer_memory;
+	VkBuffer draw_indirect_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory draw_indirect_buffer_memory = VK_NULL_HANDLE;
 	bool draw_indirect_buffer_allocated = false;
 
-	VkBuffer last_draw_indirect_buffer; // hold onto reference to previous so we don't clear it while it's still in use
-	VkDeviceMemory last_draw_indirect_buffer_memory;
+	VkBuffer last_draw_indirect_buffer = VK_NULL_HANDLE; // hold onto reference to previous so we don't clear it while it's still in use
+	VkDeviceMemory last_draw_indirect_buffer_memory = VK_NULL_HANDLE;
 
 	// Texture data
 	std::vector<std::shared_ptr<WFImage>> textures;
 	bool textures_changed = false;
 	bool has_descriptor = false;
-	VkDescriptorSet texture_set_descriptor ;
+	VkDescriptorSet texture_set_descriptor = VK_NULL_HANDLE;
 
 
 	PushConstants push_constants ;
@@ -1046,7 +1046,7 @@ public:
 				//clear buffer we were holding onto just in case
 				if(last_draw_indirect_buffer){
 					vkDestroyBuffer(renderer->device, last_draw_indirect_buffer, nullptr); // delete previous buffer from GPU
-					if (draw_indirect_buffer_memory) {
+					if (last_draw_indirect_buffer_memory) {
 						vkFreeMemory(renderer->device, last_draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
 					}
 				}

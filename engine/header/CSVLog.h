@@ -2,6 +2,7 @@
 #define _CSV_LOG_H_ 1
 
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <set>
 

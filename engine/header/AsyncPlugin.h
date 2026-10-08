@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <vector>
 #include "Utilities.h" // for now() on time initializations
 #include <map>

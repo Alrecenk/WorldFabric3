@@ -2,6 +2,36 @@
 
 #include <filesystem>
 
+#ifndef _MSC_VER
+// IVRSystem methods that return structs by value only work with MSVC's member-function ABI.
+// Other compilers go through OpenVR's C function table instead, whose plain C calls are ABI-compatible.
+// Must mirror the start of VR_IVRSystem_FnTable in openvr_capi.h for IVRSystem_022.
+namespace {
+	struct IVRSystemFnTablePrefix {
+		void (*GetRecommendedRenderTargetSize)(uint32_t* pnWidth, uint32_t* pnHeight);
+		vr::HmdMatrix44_t (*GetProjectionMatrix)(vr::EVREye eEye, float fNearZ, float fFarZ);
+		void (*GetProjectionRaw)(vr::EVREye eEye, float* pfLeft, float* pfRight, float* pfTop, float* pfBottom);
+		bool (*ComputeDistortion)(vr::EVREye eEye, float fU, float fV, vr::DistortionCoordinates_t* pDistortionCoordinates);
+		vr::HmdMatrix34_t (*GetEyeToHeadTransform)(vr::EVREye eEye);
+	};
+
+	IVRSystemFnTablePrefix* getVRSystemFnTable(vr::IVRSystem* system) {
+		static vr::IVRSystem* cached_system = nullptr;
+		static IVRSystemFnTablePrefix* table = nullptr;
+		if (system != cached_system) {
+			vr::EVRInitError error = vr::VRInitError_None;
+			std::string name = std::string("FnTable:") + vr::IVRSystem_Version;
+			table = static_cast<IVRSystemFnTablePrefix*>(vr::VR_GetGenericInterface(name.c_str(), &error));
+			if (error != vr::VRInitError_None) {
+				table = nullptr;
+			}
+			cached_system = system;
+		}
+		return table;
+	}
+}
+#endif
+
 // Boots SteamVR and sets up openGL and links to controllers and other hardware
 OpenXRPlugin::OpenXRPlugin(std::string action_file_path)
 	: m_pHMD(NULL)
@@ -360,7 +390,14 @@ glm::mat4 OpenXRPlugin::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye) {
 	if (!m_pHMD)
 		return glm::mat4(1.0f);
 
+#ifdef _MSC_VER
 	vr::HmdMatrix44_t mat = m_pHMD->GetProjectionMatrix(nEye, near_clip, far_clip);
+#else
+	IVRSystemFnTablePrefix* table = getVRSystemFnTable(m_pHMD);
+	if (!table)
+		return glm::mat4(1.0f);
+	vr::HmdMatrix44_t mat = table->GetProjectionMatrix(nEye, near_clip, far_clip);
+#endif
 
 	return glm::mat4(
 		mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
@@ -377,7 +414,14 @@ glm::mat4 OpenXRPlugin::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye) {
 	if (!m_pHMD)
 		return glm::mat4();
 
+#ifdef _MSC_VER
 	vr::HmdMatrix34_t matEyeRight = m_pHMD->GetEyeToHeadTransform(nEye);
+#else
+	IVRSystemFnTablePrefix* table = getVRSystemFnTable(m_pHMD);
+	if (!table)
+		return glm::mat4();
+	vr::HmdMatrix34_t matEyeRight = table->GetEyeToHeadTransform(nEye);
+#endif
 	glm::mat4 matrixObj(
 		matEyeRight.m[0][0], matEyeRight.m[1][0], matEyeRight.m[2][0], 0.0,
 		matEyeRight.m[0][1], matEyeRight.m[1][1], matEyeRight.m[2][1], 0.0,
