@@ -650,7 +650,7 @@ class Registry {
 
 public:
     std::unordered_map<int, std::unique_ptr<AbstractVoidMethod>> methods;
-    std::unordered_map<int, std::function<std::vector<char>(void*)>> serializers;
+    std::unordered_map<int, std::function<std::vector<char>(const void*)>> serializers;
     std::unordered_map<int, std::function<std::shared_ptr<void>(const std::vector<char>&)>> deserializers;
     std::unordered_map<std::type_index, int64_t> type_to_id;
     std::unordered_map<size_t, int> method_to_id;
@@ -668,8 +668,8 @@ public:
         static_assert(std::tuple_size<decltype(structure)>() > 0, "A class with no data is being registered for serialization!");
 
         int id = (int)(type_to_id.size());
-        serializers[id] = [](void* objPtr) -> std::vector<char> {
-            auto& obj = *static_cast<T*>(objPtr);
+        serializers[id] = [](const void* objPtr) -> std::vector<char> {
+            auto& obj = const_cast<T&>(*static_cast<const T*>(objPtr));
             return serializeTuple(getStructure(obj));
             };
 
@@ -753,7 +753,7 @@ public:
 
     //For internal use
     //Serialize an object with the type matching type id
-    inline std::vector<char> serializeObj(int type_id, void* objPtr) const {
+    inline std::vector<char> serializeObj(int type_id, const void* objPtr) const {
         auto it = serializers.find(type_id);
         if (it != serializers.end()) {
             return it->second(objPtr);
@@ -763,14 +763,20 @@ public:
 
     //Serialize an object into type_id and raw data
     template<typename T>
-    inline std::pair<int, std::vector<char>> serializeObj(std::shared_ptr<T>& obj) const {
+    inline std::pair<int, std::vector<char>> serializeObj(std::shared_ptr<const T>& obj) const {
         int id = getIdForType<T>();
         return { id, serializeObj(id, obj.get()) };
     }
 
+	template<typename T>
+	inline std::pair<int, std::vector<char>> serializeObj(std::shared_ptr<T>& obj) const {
+		int id = getIdForType<T>();
+		return { id, serializeObj(id, obj.get()) };
+	}
+
     //Serialize an object into type_id and raw data
     template<typename T>
-    inline std::pair<int, std::vector<char>> serializeObj(T* obj) const {
+    inline std::pair<int, std::vector<char>> serializeObj(const T* obj) const {
         int id = getIdForType<T>();
         return { id, serializeObj(id, obj) };
     }
@@ -790,12 +796,12 @@ public:
 
     //Make a deep copy of an object by serializing it and deserializing it
     template<typename T>
-    inline std::shared_ptr<void> deepCopy(T* obj) const{
+    inline std::shared_ptr<void> deepCopy(const T* obj) const{
         auto serial = serializeObj(obj);
         return deserializeObj(serial);
     }
 
-    inline std::shared_ptr<void> deepCopy(void* obj, int type_id) const {
+    inline std::shared_ptr<void> deepCopy(const void* obj, int type_id) const {
         auto serial = serializeObj(type_id, obj);
         return deserializeObj(type_id, serial);
     }

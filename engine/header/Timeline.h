@@ -77,7 +77,7 @@ public:
 		// returns the type id of the object in the given registry
 		virtual int getTypeId(Registry* r) const = 0 ;
 
-		virtual std::shared_ptr<WorldObject> deepCopy(){
+		virtual std::shared_ptr<WorldObject> deepCopy() const{
 			return std::static_pointer_cast<WorldObject>(world->registry->deepCopy(this, getTypeId(world->registry.get())));
 		}
 
@@ -99,7 +99,7 @@ public:
 		//Queue an event to run a function, speed of info will be enforced
 		template<typename... Args>
 		void inline queue(int64_t obj_id, double target_time, int func_id, const Args&... args) {
-			std::shared_ptr<VoidEvent> event = std::make_shared<VoidEvent>(obj_id, func_id, time, serialize(args...));
+			std::shared_ptr<VoidEvent> event = std::make_shared<VoidEvent>(obj_id, func_id, target_time, serialize(args...));
 			event->dispatch_position = event_position;
 			event->dispatch_time = time + world->min_event_duration;
 			event->parent = writing_event;

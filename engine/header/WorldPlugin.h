@@ -139,7 +139,7 @@ public:
 		lock.lock();
 		auto iter = worlds.find(local_world);
 		if (iter != worlds.end()) {
-			for (auto& obj : observation_buffer[local_world]) {
+			for (auto& obj : observation_buffer[local_world]) { // TODO get rid of this loop
 				if (obj->id == id) {
 					std::shared_ptr<const T> result = dynamic_pointer_cast<const T>(obj) ;
 					lock.unlock();
