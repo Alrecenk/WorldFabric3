@@ -319,6 +319,8 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 		//printf("updating: %lld\n", last_view->id);
 
 		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance ;
+		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world) ; // TODO support mutlicell
+		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true) ;
 
 		double dt = last_view->time - last_time ;
 
@@ -831,11 +833,47 @@ void Cell::runPhysics() {
 	queue(id, (frame+1) * frame_length + slice_time * next_step, &Cell::runPhysics);
 }
 
-//Returns the nearest position to the target that the given body could be placed without colliding
+	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
 	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-glm::vec3 Cell::nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only){
-	return glm::vec3(0,0,0) ;
+glm::vec3 Cell::nearestValidPosition(const std::string& world_name, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const{
+	WorldPlugin* worlds = getTool<WorldPlugin>() ;
+	std::shared_ptr<RigidBody> tester = static_pointer_cast<RigidBody>(body->deepCopy());
+	tester->position = target_position ;
+	tester->updatePose();
+	std::unordered_map<int64_t, std::shared_ptr<const RigidBody>> read_bodies;
+	for (const int64_t& id : bodies) {
+		if(id != tester->id){
+			std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world_name, id);
+			if (body) {
+				read_bodies[id] = body;
+			}
+		}
+	}
+
+	for (auto& [id, body] : read_bodies) {
+		if ((!immoveable_only || !body->receives_impulse) &&
+			Physics::AAABIntersect(body->AABB, tester->AABB)) { // check AABBs first
+			//printf("AABBs are colliding\n");
+			int index_a = 0;
+			int index_b = 0;
+			for (const auto& shape_a : body->shape) {
+				for (const auto& shape_b : tester->shape) {
+
+					auto simplex = detectCollision(body.get(), &shape_a, tester.get(), &shape_b);
+					if (simplex.size() > 0) {
+						//printf("Collision detected!\n");
+						Physics::SupportPoint sp = Physics::getPenetration(simplex, body.get(), &shape_a, tester.get(), &shape_b);
+						tester->position += sp.x;
+						tester->updatePose();
+					}
+				}
+			}
+		}				
+	}
+
+	return  tester->position ;
+
 }
 
 void registerPhysics(){

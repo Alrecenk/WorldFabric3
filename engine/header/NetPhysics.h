@@ -223,7 +223,7 @@ public:
 	glm::vec3 grab_offset ;
 	double last_time = 0 ;
 	float grab_distance = 0 ;
-	float max_grab_velocity = 15.0f ;
+	float max_grab_velocity = 25.0f ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
@@ -312,7 +312,7 @@ public:
 
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 1.0f;
+	static inline float penetration_spring_coefficient = 5.0f;
 	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
@@ -438,7 +438,7 @@ public:
 	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
 	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) ;
+	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const ;
 };
 
 auto static getStructure(Cell& o) {
