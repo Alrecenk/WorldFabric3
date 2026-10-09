@@ -315,7 +315,7 @@ PanelPlugin* setUpPanels(VulkanPlugin* window){
 	element_program, panel_program, screen_program, first_post_component) ;
 
 	std::string arial = "arial";
-	panels->addFont(arial, "./assets/arial.ttf", 100);
+	panels->addFont(arial, "./assets/arial.ttf", 50);
 
 		
 	return panels ;
@@ -330,7 +330,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);

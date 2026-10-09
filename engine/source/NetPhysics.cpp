@@ -340,7 +340,7 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
 	WorldPlugin* worlds = getTool<WorldPlugin>() ;
 	if(signal == RayGrab::CLICKED){
-		printf("grabbed: %lld\n", last_view->id);
+		//printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_depth ;
 		glm::vec3 world_point = action->origin + action->direction *  grab_distance;
 		grab_offset = last_view->position - world_point ;
@@ -349,7 +349,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 	}else if(signal == RayGrab::RELEASED){
 		action->active_item = nullptr ;
 		action->next_held = -1 ;
-		printf("released: %lld\n", last_view->id) ;
+		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}else if(signal == RayGrab::UPDATED){
 		//printf("updating: %lld\n", last_view->id);

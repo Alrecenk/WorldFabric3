@@ -359,6 +359,9 @@ public:
 	// Returns the direction of the mouse ray from the window target position
 	glm::vec3 getMouseRay();
 
+	//Returns the direction of a ray through the given window pixel
+	glm::vec3 getPixelRay(float x, float y);
+
 	//Hide the mouse in the window
 	void hideMouse() ;
 	

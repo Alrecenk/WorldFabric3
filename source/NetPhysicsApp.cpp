@@ -188,6 +188,9 @@ void NetPhysicsApp::updateCamera() {
 	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
 
 	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 35);
+
+	updateDebugPanel();
+
 }
 
 void NetPhysicsApp::createViewTypes(){
@@ -348,5 +351,68 @@ void NetPhysicsApp::host(){
 */
 	
 	worlds->host(port,version) ;
+
+}
+
+void NetPhysicsApp::updateDebugPanel() {
+	PanelPlugin* panels = getTool<PanelPlugin>();
+	VulkanPlugin* window = getTool<VulkanPlugin>();
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+
+	int panel_width = 740;
+	int panel_height = 130;
+
+	if (!debug_panel_enabled) {
+		if (debug_panel != -1) {
+			debug_label.reset();
+			panels->deletePanel(debug_panel);
+			debug_panel = -1;
+		}
+		return;
+	}
+
+	if (debug_panel == -1) {
+		debug_panel = panels->createPanel(panel_width, panel_height, { 0.0,0.0,0.0,0.0 });
+		debug_label = std::shared_ptr<PanelPlugin::Label>(new PanelPlugin::Label(debug_panel, "Debug Info", panel_width * 0.5f, 10, true, "arial"));
+		debug_label->setColors(glm::vec4(0), glm::vec4(0), glm::vec4(0, 0, 0, 1), glm::vec4(0));
+
+	}
+	else {
+
+		total_dt += worlds->getTimeStep();
+		debug_frames++;
+		if (total_dt > 1.0) {
+			debug_fps = (int)(debug_frames / total_dt);
+			debug_frames = 0;
+			total_dt = 0;
+
+			std::string d = concat("fps:", debug_fps);
+			if (worlds->getPing() != 0) {
+				d += concat(" ping:", (int)(1000 * worlds->getPing()));
+			}
+			//printf("%s\n", d.c_str()) ;
+			debug_label->setText(d);
+
+		}
+	}
+
+	float screen_x = window->window_target->width / 10.0f;
+	float screen_y = screen_x * panel_height / panel_width;
+
+	float debug_depth = 1.0f;
+	float size = 30.0f;
+
+	glm::vec3 Z = window->getPixelRay(screen_x,screen_y) * debug_depth ;
+	glm::vec3 X = window->getPixelRay(screen_x + size * (debug_label->image_width+200) / debug_label->image_height , screen_y) * debug_depth - Z;
+	glm::vec3 Y = window->getPixelRay(screen_x , screen_y - size) * debug_depth - Z;
+	glm::vec3 origin = window->window_target->camera_position  + Z - X*0.5f - Y*0.5f;
+	PanelPlugin::DefaultInstance inst = panels->getPanelInstance<PanelPlugin::DefaultInstance>(debug_panel);
+	inst.pose = panels->getPose(origin,X,Y);
+
+
+	panels->setPanelInstance(debug_panel, inst);
+	//printf("o:%f,%f,%f  x:%f,%f,%f  Y:%f,%f,%f \n", origin.x, origin.y, origin.z, X.x,X.y,X.z,Y.x,Y.y,Y.z) ;
+
+
 
 }

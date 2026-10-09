@@ -155,10 +155,10 @@ public:
 	//TODO make thse configurable per object in a local_ptr struct
 	static inline float max_speed = 40.0f;
 	static inline float max_angular_speed = 20.0f ;
-	static inline float elasticity = 0.6f;
-	static inline float friction = 0.6f;
-	static inline float drag = 0.25f;
-	static inline float angular_drag = 0.25f;
+	static inline float elasticity = 0.4f;
+	static inline float friction = 1.0f;
+	static inline float drag = 0.5f;
+	static inline float angular_drag = 0.5f;
 
 
 	RigidBody(){}
@@ -223,7 +223,7 @@ public:
 	glm::vec3 grab_offset ;
 	double last_grab_time = 0 ;
 	float grab_distance = 0 ;
-	float max_grab_velocity = 25.0f ;
+	float max_grab_velocity = 20.0f ;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
 	static inline float max_speed_base = 0.1f ;
@@ -358,7 +358,7 @@ public:
 
 	static inline float squared_distance_for_match = 1e-5f;
 	static inline int max_collision_points = 4;
-	static inline int manifold_iterations = 3 ;
+	static inline int manifold_iterations = 1 ;
 	static inline float relaxation = 0.7f;
 
 	//whether the objects should apply the impulse
@@ -416,7 +416,7 @@ class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 120 ;
+	static inline int ticks_per_second = 60 ;
 	static inline int constraint_iterations = 8 ;
 	static inline int frame_slices = 36;
 
