@@ -260,11 +260,47 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body){
 void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body){
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
-	last_view = body;
-	pose = glm::mat4(1.0f); // TODO interpolate ,extrapolate for actual time
-	pose = glm::translate(pose, body->position);
-	pose = pose * glm::mat4_cast(body->orientation);
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+
+	if (body->time <= last_view->time) { // sometimes the clock moves to stay in sync with the server and this can happen
+		last_position = body->position;
+		last_orientation = body->orientation;
+		last_pose_time = body->time;
+		
+	}else{
+
+		double observation_time = worlds->getWorldTime("netphysics", body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
+		float observation_age = (float)(observation_time - body->time);// time difference between what we're supposed to see and what we observed
+		
+		//Extrapolate the passage of time since the observation
+		glm::vec3 view_position = body->position + body->velocity * observation_age ;
+		glm::quat omega_quat(0, body->angular_velocity.x, body->angular_velocity.y, body->angular_velocity.z);
+		glm::quat view_orientation = body->orientation + (omega_quat * body->orientation) * (0.5f * observation_age);
+		view_orientation = glm::normalize(view_orientation);
+
+		float dt = (float)(observation_time - last_pose_time);
+
+		float speed = glm::length(view_position-last_position)/dt ;
+		float max_speed = max_speed_base + max_speed_mult * std::max(glm::length(body->velocity), glm::length(last_view->velocity)) ;
+
+		if(speed >= max_speed){
+			float s = max_speed/speed ;
+			//printf("Interpolation active: %f > %f-> %f\n", speed, max_speed, s);
+			view_position = interpolate(last_position,view_position, s);
+			view_orientation = interpolate(last_orientation,view_orientation, s) ;
+		}
+		last_position = view_position ;
+		last_orientation = view_orientation ;
+		last_pose_time = observation_time ;
+	}
+
+	pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, last_position);
+	pose = pose * glm::mat4_cast(last_orientation);
 	pose = pose * types[body->render_type].render_transform;
+
+	last_view = body;
+
 	scene->setPose(scene_id, pose);
 	std::shared_ptr<GLTF> model = scene->getModelController(types[body->render_type].model);
 	action_map->moveTrigger(trigger_id, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1));
@@ -304,16 +340,16 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
 	WorldPlugin* worlds = getTool<WorldPlugin>() ;
 	if(signal == RayGrab::CLICKED){
-		printf("grabbed: %lld\n", last_view->id);
+		//printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_depth ;
 		glm::vec3 world_point = action->origin + action->direction *  grab_distance;
 		grab_offset = last_view->position - world_point ;
-		last_time = last_view->time ;
+		last_grab_time = last_view->time ;
 		getTool<WorldPlugin>()->queue(action->world,last_view->id,&RigidBody::setInteractions, false, true) ;
 	}else if(signal == RayGrab::RELEASED){
 		action->active_item = nullptr ;
 		action->next_held = -1 ;
-		printf("released: %lld\n", last_view->id) ;
+		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}else if(signal == RayGrab::UPDATED){
 		//printf("updating: %lld\n", last_view->id);
@@ -322,7 +358,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world) ; // TODO support mutlicell
 		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true) ;
 
-		double dt = last_view->time - last_time ;
+		double dt = last_view->time - last_grab_time ;
 
 		if(dt > 1e-4f){
 
@@ -333,7 +369,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 				world_point = last_view->position + v*dt ;
 			}
 			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point,v,last_view->orientation, glm::vec3(0,0,0));
-			last_time = last_view->time;
+			last_grab_time = last_view->time;
 		}
 	}
 }

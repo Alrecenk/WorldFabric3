@@ -155,10 +155,10 @@ public:
 	//TODO make thse configurable per object in a local_ptr struct
 	static inline float max_speed = 40.0f;
 	static inline float max_angular_speed = 20.0f ;
-	static inline float elasticity = 0.6f;
-	static inline float friction = 0.6f;
-	static inline float drag = 0.25f;
-	static inline float angular_drag = 0.25f;
+	static inline float elasticity = 0.4f;
+	static inline float friction = 1.0f;
+	static inline float drag = 0.5f;
+	static inline float angular_drag = 0.5f;
 
 
 	RigidBody(){}
@@ -219,11 +219,20 @@ public:
 	int scene_id = -1;
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
-	glm::mat4 pose ;
+	
 	glm::vec3 grab_offset ;
-	double last_time = 0 ;
+	double last_grab_time = 0 ;
 	float grab_distance = 0 ;
-	float max_grab_velocity = 25.0f ;
+	float max_grab_velocity = 20.0f ;
+
+	//Max speed = base + mult * max(speed last frame, speed this frame)
+	static inline float max_speed_base = 0.1f ;
+	static inline float max_speed_mult = 1.5f;
+
+	glm::mat4 pose;
+	glm::vec3 last_position ;
+	glm::quat last_orientation;
+	double last_pose_time = 0 ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
@@ -349,7 +358,7 @@ public:
 
 	static inline float squared_distance_for_match = 1e-5f;
 	static inline int max_collision_points = 4;
-	static inline int manifold_iterations = 3 ;
+	static inline int manifold_iterations = 1 ;
 	static inline float relaxation = 0.7f;
 
 	//whether the objects should apply the impulse
@@ -407,7 +416,7 @@ class Cell : public WorldObject {
 public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
-	static inline int ticks_per_second = 120 ;
+	static inline int ticks_per_second = 60 ;
 	static inline int constraint_iterations = 8 ;
 	static inline int frame_slices = 36;
 

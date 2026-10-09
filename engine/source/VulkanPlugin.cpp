@@ -184,13 +184,18 @@ glm::vec2 VulkanPlugin::getMouseWheelPosition(){
 
 // Returns the 3D direction of the mouse ray from the window_target's position
 glm::vec3 VulkanPlugin::getMouseRay(){
-	float x = (2.0f * mouse_position.x) / window_target->width - 1.0f;
-	float y = (2.0f * mouse_position.y) / window_target->height - 1.0f;
+	return getPixelRay(mouse_position.x, mouse_position.y);
+}
+
+glm::vec3 VulkanPlugin::getPixelRay(float px, float py){
+	float x = (2.0f * px) / window_target->width - 1.0f;
+	float y = (2.0f * py) / window_target->height - 1.0f;
 	glm::vec4 clip_point(x, y, 1.0, 1.0f);
 	glm::mat4 camera_inverse = glm::inverse(window_target->camera_matrix);
 	glm::vec4 world_point = camera_inverse * clip_point;
 	glm::vec3 unprojected = world_point / world_point.w;
 	return glm::normalize(unprojected - window_target->camera_position);
+
 }
 
 bool VulkanPlugin::mouseDown(int button) {

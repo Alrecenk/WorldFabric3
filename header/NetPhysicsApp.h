@@ -5,6 +5,7 @@
 #include "MachineState.h"
 #include "Registry.h"
 #include "NetPhysics.h"
+#include "PanelPlugin.h"
 
 class NetPhysicsApp : public MachineState {
 
@@ -32,6 +33,15 @@ public:
 	void createViewTypes();
 
 	void host();
+
+	int debug_panel = -1;
+	std::shared_ptr<PanelPlugin::Label> debug_label;
+	int debug_frames = 0;
+	float total_dt = 0;
+	int debug_fps = 0;
+	bool debug_panel_enabled = true;
+
+	void updateDebugPanel();
 
 private:
 
