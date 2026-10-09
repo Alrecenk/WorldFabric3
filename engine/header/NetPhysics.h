@@ -219,11 +219,20 @@ public:
 	int scene_id = -1;
 	int trigger_id = -1;
 	std::shared_ptr<const RigidBody> last_view;
-	glm::mat4 pose ;
+	
 	glm::vec3 grab_offset ;
-	double last_time = 0 ;
+	double last_grab_time = 0 ;
 	float grab_distance = 0 ;
 	float max_grab_velocity = 25.0f ;
+
+	//Max speed = base + mult * max(speed last frame, speed this frame)
+	static inline float max_speed_base = 0.1f ;
+	static inline float max_speed_mult = 1.5f;
+
+	glm::mat4 pose;
+	glm::vec3 last_position ;
+	glm::quat last_orientation;
+	double last_pose_time = 0 ;
 
 	//created is called when an objectis observed that ws no observed last time view was called on the world
 	void created(std::shared_ptr<const RigidBody>& body) override;
