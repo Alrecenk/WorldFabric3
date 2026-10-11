@@ -326,11 +326,11 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 
 	std::shared_ptr<SavePlugin> files(new SavePlugin());
 	addTool(files);
-	std::shared_ptr<SteamworksPlugin> steamworks(new SteamworksPlugin(4404880, command));
+	std::shared_ptr<SteamworksPlugin> steamworks(new SteamworksPlugin(3485250, command));
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -451,7 +451,7 @@ int exampleMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str());
 
-	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
+	SteamworksPlugin::enabled = true; // can turn this on when you've got your own steam app id you want to boot
 	OpenXRPlugin::ENABLED = false; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
@@ -565,15 +565,19 @@ int exampleMain(int argc, char* argv[]) {
 
 	// World Plugin makes more threads with its sockets that need to be cleaned up to not get an error on exit
 	WorldPlugin* worlds = getTool<WorldPlugin>();
+	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
 	if (worlds) {
 		printf("Cleaning up sockets...\n");
 		worlds->disconnect();
+		steam->disconnect();
 	}
-
+	
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	while(window->sdl_ready){ // wait for SDL event processing to stop
 		std::this_thread::sleep_for(10ms);
 	}
+
+	
 
 	return 0;
 }

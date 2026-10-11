@@ -212,7 +212,7 @@ public:
 	}
 
 	//Create a connection using a preexisting socket (like from Steam)
-	void connect(std::shared_ptr<Socket>& new_socket, const std::string& version);
+	void connect(std::shared_ptr<Socket> new_socket, const std::string& version);
 	
 	//request a connection to a remote World server (nonblocking)
 	void connect(const std::string& address, int port, const std::string& version);

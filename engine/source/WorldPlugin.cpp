@@ -490,7 +490,7 @@ bool WorldPlugin::host(std::shared_ptr<Socket>& new_socket, const std::string& v
 
 //request a connection to a remote World server
 // returns if probably successful (can't know for sure)
-void WorldPlugin::connect(std::shared_ptr<Socket>& new_socket, const std::string& version) {
+void WorldPlugin::connect(std::shared_ptr<Socket> new_socket, const std::string& version) {
 
 	if (socket) {
 		disconnect();

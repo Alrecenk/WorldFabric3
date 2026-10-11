@@ -30,7 +30,9 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 
 	createViewTypes();
 	//printf("Attempting to connect to existing simulation...\n");
-	worlds->connect("127.0.0.1", port, version);
+	if(!SteamworksPlugin::enabled){
+		worlds->connect("127.0.0.1", port, version);
+	}
 	//host();
 	//connect_time = now();
 	
@@ -321,7 +323,7 @@ void NetPhysicsApp::host(){
 	
 
 	
-	for(int y= -3; y < 1; y++){
+	for(int y= -3; y < 0; y++){
 		auto box = std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, y, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)) ;
 		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
 		body_id = worlds->create(WORLD,box);
@@ -330,11 +332,11 @@ void NetPhysicsApp::host(){
 
 	
 	//Add some random stuff
-/*
-	for (int k = 0; k < 10; k++) {
+	int amount =20 ;
+	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
-		float rand = randomFloat();
+		float rand = k/(float)amount;
 		//rand = 1.0f ;
 		int type = ball_type;
 		if (rand < 0.2f) {
@@ -352,11 +354,35 @@ void NetPhysicsApp::host(){
 		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
 		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
 	}
-*/
 
-	
-	worlds->host(port,version) ;
 
+	if(SteamworksPlugin::enabled){
+		startSteamHosting();
+	}else{
+		worlds->host(port,version) ;
+	}
+
+}
+
+
+void NetPhysicsApp::startSteamHosting() {
+	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
+	WorldPlugin* world = getTool<WorldPlugin>();
+	SteamworksPlugin::SteamServerInfo info;
+
+	steam->setSteamEventReceiver(this);
+
+	info.name = "PhysicsTest";
+	info.map = "pit";
+	info.max_players = 64;
+	info.game_mode = "sdfg";
+	info.product_name = "sdfgs";
+	info.product_description = "ghhh";
+	info.game_directory = "fghjkhgkj";
+	info.version = "1";
+	std::shared_ptr<Socket> steam_socket = steam->hostPrivateLobby(info);
+
+	world->host(steam_socket, info.version);
 }
 
 void NetPhysicsApp::updateDebugPanel() {
@@ -419,5 +445,13 @@ void NetPhysicsApp::updateDebugPanel() {
 	//printf("o:%f,%f,%f  x:%f,%f,%f  Y:%f,%f,%f \n", origin.x, origin.y, origin.z, X.x,X.y,X.z,Y.x,Y.y,Y.z) ;
 
 
+
+}
+
+void NetPhysicsApp::onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::SteamSocket> socket, const SteamworksPlugin::SteamServerInfo& server_info) {
+	WorldPlugin* world = getTool<WorldPlugin>();
+	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
+	world->disconnect();
+	world->connect(socket, "1");
 
 }

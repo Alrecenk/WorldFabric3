@@ -6,8 +6,9 @@
 #include "Registry.h"
 #include "NetPhysics.h"
 #include "PanelPlugin.h"
+#include "SteamworksPlugin.h"
 
-class NetPhysicsApp : public MachineState {
+class NetPhysicsApp : public MachineState, public SteamworksPlugin::SteamEventReceiver {
 
 public:
 
@@ -42,6 +43,10 @@ public:
 	bool debug_panel_enabled = true;
 
 	void updateDebugPanel();
+
+	void onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::SteamSocket> socket, const SteamworksPlugin::SteamServerInfo& server_info) override;
+
+	void startSteamHosting();
 
 private:
 
