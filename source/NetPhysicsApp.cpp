@@ -272,7 +272,7 @@ void NetPhysicsApp::createViewTypes(){
 void NetPhysicsApp::host(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->clearWorlds() ;
-	worlds->createWorld(WORLD, 1E4f, 1E-6f, 100);
+	worlds->createWorld(WORLD, 1E7f, 1E-8f, 100);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
@@ -281,6 +281,7 @@ void NetPhysicsApp::host(){
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
+/*
 	glm::vec3 chain_pos = mid;
 	float chain_angle = 0;
 	float y_step = 0.7f;
@@ -301,7 +302,7 @@ void NetPhysicsApp::host(){
 		//glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
 		//chain_pos += off;
 	}
-
+	*/
 	int64_t body_id ;
 	// Add the container blocks
 	float wall_size = 30.0f; // TODO share between type creation
@@ -319,15 +320,18 @@ void NetPhysicsApp::host(){
 	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
 	
 
-	/*
-	auto box = std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)) ;
-	box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
-	body_id = worlds->create(WORLD,box);
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	*/
-	/*
+	
+	for(int y= -3; y < 1; y++){
+		auto box = std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, y, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)) ;
+		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
+		body_id = worlds->create(WORLD,box);
+		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+	}
+
+	
 	//Add some random stuff
-	for (int k = 0; k < 1; k++) {
+/*
+	for (int k = 0; k < 10; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = randomFloat();
@@ -349,6 +353,7 @@ void NetPhysicsApp::host(){
 		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
 	}
 */
+
 	
 	worlds->host(port,version) ;
 

@@ -155,8 +155,8 @@ public:
 	//TODO make thse configurable per object in a local_ptr struct
 	static inline float max_speed = 40.0f;
 	static inline float max_angular_speed = 20.0f ;
-	static inline float elasticity = 0.4f;
-	static inline float friction = 1.0f;
+	static inline float elasticity = 0.6f;
+	static inline float friction = 0.6f;
 	static inline float drag = 0.5f;
 	static inline float angular_drag = 0.5f;
 
@@ -321,10 +321,10 @@ public:
 
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 5.0f;
-	static inline float allowed_collision_depth = 0.05f;
+	static inline float penetration_spring_coefficient = 2.0f;
+	static inline float allowed_collision_depth = 0.06f;
 	static inline float min_velocity_for_elastic = 0.1f;
-	static inline float retarget_normal_alignment_minimum = 0.95f;
+	static inline float retarget_normal_alignment_minimum = 0.9f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
 		return hashBytes(serialize(id1, s1, id2, s2, CONSTRAINT_TYPE));
@@ -356,10 +356,10 @@ public:
 	std::vector<Collision> points;
 	char most_recent = 0 ;
 
-	static inline float squared_distance_for_match = 1e-5f;
+	static inline float squared_distance_for_match = 1e-4f;
 	static inline int max_collision_points = 4;
 	static inline int manifold_iterations = 1 ;
-	static inline float relaxation = 0.7f;
+	static inline float relaxation = 0.99f;
 
 	//whether the objects should apply the impulse
 	bool receives_impulse_1 = true;
@@ -417,8 +417,8 @@ public:
 	std::vector<int64_t> bodies ;
 	std::map<int64_t,int64_t> constraints ; // maps constraint hash to world ID of constraint set	
 	static inline int ticks_per_second = 60 ;
-	static inline int constraint_iterations = 8 ;
-	static inline int frame_slices = 36;
+	static inline int constraint_iterations = 4 ;
+	static inline int frame_slices = 20;
 
 	Cell(){};
 

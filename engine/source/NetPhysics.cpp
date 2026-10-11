@@ -660,7 +660,7 @@ void ManifoldCollision::setConstraintImpulses() {
 		float scale = relaxation / std::max(body_1->constraints.size(), body_2->constraints.size());
 		int k = 0 ;
 		for (auto& p : points) {
-			p.next_impulse *= scale ;
+			p.next_impulse *= scale ;				
 			p.warm_impulse = warm[k].first  + scale * (p.warm_impulse - warm[k].first) ;
 			p.warm_tangent_impulse = warm[k].second + scale * (p.warm_tangent_impulse - warm[k].second);
 			k++;
