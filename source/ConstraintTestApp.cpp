@@ -121,7 +121,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
 	chain_type = cell->addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
 
-
+	/*
 	glm::vec3 chain_pos = mid ;
 	float chain_angle = 0 ;
 	float y_step = chain_scale ;
@@ -138,16 +138,23 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	
 	cell->getBody(link)->inv_mass = 0;
 	cell->getBody(link)->inv_moment = glm::mat3(0);
+*/
 
 	// Add the container blocks
 	
 	cell->add(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)) ;
+
+	/*
 	cell->add(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z));
 	cell->add(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z));
 	cell->add(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f));
 	cell->add(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f));
+	*/
 
 
+	for (int y = -3; y < 1; y++) {
+		cell->add(box_type, glm::vec3(0, y, 0));
+	}
 
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(mouse_size, mouse_size, mouse_size));
 	std::shared_ptr<Physics::Sphere> mouse_shape = std::make_shared<Physics::Sphere>(mouse_size);
@@ -205,7 +212,7 @@ void ConstraintTestApp::run() {
 	}
 
 	updateCamera();
-	cell->runPhysicsFrame(dt, 15);
+	cell->runPhysicsFrame(dt, 4);
 	cell->updateGraphics();
 
 

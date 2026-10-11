@@ -163,10 +163,10 @@ public:
 	
 
 	std::vector<std::shared_ptr<ConvexShape>> shape ;
-	float elasticity = 0.6f;
+	float elasticity = 0.4f;
 	float friction = 0.6f ;
-	float drag = 0.25f ;
-	float angular_drag = 0.25f ;
+	float drag = 1.0f ;
+	float angular_drag = 0.01f ;
 
 	//Inervse inertia and axis aligned bounding box in world space
 	float inv_mass = 0;
@@ -301,8 +301,8 @@ public:
 	
 
 	static inline const int CONSTRAINT_TYPE = 1 ;
-	static inline float penetration_spring_coefficient = 1.0f;
-	static inline float allowed_collision_depth = 0.03f;
+	static inline float penetration_spring_coefficient = 2.0f;
+	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f ;
 
@@ -349,7 +349,7 @@ class ManifoldCollision : public ConstraintSet {
 public:
 	int64_t hash ;
 	std::vector<Collision> points;
-	static inline float squared_distance_for_match = 1e-5f ;
+	static inline float squared_distance_for_match = 1e-4f ;
 	static inline int max_collision_points = 4 ;
 
 	ManifoldCollision(int64_t h): hash(h){};
