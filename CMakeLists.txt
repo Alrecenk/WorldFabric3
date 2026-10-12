@@ -165,7 +165,8 @@ set_target_properties(WorldFabric PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY ${WF_RUNTIME_DIR})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT WorldFabric)
 
-# Shaders compile to <name>.spv next to their source, because the app loads them from ./shader and ./Narball/shader.
+# Shaders compile to <runtime dir>/<source path>.spv, because the app loads them from ./shader and ./Narball/shader.
+# Each build tree owns its outputs, so sharing them in the source tree would make trees invalidate each other.
 # Generated .spv files are not committed, so glslc (from the Vulkan SDK) is required.
 find_program(WF_GLSLC NAMES glslc HINTS ${Vulkan_GLSLC_EXECUTABLE} "$ENV{VULKAN_SDK}/Bin" DOC "glslc shader compiler")
 option(WF_COMPILE_SHADERS "Compile GLSL shaders to SPIR-V during the build" ON)
@@ -181,7 +182,7 @@ if(WF_COMPILE_SHADERS AND WF_GLSLC)
     set(WF_SHADER_OUTPUTS)
     foreach(shader ${WF_SHADER_SOURCES})
         file(RELATIVE_PATH shader_rel ${CMAKE_CURRENT_SOURCE_DIR} ${shader})
-        set(spv ${shader}.spv)
+        set(spv ${WF_RUNTIME_DIR}/${shader_rel}.spv)
         set(depfile ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_rel}.d)
         get_filename_component(depfile_dir ${depfile} DIRECTORY)
         add_custom_command(
@@ -206,13 +207,10 @@ file(GLOB_RECURSE WF_RUNTIME_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/shader/*
     ${CMAKE_CURRENT_SOURCE_DIR}/Narball/asset/*
     ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*)
+list(FILTER WF_RUNTIME_SOURCES EXCLUDE REGEX "\\.spv$")
 list(APPEND WF_RUNTIME_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/steam_appid.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/server_settings.json)
-if(WF_SHADER_OUTPUTS)
-    list(REMOVE_ITEM WF_RUNTIME_SOURCES ${WF_SHADER_OUTPUTS})
-    list(APPEND WF_RUNTIME_SOURCES ${WF_SHADER_OUTPUTS})
-endif()
 set(WF_RUNTIME_OUTPUTS)
 foreach(src ${WF_RUNTIME_SOURCES})
     file(RELATIVE_PATH src_rel ${CMAKE_CURRENT_SOURCE_DIR} ${src})
