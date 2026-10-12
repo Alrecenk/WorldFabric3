@@ -81,20 +81,13 @@ set(WF_SOURCES
     Narball/source/Narwhal.cpp
     source/BallTestApp.cpp
     source/BallThrowApp.cpp
-    source/Board.cpp
-    source/ChessApp.cpp
     source/CollisionTestApp.cpp
     source/ConstraintTestApp.cpp
-    source/Glove.cpp
-    source/King.cpp
     source/Main.cpp
     source/MirrorApp.cpp
     source/NetPhysicsApp.cpp
-    source/Pawn.cpp
-    source/Piece.cpp
     source/PlaySong.cpp
     source/PyramidApp.cpp
-    source/Rook.cpp
     source/SceneDemoApp.cpp
     source/SceneDemoApp2.cpp
     source/SocketTest.cpp
@@ -158,9 +151,17 @@ else()
     target_link_options(WorldFabric PRIVATE -static)
 endif()
 
-# Assets and shaders are loaded via paths relative to the repo root (./assets, ./Narball/...).
+# Assets and shaders are loaded via paths relative to the working directory (./assets, ./Narball/...),
+# so they are copied next to the exe and the app runs from there.
+get_property(WF_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(WF_MULTI_CONFIG)
+    set(WF_RUNTIME_DIR ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
+else()
+    set(WF_RUNTIME_DIR ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 set_target_properties(WorldFabric PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    RUNTIME_OUTPUT_DIRECTORY ${WF_RUNTIME_DIR}
+    VS_DEBUGGER_WORKING_DIRECTORY ${WF_RUNTIME_DIR})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT WorldFabric)
 
 # Shaders compile to <name>.spv next to their source, because the app loads them from ./shader and ./Narball/shader.
@@ -198,6 +199,33 @@ elseif(WF_COMPILE_SHADERS)
     message(WARNING "glslc not found (install the Vulkan SDK or set WF_GLSLC); shaders will not be compiled")
 endif()
 
+# OUTPUT can't use target-dependent generator expressions, hence WF_RUNTIME_DIR instead of $<TARGET_FILE_DIR>.
+file(GLOB_RECURSE WF_RUNTIME_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/*
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*
+    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/asset/*
+    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*)
+list(APPEND WF_RUNTIME_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/steam_appid.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/server_settings.json)
+if(WF_SHADER_OUTPUTS)
+    list(REMOVE_ITEM WF_RUNTIME_SOURCES ${WF_SHADER_OUTPUTS})
+    list(APPEND WF_RUNTIME_SOURCES ${WF_SHADER_OUTPUTS})
+endif()
+set(WF_RUNTIME_OUTPUTS)
+foreach(src ${WF_RUNTIME_SOURCES})
+    file(RELATIVE_PATH src_rel ${CMAKE_CURRENT_SOURCE_DIR} ${src})
+    set(dst ${WF_RUNTIME_DIR}/${src_rel})
+    add_custom_command(
+        OUTPUT ${dst}
+        COMMAND ${CMAKE_COMMAND} -E copy ${src} ${dst}
+        DEPENDS ${src}
+        VERBATIM)
+    list(APPEND WF_RUNTIME_OUTPUTS ${dst})
+endforeach()
+add_custom_target(runtime_files ALL DEPENDS ${WF_RUNTIME_OUTPUTS})
+add_dependencies(WorldFabric runtime_files)
+
 file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
 add_custom_command(TARGET WorldFabric POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WF_RUNTIME_DLLS} $<TARGET_FILE_DIR:WorldFabric>
@@ -207,6 +235,6 @@ add_custom_command(TARGET WorldFabric POST_BUILD
 add_custom_target(run
     COMMAND $<TARGET_FILE:WorldFabric>
     DEPENDS WorldFabric
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY ${WF_RUNTIME_DIR}
     USES_TERMINAL
-    COMMENT "Running WorldFabric from the repo root")
+    COMMENT "Running WorldFabric from the build directory")
