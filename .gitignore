@@ -371,3 +371,6 @@ FodyWeavers.xsd
 *Narball_for_Beta_Testing_Playtest_pkg1538371_start0_num50.txt
 /recorded.wav
 /synthesized.wav
+
+# SPIR-V compiled from GLSL by CMake
+*.spv

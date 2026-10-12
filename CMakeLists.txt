@@ -164,7 +164,7 @@ set_target_properties(WorldFabric PROPERTIES
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT WorldFabric)
 
 # Shaders compile to <name>.spv next to their source, because the app loads them from ./shader and ./Narball/shader.
-# The .spv files are committed, so building without glslc still works.
+# Generated .spv files are not committed, so glslc (from the Vulkan SDK) is required.
 find_program(WF_GLSLC NAMES glslc HINTS ${Vulkan_GLSLC_EXECUTABLE} "$ENV{VULKAN_SDK}/Bin" DOC "glslc shader compiler")
 option(WF_COMPILE_SHADERS "Compile GLSL shaders to SPIR-V during the build" ON)
 file(GLOB WF_SHADER_SOURCES CONFIGURE_DEPENDS
@@ -195,7 +195,7 @@ if(WF_COMPILE_SHADERS AND WF_GLSLC)
     add_custom_target(shaders ALL DEPENDS ${WF_SHADER_OUTPUTS} SOURCES ${WF_SHADER_SOURCES})
     add_dependencies(WorldFabric shaders)
 elseif(WF_COMPILE_SHADERS)
-    message(WARNING "glslc not found (install the Vulkan SDK or set WF_GLSLC); using the committed .spv files")
+    message(WARNING "glslc not found (install the Vulkan SDK or set WF_GLSLC); shaders will not be compiled")
 endif()
 
 file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
