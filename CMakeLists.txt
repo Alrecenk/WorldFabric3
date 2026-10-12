@@ -40,61 +40,13 @@ else()
     message(STATUS "Vulkan SDK not found; using fetched Vulkan headers ${WF_VULKAN_HEADERS_TAG}")
 endif()
 
-set(WF_SOURCES
-    engine/source/AsyncPlugin.cpp
-    engine/source/AudioPlugin.cpp
-    engine/source/BSPNode.cpp
-    engine/source/ConvexShape.cpp
-    engine/source/ConvexSolid.cpp
-    engine/source/GLTF.cpp
-    engine/source/InputPlugin.cpp
-    engine/source/NetPhysics.cpp
-    engine/source/OpenXRPlugin.cpp
-    engine/source/OptimizationProblem.cpp
-    engine/source/PanelPlugin.cpp
-    engine/source/ParticlePlugin.cpp
-    engine/source/Physics.cpp
-    engine/source/Polygon.cpp
-    engine/source/RadialVolume.cpp
-    engine/source/SavePlugin.cpp
-    engine/source/ScenePlugin.cpp
-    engine/source/Sockets.cpp
-    engine/source/StateMachine.cpp
-    engine/source/StatePlugin.cpp
-    engine/source/SteamWorksPlugin.cpp
-    engine/source/TableInterface.cpp
-    engine/source/Timeline.cpp
-    engine/source/Variant.cpp
-    engine/source/ViewPlugin.cpp
-    engine/source/VkBootstrap.cpp
-    engine/source/vk_initializers.cpp
-    engine/source/VolumeNode.cpp
-    engine/source/VulkanPlugin.cpp
-    engine/source/WorldPlugin.cpp
+file(GLOB WF_SOURCES CONFIGURE_DEPENDS
+    engine/source/*.cpp
+    Narball/source/*.cpp
+    source/*.cpp)
+list(APPEND WF_SOURCES
     include/glm/detail/glm.cpp
-    include/stb_vorbis.c
-    Narball/source/Ball.cpp
-    Narball/source/Nameplate.cpp
-    Narball/source/NarballGame.cpp
-    Narball/source/NarballMenu.cpp
-    Narball/source/NarballObjects.cpp
-    Narball/source/NarballServer.cpp
-    Narball/source/Narwhal.cpp
-    source/BallTestApp.cpp
-    source/BallThrowApp.cpp
-    source/CollisionTestApp.cpp
-    source/ConstraintTestApp.cpp
-    source/Main.cpp
-    source/MirrorApp.cpp
-    source/NetPhysicsApp.cpp
-    source/PlaySong.cpp
-    source/PyramidApp.cpp
-    source/SceneDemoApp.cpp
-    source/SceneDemoApp2.cpp
-    source/SocketTest.cpp
-    source/TraceApp.cpp
-    source/VulkanDemoApp.cpp
-)
+    include/stb_vorbis.c)
 
 file(GLOB WF_HEADERS CONFIGURE_DEPENDS
     engine/header/*.h
