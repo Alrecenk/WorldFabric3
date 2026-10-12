@@ -1046,7 +1046,7 @@ public:
 				//clear buffer we were holding onto just in case
 				if(last_draw_indirect_buffer){
 					vkDestroyBuffer(renderer->device, last_draw_indirect_buffer, nullptr); // delete previous buffer from GPU
-					if (last_draw_indirect_buffer_memory) {
+					if (draw_indirect_buffer_memory) {
 						vkFreeMemory(renderer->device, last_draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
 					}
 				}
