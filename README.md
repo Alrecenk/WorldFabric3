@@ -31,9 +31,6 @@ The prebuilt SDKs in `lib/` and `dll/` are compiled with MSVC. GCC and MSVC disa
 - **OpenVR:** `IVRSystem::GetProjectionMatrix` and `GetEyeToHeadTransform` use OpenVR's C function table (`FnTable:IVRSystem_022`) in non-MSVC builds (`OpenXRPlugin.cpp`). The `IVRSystemFnTablePrefix` struct mirrors the start of `VR_IVRSystem_FnTable` in `openvr_capi.h`; recheck it if the OpenVR headers are upgraded. New struct-returning OpenVR calls need the same treatment.
 
 ### Cleanup candidates
-- **Uninitialized Vulkan handles.** `TriangleModel`'s draw-indirect buffer handles in `engine/header/VulkanPlugin.h` were uninitialized and crashed GCC builds; they're now `VK_NULL_HANDLE`. Many other `Vk*` members in that header have no initializer. They're assigned during init today, but initializing them would prevent similar bugs.
 - **Indirect-buffer lifetime.** `TriangleModel::render` destroys the previous indirect draw buffer one update later, "in case it's in use". That doesn't guarantee the GPU has finished with it. Tie destruction to a frame fence instead.
-- clang-tidy can be used to automate code cleanup. It has already been used to initialize variables that were causing compile problems with gcc
-- Using GCC with `-Wuninitialized -Wmaybe-uninitialized` at `-O2` catches most uninitialized values.`-Wreturn-type` is also good to check function returns exist when expected
-- **Unused libraries.** `CMakeLists.txt` links every `.lib` the old project did, but the exe only imports `SDL3`, `SDL3_ttf`, `OpenAL32`, `openvr_api`, `steam_api64` and `vulkan-1`. `glew32`, `OpenGL32`, `SDL3_image/mixer/net/rtf`, `SDL3_test`, `glew32s` and `sdkencryptedappticket64` could likely be dropped.
-- **Unused DLLs.** All of `dll/` is copied next to the exe. `SDL2.dll`, `freeglut.dll`, `glfw3.dll`, `glew32.dll`, `steam_api.dll` (32-bit) and the SDL3 extension DLLs aren't imported.
+- clang-tidy can be used to automate initializing variables to their respective null types
+- Using GCC with `-Wuninitialized -Wmaybe-uninitialized` at `-O2` catches most uninitialized values.`-Wreturn-type` is also good to check that non-void functions' returns exist

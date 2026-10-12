@@ -3,15 +3,6 @@
 ###############################################################################
 * text=auto
 
-# Explicitly ensure C++ source/header files use LF (common for engines)
-*.cpp text eol=lf
-*.hpp text eol=lf
-*.h text eol=lf
-*.vert text eol=lf
-*.frag text eol=lf
-*.json text eol=lf
-
-
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
