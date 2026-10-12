@@ -314,8 +314,8 @@ void VulkanPlugin::initVulkan(){
 	auto inst_ret = inst.require_api_version(1, 3, 0)
 		.build();
 
-	if(inst_ret.vk_result() != VK_SUCCESS){
-		printf("Vulkan Instantiation failed, type code %d result : %d\n", inst_ret.error().value(), inst_ret.vk_result()) ;
+	if(!inst_ret){
+		printf("Vulkan Instantiation failed: %s (type code %d, VkResult %d)\n", inst_ret.error().message().c_str(), inst_ret.error().value(), inst_ret.vk_result()) ;
 		return ;
 	}
 	vkb::Instance vkb_inst = inst_ret.value();

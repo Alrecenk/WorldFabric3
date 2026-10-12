@@ -14,10 +14,11 @@ cmake --preset x64-release
 cmake --build --preset x64-release
 ```
 
-Run from the repo root so `./assets` and `./Narball` resolve, e.g. `build\gcc-release\WorldFabric.exe`, or `cmake --build --preset gcc-release --target run`. The DLLs from `dll/` are copied next to the exe automatically.
-
-## Shaders cmake target is automatic, runs by deault in regular build
-Shaders (`*.vert`, `*.frag` and `*.comp` in `shader/` and `Narball/shader/`) are compiled with `glslc` from the Vulkan SDK. Each `.spv` is written next to its source, because that's where the app loads it from. Only edited shaders are recompiled, and new shader files are picked up automatically. Build just the shaders with `cmake --build --preset gcc-release --target shaders`. If `glslc` isn't found, or you configure with `-DWF_COMPILE_SHADERS=OFF`, the committed `.spv` files are used as-is. The `.spv` files are build outputs, so a CMake `clean` deletes them, and the next build regenerates them.
+## Shaders cmake target is automatic, runs by deault on stale shaders
+Shaders are compiled with `glslc` from the Vulkan SDK. Each `.spv` is written next to its source,
+because that's where the app loads it from. Only edited shaders are recompiled,
+and new shader files are picked up automatically.
+Build just the shaders with `cmake --build --preset gcc-release --target shaders`.
 
 ## Visual Studio
 1. Install Visual Studio with the "Desktop development with C++" workload (includes CMake and Ninja).
@@ -33,7 +34,6 @@ The prebuilt SDKs in `lib/` and `dll/` are compiled with MSVC. GCC and MSVC disa
 - **Uninitialized Vulkan handles.** `TriangleModel`'s draw-indirect buffer handles in `engine/header/VulkanPlugin.h` were uninitialized and crashed GCC builds; they're now `VK_NULL_HANDLE`. Many other `Vk*` members in that header have no initializer. They're assigned during init today, but initializing them would prevent similar bugs.
 - **Indirect-buffer lifetime.** `TriangleModel::render` destroys the previous indirect draw buffer one update later, "in case it's in use". That doesn't guarantee the GPU has finished with it. Tie destruction to a frame fence instead.
 - clang-tidy can be used to automate code cleanup. It has already been used to initialize variables that were causing compile problems with gcc
-- Using GCC with `-Wuninitialized -Wmaybe-uninitialized` at `-O2` catches most uninitialized values.
-- **Missing return.** `Polynomial::operator[](const ComplexNumber&)` in `engine/header/Utilities.h` calls `apply(x)` but never returns a value (undefined behavior if called; GCC warns with `-Wreturn-type`). It should probably be `return apply(x);`.
+- Using GCC with `-Wuninitialized -Wmaybe-uninitialized` at `-O2` catches most uninitialized values.`-Wreturn-type` is also good to check function returns exist when expected
 - **Unused libraries.** `CMakeLists.txt` links every `.lib` the old project did, but the exe only imports `SDL3`, `SDL3_ttf`, `OpenAL32`, `openvr_api`, `steam_api64` and `vulkan-1`. `glew32`, `OpenGL32`, `SDL3_image/mixer/net/rtf`, `SDL3_test`, `glew32s` and `sdkencryptedappticket64` could likely be dropped.
-- **Unused DLLs.** All of `dll/` is copied next to the exe. `SDL2.dll`, `freeglut.dll`, `glfw3.dll`, `glew32.dll`, `steam_api.dll` (32-bit) and the SDL3 extension DLLs aren't imported. `ucrtbase.dll` shouldn't be redistributed this way; it ships with Windows.
+- **Unused DLLs.** All of `dll/` is copied next to the exe. `SDL2.dll`, `freeglut.dll`, `glfw3.dll`, `glew32.dll`, `steam_api.dll` (32-bit) and the SDL3 extension DLLs aren't imported.

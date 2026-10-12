@@ -47,6 +47,7 @@ set(WF_SOURCES
     engine/source/ConvexShape.cpp
     engine/source/ConvexSolid.cpp
     engine/source/GLTF.cpp
+    engine/source/InputPlugin.cpp
     engine/source/NetPhysics.cpp
     engine/source/OpenXRPlugin.cpp
     engine/source/OptimizationProblem.cpp
