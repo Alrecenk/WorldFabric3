@@ -810,7 +810,7 @@ std::vector<std::pair<glm::vec3, float>> ScenePlugin::getSpringBoneWorldPosition
 		return points ;
 	}
 	Instance& instance = instances[instance_id];
-	for(auto& [node, spring] : instance.spring_bones){
+	for(auto& [spring_id, spring] : instance.spring_bones){
 		
 		GLTF::Node& node = instance.skeleton->nodes[spring.node];
 		//Where the bone would be pointing if it were not springy

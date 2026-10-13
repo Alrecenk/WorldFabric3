@@ -119,8 +119,8 @@ int AudioPlugin::addWAV(const std::string& file_path, int volume_group) {
         SoundData sound_data = AudioPlugin::loadWAV(file_data);
         return addSound( sound_data, volume_group);
     }else{
-		return -1 ;
-        printf("Could not load sound : %s\n", file_path.c_str());
+		printf("Could not load sound : %s\n", file_path.c_str());
+		return -1 ; 
     }
 }
 
@@ -131,8 +131,8 @@ int AudioPlugin::addOGG(const std::string& file_path, int volume_group) {
 		SoundData sound_data = AudioPlugin::loadOGG(file_data);
 		return addSound(sound_data, volume_group);
 	} else {
-		return -1;
 		printf("Could not load sound : %s\n", file_path.c_str());
+		return -1;
 	}
 }
 
