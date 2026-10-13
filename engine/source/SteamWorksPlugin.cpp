@@ -846,7 +846,7 @@ bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char
 		case k_EResultIgnored:
 			break;
 		case k_EResultInvalidParam:
-			printf("Failed sending data : Invalid connection handle, or the individual message is too big\n");
+			printf("Failed sending data : Invalid connection handle, or the individual message is too big: %lld bytes \n", data.size());
 			return false;
 		case k_EResultInvalidState:
 			printf("Failed sending data : Connection is in an invalid state\n");

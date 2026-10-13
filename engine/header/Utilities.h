@@ -278,7 +278,7 @@ public:
 	}
 
 	ComplexNumber operator[](const ComplexNumber& x) {
-		apply(x);
+		return apply(x);
 	}
 
 	ComplexNumber apply(const ComplexNumber& x) {

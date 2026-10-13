@@ -332,7 +332,7 @@ void NetPhysicsApp::host(){
 
 	
 	//Add some random stuff
-	int amount =20 ;
+	int amount = 20 ;
 	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
