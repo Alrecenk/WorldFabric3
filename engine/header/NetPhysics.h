@@ -13,7 +13,7 @@ namespace NetPhysics {
 
 
 //Shapeset contains a variety of explicitly typed shapes
-//Designed to be cmpatible with local_ptr
+//Designed to be compatible with local_ptr
 class ShapeSet {
 public:
 	std::vector<Physics::Sphere> sphere;
