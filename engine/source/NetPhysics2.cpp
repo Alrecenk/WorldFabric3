@@ -1,0 +1,284 @@
+#include "NetPhysics2.h"
+#include "ScenePlugin.h"
+
+namespace NetPhysics2 {
+
+//Create a rigid body from the static object type list on the RigidBodyView
+RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o, const glm::vec3& vel, const glm::vec3& a_vel){
+
+}
+
+//Walks through state machine to run each physics step in lockstep with other elements
+void RigidBody::runPhysics(){
+//TODO
+}
+
+void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av) {
+	position = p;
+	velocity = v;
+	orientation = o;
+	angular_velocity = av;
+}
+
+void RigidBody::setInteractions(const bool& receives, const bool& applies) {
+	receives_impulse = receives;
+	applies_impulse = applies;
+}
+
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	return 0 ; // TODO
+}
+
+
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	return 0; // TODO
+}
+
+
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	 return 0; // TODO
+}
+
+
+
+//created is called when an objectis observed that ws no observed last time view was called on the world
+void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
+	last_view = body;
+	pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, body->position);
+	pose = pose * glm::mat4_cast(body->orientation);
+	pose = pose * RigidBody::types[body->type].render_transform;
+	scene_id = scene->createInstance(RigidBody::types[body->type].model, pose);
+	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
+	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1), this));
+	trigger_id = action_map->addTrigger(trigger);
+}
+
+//Update is called when an observation is made of an object that was also observed last frame on this same view
+void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+
+	if (body->time <= last_view->time) { // sometimes the clock moves to stay in sync with the server and this can happen
+		last_position = body->position;
+		last_orientation = body->orientation;
+		last_pose_time = body->time;
+
+	}
+	else {
+
+		double observation_time = worlds->getWorldTime("netphysics", body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
+		float observation_age = (float)(observation_time - body->time);// time difference between what we're supposed to see and what we observed
+
+		//Extrapolate the passage of time since the observation
+		glm::vec3 view_position = body->position + body->velocity * observation_age;
+		glm::quat omega_quat(0, body->angular_velocity.x, body->angular_velocity.y, body->angular_velocity.z);
+		glm::quat view_orientation = body->orientation + (omega_quat * body->orientation) * (0.5f * observation_age);
+		view_orientation = glm::normalize(view_orientation);
+
+		float dt = (float)(observation_time - last_pose_time);
+
+		float speed = glm::length(view_position - last_position) / dt;
+		float max_speed = max_speed_base + max_speed_mult * std::max(glm::length(body->velocity), glm::length(last_view->velocity));
+
+		if (speed >= max_speed) {
+			float s = max_speed / speed;
+			//printf("Interpolation active: %f > %f-> %f\n", speed, max_speed, s);
+			view_position = interpolate(last_position, view_position, s);
+			view_orientation = interpolate(last_orientation, view_orientation, s);
+		}
+		last_position = view_position;
+		last_orientation = view_orientation;
+		last_pose_time = observation_time;
+	}
+
+	pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, last_position);
+	pose = pose * glm::mat4_cast(last_orientation);
+	pose = pose * RigidBody::types[body->type].render_transform;
+
+	last_view = body;
+
+	scene->setPose(scene_id, pose);
+	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
+	action_map->moveTrigger(trigger_id, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1));
+}
+
+//Destroyed is called when an observation that was present in the last observation is no longer observed
+//This view will be deleted immediately after this call (it's destructor will be called after this)
+void RigidBodyView::destroyed() {
+	ScenePlugin* scene = getTool<ScenePlugin>();
+	ActionMap* action_map = getTool<ActionMap>();
+	scene->deleteInstance(scene_id);
+	action_map->removeTrigger(trigger_id);
+}
+
+
+void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
+	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
+		ScenePlugin* scene = getTool<ScenePlugin>();
+		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
+
+		glm::mat4 scene_to_model_space = glm::inverse(pose);
+		glm::vec3 model_origin = scene_to_model_space * glm::vec4(action->origin, 1); // positions have 1 in slot 4 to include translation
+		glm::vec3 model_direction = scene_to_model_space * glm::vec4(action->direction, 0);
+
+		float t = model->rayTrace(model_origin, model_direction);
+		if (t > 0 && t < action->hover_depth) {// Only act if the actual model was hit and the closest
+			action->hover = last_view->id;
+			action->hover_depth = t;
+			if (action->clicked) {
+				action->next_held = last_view->id;
+				action->active_item = trigger;
+			}
+		}
+	}
+}
+
+void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	if (signal == RayGrab::CLICKED) {
+		//printf("grabbed: %lld\n", last_view->id);
+		grab_distance = action->hover_depth;
+		glm::vec3 world_point = action->origin + action->direction * grab_distance;
+		grab_offset = last_view->position - world_point;
+		last_grab_time = last_view->time;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
+	}
+	else if (signal == RayGrab::RELEASED) {
+		action->active_item = nullptr;
+		action->next_held = -1;
+		//printf("released: %lld\n", last_view->id) ;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
+	}
+	else if (signal == RayGrab::UPDATED) {
+		//printf("updating: %lld\n", last_view->id);
+
+		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance;
+		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
+		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
+
+		double dt = last_view->time - last_grab_time;
+
+		if (dt > 1e-4f) {
+
+			glm::vec3 v = (world_point - last_view->position) / dt;
+			float speed = glm::length(v);
+			if (speed > max_grab_velocity) {
+				v *= max_grab_velocity / speed;
+				world_point = last_view->position + v * dt;
+			}
+			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, last_view->orientation, glm::vec3(0, 0, 0));
+			last_grab_time = last_view->time;
+		}
+	}
+}
+
+
+
+//Returns an identifying hash that can be used to group this constraint into a set
+int64_t Collision::getHash() const {
+	return 0 ; // TODO
+}
+
+//Update the constraint target based on information at the start of the frame
+void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Apply starting impulses carried over if the constraint has existed for multiple frames in a row
+void Collision::applyWarmingImpulse(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
+void Collision::applyConstraint(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Retargets this constraint to the objects after they have moved
+//Returns whether constraint is still valid
+bool Collision::retargetConstraint(const RigidBody* body_1, const RigidBody* body_2){
+	return false; // TODO
+}
+
+
+ManifoldCollision::ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2){
+	//TODO
+}
+
+//Returns an identifying hash that can be used to group constraints into this set
+int64_t ManifoldCollision::getHash() const {
+	return 0; // TODO
+}
+
+
+//Add a constraint to this set
+void ManifoldCollision::addConstraint(Constraint& new_constraint){
+	// TODO
+}
+
+//Update the constraint targets based on information at the start of the frame
+//Returns if any of the constraints are active at all
+void ManifoldCollision::updateConstraints(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
+void ManifoldCollision::applyWarmingImpulses(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Applies impulses to velocity of involved bodies to satisfy these constraints
+void ManifoldCollision::applyConstraints(RigidBody* body_1, RigidBody* body_2){
+	// TODO
+}
+
+//Walks through state machine to run each physics step in lockstep with other elements
+void Cell::runPhysics(){
+	//TODO
+}
+
+//Adds a body to the cell
+void Cell::addBody(const int64_t& body_id){
+	//TODO
+}
+
+//Returns the nearest position to the target that the given body could be placed without colliding
+//with the contents of this cell from the perspective of the active vantage point in the given world
+//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
+glm::vec3 Cell::nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const{
+	return glm::vec3(0,0,0) ; //TODO
+}
+
+
+//return the ids of all cells overlapping the bounding box of the given bounding sphere
+std::vector<int64_t> Root::getCells(const glm::vec3& center, const float& radius) const{
+	return std::vector<int64_t>() ; // TODO
+}
+
+//create any cells necessary to cover the given bounding box
+void Root::updateCells(const glm::vec3& center, const float& radius){
+	//TODO
+}
+
+void registerPhysics(){
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
+	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
+	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
+	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
+
+	worlds->registerClass<Cell>("Cell");
+	worlds->registerMethod(&Cell::addBody, "addBody");
+	worlds->registerMethod(&Cell::runPhysics, "Cell::runPhysics");
+
+	worlds->registerClass<Root>("Physics Root");
+	worlds->registerMethod(&Root::updateCells, "Root::updateCells");
+
+}
+
+} // end namespace

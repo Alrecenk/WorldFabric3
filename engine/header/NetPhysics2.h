@@ -6,8 +6,6 @@
 #include "ActionMap.h"
 
 
-
-
 namespace NetPhysics2 {
 
 
@@ -26,9 +24,6 @@ public:
 	float inv_mass = 0;
 	glm::mat3 base_inv_moment;
 	float bounding_radius  = -1.0f;
-
-	bool receives_impulse = true;
-	bool applies_impulse = true;
 
 	std::string model;
 	glm::mat4 render_transform;
@@ -50,12 +45,23 @@ public:
 	std::vector<int64_t> cells ; // cells currently occupied
 
 
+	bool receives_impulse = true;
+	bool applies_impulse = true;
+
 	RigidBody() {}
 
 
 	//Create a rigid body from the static object type list on the RigidBodyView
-	RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o, const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
+	RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o = glm::quat(1, 0, 0, 0), const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
 
+
+	//Walks through state machine to run each physics step in lockstep with other elements
+	void runPhysics();
+
+	void setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av);
+
+	//Sets how this body interacts with others through constraints
+	void setInteractions(const bool& receives, const bool& applies);
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
@@ -71,10 +77,6 @@ public:
 	void print() const override {
 		printf("RigidBody");
 	}
-
-	//Walks through state machine to run each physics step in lockstep with other elements
-	void runPhysics();
-
 
 
 	static inline std::unordered_map<int, BodyType> types;
@@ -92,7 +94,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root, o.cells) ;
+	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root, o.cells, o.receives_impulse, o.applies_impulse) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
@@ -297,17 +299,38 @@ public:
 	//Adds a body to the cell
 	void addBody(const int64_t& body_id) ;
 
+	//Returns the nearest position to the target that the given body could be placed without colliding
+	//with the contents of this cell from the perspective of the active vantage point in the given world
+	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
+	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
+
+
+	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+	// Just change the template parameter to match your class
+	int getTypeId(Registry* r) const {
+		return r->getIdForType<Cell>();
+	}
+
+	std::shared_ptr<WorldObject> deepCopy() const override {
+		return std::make_shared<Cell>(*this);
+	}
+
+	//Functions used on observables or on read objects need to be const
+	void print() const override {
+		printf("PhysicsCell");
+	}
+
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root, o.size, o.bodies, o.collisions);
+	return std::tie(o.position, o.root, o.size, o.bodies, o.collisions, o.constraint_result);
 }
 
 //Contains cells and routes body requests to the appropriate one
 class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
-	std::map<glm::vec3,int64_t> cells ;
+	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
 
 	Root(){};
 	Root(float size) ;
@@ -317,6 +340,22 @@ public:
 
 	//create any cells necessary to cover the given bounding box
 	void updateCells(const glm::vec3& center, const float& radius) ;
+
+
+	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+	// Just change the template parameter to match your class
+	int getTypeId(Registry* r) const {
+		return r->getIdForType<Root>();
+	}
+
+	std::shared_ptr<WorldObject> deepCopy() const override {
+		return std::make_shared<Root>(*this);
+	}
+
+	//Functions used on observables or on read objects need to be const
+	void print() const override {
+		printf("Physics Root");
+	}
 };
 
 auto static getStructure(Root& o) {
