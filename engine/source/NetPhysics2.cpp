@@ -3,14 +3,50 @@
 
 namespace NetPhysics2 {
 
+
+BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	this->shape = shape ;
+	this->model = model ;
+	this->render_transform = render_transform ;
+	this->elasticity = elasticity ;
+	this->friction = friction ;
+
+	float mass = 0;
+	glm::mat3 moment(0);
+	for (auto& part : shape) {
+		mass += part->mass;
+		moment += part->moment;
+	}
+	if (mass <= 0) { // immobile objects have 0 mass and inv_mass
+		base_inv_moment = glm::mat3(0);
+		inv_mass = 0;
+	}else {
+		base_inv_moment = glm::inverse(moment);
+		inv_mass = 1.0f / mass;
+	}
+
+	//TODO compute bounding radius
+	bounding_radius = 0.5f;
+}
+
+
 //Create a rigid body from the static object type list on the RigidBodyView
 RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o, const glm::vec3& vel, const glm::vec3& a_vel){
+	this->type = type;
+	position = p;
+	orientation = o ;
+	velocity = vel,
+	angular_velocity = a_vel;
 
+	if(types[type].inv_mass == 0){
+		receives_impulse = false;
+	}
 }
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void RigidBody::runPhysics(){
 //TODO
+	printf("Rigidbody run physics called!\n");
 }
 
 void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av) {
@@ -25,18 +61,26 @@ void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	applies_impulse = applies;
 }
 
-int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
-	return 0 ; // TODO
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction) {
+	int id = next_type_id;
+	next_type_id++;
+	types[id] = BodyType(shape, model, render_transform, elasticity, friction);
+	return id;
 }
 
-
-int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
-	return 0; // TODO
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> single_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
+	shape.push_back(single_shape);
+	return addType(shape, model, render_transform, elasticity, friction);
 }
-
 
 int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
-	 return 0; // TODO
+	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
+	for (auto& s : raw_shape) {
+		std::shared_ptr<Physics::ConvexPolyhedron> sh = std::make_shared<Physics::ConvexPolyhedron>(s, render_transform, s.mass);
+		shape.push_back(sh);
+	}
+	return addType(shape, model, render_transform, elasticity, friction);
 }
 
 
@@ -239,11 +283,13 @@ void ManifoldCollision::applyConstraints(RigidBody* body_1, RigidBody* body_2){
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void Cell::runPhysics(){
+	printf("cell run physics called!\n");
 	//TODO
 }
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
+	printf("cell addbody called!\n");
 	//TODO
 }
 

@@ -13,13 +13,6 @@ namespace NetPhysics2 {
 class BodyType {
 public:
 	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
-	float elasticity = 0.4f;
-	float friction = 0.6f;
-	float drag = 1.0f;
-	float angular_drag = 0.01f;
-	float max_speed = 40.0f;
-	float max_angular_speed = 20.0f;
-
 
 	float inv_mass = 0;
 	glm::mat3 base_inv_moment;
@@ -28,6 +21,17 @@ public:
 	std::string model;
 	glm::mat4 render_transform;
 
+	float elasticity = 0.4f;
+	float friction = 0.6f;
+	float drag = 1.0f;
+	float angular_drag = 0.01f;
+	float max_speed = 40.0f;
+	float max_angular_speed = 20.0f;
+
+
+	BodyType(){};
+
+	BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction);
 
 };
 
