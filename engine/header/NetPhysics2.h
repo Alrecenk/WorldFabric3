@@ -36,7 +36,16 @@ public:
 };
 
 
-class RigidBody : public WorldObject, public Physics::PosedBody {
+class BodyInstantData{
+public:
+	glm::mat4 pose ;
+	glm::mat4 inv_pose ;
+	glm::mat3 inv_moment;
+	std::pair<glm::vec3, glm::vec3> AABB;
+
+};
+
+class RigidBody : public WorldObject {
 public:
 	
 	int type = -1 ; // index into static type list
@@ -45,7 +54,7 @@ public:
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
-	int64_t root = -1; // links to root of physics system for finding cells
+	int64_t root_id = -1; // links to root of physics system for finding cells
 	std::vector<int64_t> cells ; // cells currently occupied
 
 
@@ -58,6 +67,12 @@ public:
 	//Create a rigid body from the static object type list on the RigidBodyView
 	RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o = glm::quat(1, 0, 0, 0), const glm::vec3& vel = glm::vec3(0), const glm::vec3& a_vel = glm::vec3(0));
 
+
+	void integrateVelocity(float dt);
+
+	void integrateAcceleration(float dt);
+
+	BodyInstantData computeBodyInstant() const;
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics();
@@ -98,7 +113,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root, o.cells, o.receives_impulse, o.applies_impulse) ;
+	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
@@ -246,10 +261,8 @@ public:
 
 	std::vector<Collision> points;
 
-	static inline float squared_distance_for_match = 1e-4f;
+	static inline float squared_distance_for_match = 1e-5f;
 	static inline int max_collision_points = 4;
-	static inline int manifold_iterations = 1;
-	static inline float relaxation = 0.99f;
 
 
 	ManifoldCollision() {}
@@ -291,10 +304,6 @@ public:
 	
 	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
 
-	static inline int ticks_per_second = 120;
-	static inline int constraint_iterations = 6;
-	static inline int frame_slices = 20;
-
 	Cell() {};
 
 	//Walks through state machine to run each physics step in lockstep with other elements
@@ -302,6 +311,9 @@ public:
 
 	//Adds a body to the cell
 	void addBody(const int64_t& body_id) ;
+
+	//Removes a body from the cell
+	void removeBody(const int64_t& body_id);
 
 	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
@@ -335,6 +347,11 @@ class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
 	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+
+
+	static inline int ticks_per_second = 120;
+	static inline int constraint_iterations = 6;
+
 
 	Root(){};
 	Root(float size) ;

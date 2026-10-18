@@ -33,6 +33,7 @@ BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, co
 //Create a rigid body from the static object type list on the RigidBodyView
 RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::quat& o, const glm::vec3& vel, const glm::vec3& a_vel){
 	this->type = type;
+	this->root_id = root_id ;
 	position = p;
 	orientation = o ;
 	velocity = vel,
@@ -43,10 +44,150 @@ RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::q
 	}
 }
 
+void RigidBody::integrateVelocity(float dt) {
+	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
+
+		float speed = glm::length(velocity);
+		if (speed > types[type].max_speed) {
+			velocity *= types[type].max_speed / speed;
+		}
+
+		float angular_speed = glm::length(angular_velocity);
+		if (angular_speed > types[type].max_angular_speed) {
+			angular_velocity *= types[type].max_angular_speed / angular_speed;
+		}
+
+
+		position += velocity * dt;
+		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
+		// Update orientation quaternion
+		// dq/dt = 0.5 * omega * q
+		glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
+		orientation += (omega_quat * orientation) * (0.5f * dt);
+		orientation = glm::normalize(orientation);
+
+	}
+
+}
+
+BodyInstantData RigidBody::computeBodyInstant() const{
+	BodyInstantData data ;
+	data.pose = glm::mat4(1.0f);
+	data.pose = glm::translate(data.pose, position);
+	data.pose = data.pose * glm::mat4_cast(orientation);
+	data.inv_pose = glm::inverse(data.pose);
+
+	glm::mat3 r = glm::mat3_cast(orientation);
+	data.inv_moment = r * types[type].base_inv_moment * glm::transpose(r);
+	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
+	for (auto& s : types[type].shape) {
+		auto  sAABB = s->getAABB(data.pose);
+		data.AABB.first.x = fmin(data.AABB.first.x, sAABB.first.x);
+		data.AABB.second.x = fmax(data.AABB.second.x, sAABB.second.x);
+		data.AABB.first.y = fmin(data.AABB.first.y, sAABB.first.y);
+		data.AABB.second.y = fmax(data.AABB.second.y, sAABB.second.y);
+		data.AABB.first.z = fmin(data.AABB.first.z, sAABB.first.z);
+		data.AABB.second.z = fmax(data.AABB.second.z, sAABB.second.z);
+	}
+
+	return data ;
+}
+
+void RigidBody::integrateAcceleration(float dt) {
+	if (types[type].inv_mass <= 0 || !receives_impulse) { // don't accelerate objects with infinite mass
+		return;
+	}
+	velocity += acceleration * dt;
+
+
+	float speed = glm::length(velocity);
+	if (speed < types[type].drag * dt) {
+		velocity = glm::vec3(0, 0, 0);
+	}
+	else {
+		velocity *= (speed - types[type].drag * dt) / speed;
+	}
+
+	float angular_speed = glm::length(angular_velocity);
+	if (angular_speed < types[type].angular_drag * dt) {
+		angular_velocity = glm::vec3(0, 0, 0);
+	}
+	else {
+		angular_velocity *= (angular_speed - types[type].angular_drag * dt) / angular_speed;
+	}
+
+}
+
 //Walks through state machine to run each physics step in lockstep with other elements
 void RigidBody::runPhysics(){
-//TODO
-	printf("Rigidbody run physics called!\n");
+	//printf("rigid body run physics %lf \n", time);
+	double frame_length = 1.0 / Root::ticks_per_second;
+	int frame = (int)(time * Root::ticks_per_second);
+	double frame_slice = 0.1 ;
+	double target_time = (frame_slice+frame) * frame_length;
+
+	//If this function is off step then it's probably new (or maybe backed up)
+	if(fabs(time-target_time)> frame_length *0.1){
+		//printf("Miss-step, target: %lf\n", target_time) ;
+		queue(id,target_time + frame_length,&RigidBody::runPhysics) ; // requeue on the step
+		return ; // take no other action at this time
+	}
+
+	std::shared_ptr<const Root> root = read<Root>(root_id) ;
+	
+	//Incorporate constraints from the cells we're touching
+	int amount = 0 ;
+	glm::vec3 v_total(0,0,0) ;
+	glm::vec3 av_total(0, 0, 0);
+	for(int64_t& cell_id : cells){
+		std::shared_ptr<const Cell> cell = read<Cell>(cell_id);
+		if(cell){
+			amount++;
+			v_total += cell->constraint_result.at(id).first ;
+			av_total += cell->constraint_result.at(id).second;
+		}
+	}
+	if(amount > 0){
+		velocity = v_total / amount ;
+		angular_velocity = av_total/amount ;
+	}
+
+	
+	//Move this object with its updated velocity
+	float dt = 1.0f/Root::ticks_per_second ;
+
+	//printf("actually running: %f\n", dt);
+	integrateVelocity(dt);
+	integrateAcceleration(dt);
+
+	//Check our cells and send updates iff they have changed
+	std::vector<int64_t> new_cells = root->getCells(position, types[type].bounding_radius);
+
+	for(int64_t& nc : new_cells){
+		bool found = false;
+		for (int64_t& c : cells) {
+			found |= c == nc ;
+		}
+		if(!found){
+			queue(nc,time, &Cell::addBody, id) ;
+		}
+	}
+	for (int64_t& c : cells) {
+		bool found = false;
+		for (int64_t& nc : new_cells) {
+			found |= c == nc;
+		}
+		if (!found) {
+			queue(c, time, &Cell::removeBody, id);
+		}
+	}
+
+	cells = new_cells ;
+
+	//TODO determine if new cells are needed cand call update Cells on Root
+
+	//Requeue this event at the beginning of the next frame
+	queue(id, target_time + frame_length, &RigidBody::runPhysics);
 }
 
 void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av) {
@@ -291,6 +432,14 @@ void Cell::runPhysics(){
 void Cell::addBody(const int64_t& body_id){
 	printf("cell addbody called!\n");
 	//TODO
+
+}
+
+//Removes a body to the cell
+void Cell::removeBody(const int64_t& body_id) {
+	printf("cell removebody called!\n");
+	//TODO
+
 }
 
 //Returns the nearest position to the target that the given body could be placed without colliding
@@ -309,6 +458,7 @@ std::vector<int64_t> Root::getCells(const glm::vec3& center, const float& radius
 //create any cells necessary to cover the given bounding box
 void Root::updateCells(const glm::vec3& center, const float& radius){
 	//TODO
+	printf("Root updateCells called!\n");
 }
 
 void registerPhysics(){
@@ -320,6 +470,7 @@ void registerPhysics(){
 
 	worlds->registerClass<Cell>("Cell");
 	worlds->registerMethod(&Cell::addBody, "addBody");
+	worlds->registerMethod(&Cell::removeBody, "removeBody");
 	worlds->registerMethod(&Cell::runPhysics, "Cell::runPhysics");
 
 	worlds->registerClass<Root>("Physics Root");
