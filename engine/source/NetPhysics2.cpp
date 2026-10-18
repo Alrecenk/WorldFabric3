@@ -344,7 +344,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 
 		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance;
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
-		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
+		// TODO world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
 
 		double dt = last_view->time - last_grab_time;
 
