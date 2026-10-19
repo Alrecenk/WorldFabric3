@@ -212,12 +212,9 @@ public:
 	float penetration_depth = 0;
 	float target = 0;
 
-	glm::vec3 next_impulse; // The next impulse to be applied by tis constraint when checked byits bodies
-
-
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 3.0f;
-	static inline float allowed_collision_depth = 0.03f;
+	static inline float penetration_spring_coefficient = 2.0f;
+	static inline float allowed_collision_depth = 0.05f;
 	static inline float min_velocity_for_elastic = 0.1f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
@@ -243,7 +240,7 @@ public:
 
 
 auto static getStructure(Collision& o) {
-	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target, o.next_impulse);
+	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target);
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
@@ -352,7 +349,7 @@ public:
 	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
 
 
-	static inline int ticks_per_second = 120;
+	static inline int ticks_per_second = 100;
 	static inline int constraint_iterations = 10;
 
 

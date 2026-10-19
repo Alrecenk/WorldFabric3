@@ -415,6 +415,8 @@ void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
 
+	//printf("Warm impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
+
 	body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
 	body_2.body->velocity += impulse * RigidBody::types[body_2.body->type].inv_mass;
 
@@ -508,12 +510,26 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	//printf("appled impulse!\n");
 	//update warm impulse
 	warm_tangent_impulse = accumulated_friction;
+
+	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
+
+	//printf("Warm impulse after apply: %f, %f, %f\n", impulse.x, impulse.y, impulse.z);
 }
 
 //Retargets this constraint to the objects after they have moved
 //Returns whether constraint is still valid
 bool Collision::retargetConstraint(const BodyInstant& body_1, const BodyInstant& body_2){
-	return false; // TODO
+	glm::vec3 a = body_1.pose * glm::vec4(local_a, 1);
+	glm::vec3 b = body_2.pose * glm::vec4(local_b, 1);
+	glm::vec3 x = a - b;
+	float new_depth = glm::length(x);
+	glm::vec3 new_normal = x / new_depth;
+	if (glm::dot(normal, new_normal) < retarget_normal_alignment_minimum) {
+		return false;
+	}
+	point = (a + b) * 0.5f;
+	penetration_depth = new_depth;
+	return true;
 }
 
 

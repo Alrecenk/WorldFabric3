@@ -274,7 +274,7 @@ void NetPhysicsApp2::createViewTypes() {
 void NetPhysicsApp2::host() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->clearWorlds();
-	worlds->createWorld(WORLD, 1E7f, 1E-8f, 100);
+	worlds->createWorld(WORLD, 1E6f, 1E-5f, 100);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
@@ -310,6 +310,7 @@ void NetPhysicsApp2::host() {
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 
+/*
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
@@ -318,10 +319,10 @@ void NetPhysicsApp2::host() {
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+*/
 
 
-
-	for (int y = -1; y < 0; y++) {
+	for (int y = -3; y < 3; y++) {
 		auto box = std::make_shared<NetPhysics2::RigidBody>(root_id, box_type, glm::vec3(0, y, 0));
 		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
 		body_id = worlds->create(WORLD, box);
