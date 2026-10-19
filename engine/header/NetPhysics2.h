@@ -302,7 +302,7 @@ public:
 	//Finds all collisions
 	//Creates or destroys constraints so the contents of constraints match the current collisions
 	//Also sets points and normals for collisions
-	void updateCollisions(std::unordered_map<int64_t, BodyInstant>& bodies);
+	void updateCollisions(std::map<int64_t, BodyInstant>& bodies);
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics();

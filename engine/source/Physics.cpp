@@ -1188,10 +1188,8 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 // Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB, int max_iterations) {
-	static std::vector<SupportTriangle> polytope;
-	static std::vector<SupportEdge> edge_list;
-	polytope = collision_result;
-	edge_list.clear();
+	std::vector<SupportTriangle> polytope = collision_result;
+	std::vector<SupportEdge> edge_list;
 	int iterations = 0;
 	while (true) {
 

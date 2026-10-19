@@ -353,7 +353,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 
 		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance;
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
-		// TODO world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
+		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
 
 		double dt = last_view->time - last_grab_time;
 
@@ -615,9 +615,9 @@ void ManifoldCollision::applyConstraints(BodyInstant& body_1, BodyInstant& body_
 //Finds all collisions
 //Creates or destroys constraints so the contents of constraints match the current collisions
 //Also sets points and normals for collisions
-void Cell::updateCollisions(std::unordered_map<int64_t, BodyInstant>& bodies){
+void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 	//printf("Updating collisions on %d bodies\n", (int)bodies.size()) ;
-	std::unordered_set<int64_t> found_constraints;
+	std::set<int64_t> found_constraints;
 	for (auto& [id1, body_1] : bodies) {
 		BodyType& body_1_type = RigidBody::types[body_1.body->type] ;
 		for (auto& [id2, body_2] : bodies) {
@@ -692,7 +692,7 @@ void Cell::runPhysics(){
 		return; // take no other action at this time
 	}
 
-	std::unordered_map<int64_t, BodyInstant> read_bodies;
+	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
 		if (body) {
@@ -774,8 +774,44 @@ void Cell::removeBody(const int64_t& body_id) {
 //Returns the nearest position to the target that the given body could be placed without colliding
 //with the contents of this cell from the perspective of the active vantage point in the given world
 //Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-glm::vec3 Cell::nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const{
-	return glm::vec3(0,0,0) ; //TODO
+glm::vec3 Cell::nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const{
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
+	test_copy->position = target_position;
+	BodyInstant tester = test_copy->computeBodyInstant();
+	
+	std::map<int64_t, BodyInstant> read_bodies;
+	for (const int64_t& id : bodies) {
+		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
+		if (body) {
+			read_bodies[id] = body->computeBodyInstant();
+		}
+	}
+	BodyType& tester_type = RigidBody::types[tester.body->type];
+
+	for (auto& [id, body] : read_bodies) {
+		if (body.body->id != tester.body->id &&
+			(!immoveable_only || !body.body->receives_impulse) &&
+			Physics::AAABIntersect(body.AABB, tester.AABB)) { // check AABBs first
+			BodyType& body_type = RigidBody::types[body.body->type];
+
+			//printf("AABBs are colliding\n");
+			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
+				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
+
+					auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+					if (simplex.size() > 0) {
+						Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+						
+						tester.body->position += sp.x;
+						tester = tester.body->computeBodyInstant();
+					}
+				}
+			}
+		}
+	}
+
+	return  tester.body->position;
 }
 
 

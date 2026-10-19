@@ -502,7 +502,7 @@ int exampleMain(int argc, char* argv[]) {
 		window->enableRenderTiming(concat("./performance_log_", t) + ".csv");
 	}
 
-	WorldPlugin::enableEventLogging(concat("./event_log_", t) +".csv", WorldPlugin::FINAL_EVENTS);
+	//WorldPlugin::enableEventLogging(concat("./event_log_", t) +".csv", WorldPlugin::FINAL_EVENTS);
 
 	std::map<int, std::string > plugin_name;
 	plugin_name[0] = "openXR";
