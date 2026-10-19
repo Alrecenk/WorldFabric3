@@ -175,7 +175,7 @@ void RigidBody::runPhysics(){
 				found |= c == nc ;
 			}
 			if(!found){
-				queue(nc,time + randomFloat() * frame_length * 0.1, &Cell::addBody, id) ;
+				queue(nc,time + random() * frame_length * 0.1, &Cell::addBody, id) ;
 			}
 		}
 		for (int64_t& c : cells) {
@@ -184,14 +184,14 @@ void RigidBody::runPhysics(){
 				found |= c == nc;
 			}
 			if (!found) {
-				queue(c, time + randomFloat() * frame_length * 0.1, &Cell::removeBody, id);
+				queue(c, time + random() * frame_length * 0.1, &Cell::removeBody, id);
 			}
 		}
 
 		cells = new_cells.first ;
 
 		if(new_cells.second){
-			queue(root_id,time + randomFloat() * frame_length*0.5,&Root::updateCells, position, types[type].bounding_radius);
+			queue(root_id,time + random() * frame_length*0.5,&Root::updateCells, position, types[type].bounding_radius);
 		}
 	}
 
@@ -696,7 +696,12 @@ void Cell::runPhysics(){
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
 		if (body) {
+			if(time - body->time > frame_length){
+				printf("Body too old!\n");
+			}
 			read_bodies[id] = body->computeBodyInstant();
+		}else{
+			printf("body could not be read!\n");
 		}
 	}
 
@@ -728,11 +733,28 @@ void Cell::runPhysics(){
 		}
 	}
 
+	//glm::vec3 h = glm::vec3(0,0,0) ;
+	//int k = 0 ;
 	for(auto& [id, body] : read_bodies){
 		//Save results that real bodies want to read
 		constraint_result[id] = {body.body->velocity, body.body->angular_velocity} ;
 		//printf("result velocity: %f, %f, %f\n", body.body->velocity.x, body.body->velocity.y, body.body->velocity.z) ;
+		/*
+		if(fabs(body.body->velocity.y) > 0.001f){
+			if(k == 0){
+				h.x = body.body->velocity.y ;
+			}
+			if (k == 1) {
+				h.y = body.body->velocity.y;
+			}
+			if (k == 2) {
+				h.z = body.body->velocity.y;
+			}
+			k++;
+		}
+		*/
 	}
+	//position = h*0.001f;
 
 	queue(id,target_time + frame_length,&Cell::runPhysics) ;
 }

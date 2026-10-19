@@ -5,8 +5,6 @@
 #include "WorldPlugin.h"
 #include "ActionMap.h"
 
-#include <unordered_set>
-#include <unordered_map>
 
 namespace NetPhysics2 {
 
@@ -102,7 +100,7 @@ public:
 	}
 
 
-	static inline std::unordered_map<int, BodyType> types;
+	static inline std::map<int, BodyType> types;
 	static inline int next_type_id = 1;
 
 
@@ -291,10 +289,10 @@ class Cell : public WorldObject {
 public:
 	int64_t root_id ;
 	float size = -1; // Cell occupies a box centered on position with axis aligned radius of size
-	std::unordered_set<int64_t> bodies;
-	std::unordered_map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
+	std::set<int64_t> bodies;
+	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	
-	std::unordered_map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
+	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
 
