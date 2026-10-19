@@ -123,6 +123,7 @@ void NetPhysicsApp2::run() {
 
 		if (root_id != -1) {
 			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 		}
 	}
 	space_down = window->keyDown(SDLK_SPACE);
@@ -309,7 +310,6 @@ void NetPhysicsApp2::host() {
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 
-
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
@@ -321,7 +321,7 @@ void NetPhysicsApp2::host() {
 
 
 
-	for (int y = -3; y < 0; y++) {
+	for (int y = -1; y < 0; y++) {
 		auto box = std::make_shared<NetPhysics2::RigidBody>(root_id, box_type, glm::vec3(0, y, 0));
 		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
 		body_id = worlds->create(WORLD, box);
@@ -330,7 +330,7 @@ void NetPhysicsApp2::host() {
 
 
 	//Add some random stuff
-	int amount = 20;
+	int amount = 0;
 	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };

@@ -165,9 +165,6 @@ public:
 class Constraint {
 public:
 
-	//Returns an identifying hash that can be used to group this constraint into a set
-	virtual int64_t getHash() const = 0;
-
 	//Update the constraint target based on information at the start of the frame
 	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
@@ -202,7 +199,7 @@ public:
 
 };
 
-class Collision : public Constraint{
+class Collision {
 public:
 
 	glm::vec3 warm_impulse;
@@ -219,27 +216,23 @@ public:
 
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 2.0f;
-	static inline float allowed_collision_depth = 0.06f;
+	static inline float penetration_spring_coefficient = 3.0f;
+	static inline float allowed_collision_depth = 0.03f;
 	static inline float min_velocity_for_elastic = 0.1f;
-	static inline float retarget_normal_alignment_minimum = 0.9f;
+	static inline float retarget_normal_alignment_minimum = 0.95f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
 		return hashBytes(serialize(id1, s1, id2, s2, CONSTRAINT_TYPE));
 	}
 
-
-	//Returns an identifying hash that can be used to group this constraint into a set
-	virtual int64_t getHash() const override;
-
 	//Update the constraint target based on information at the start of the frame
-	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2) override;
+	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Apply starting impulses carried over if the constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2) override;
+	virtual void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
-	virtual void applyConstraint(BodyInstant& body_1, BodyInstant& body_2) override;
+	virtual void applyConstraint(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Retargets this constraint to the objects after they have moved
 	//Returns whether constraint is still valid
@@ -254,10 +247,8 @@ auto static getStructure(Collision& o) {
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
-class ManifoldCollision : public ConstraintSet {
+class ManifoldCollision {
 public:
-	int64_t hash = -1;
-
 	int64_t id_1 = -1;
 	char shape_1 = -1;
 	int64_t id_2 = -1;
@@ -274,26 +265,26 @@ public:
 	ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2);
 
 	//Returns an identifying hash that can be used to group constraints into this set
-	int64_t getHash() const override;
+	int64_t getHash() const;
 
 
 	//Add a constraint to this set
-	void addConstraint(Constraint& new_constraint) override;
+	void addConstraint(Collision& new_point, BodyInstant& body_1, BodyInstant& body_2);
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	void updateConstraints(BodyInstant& body_1, BodyInstant& body_2) override;
+	void updateConstraints(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	void applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2) override;
+	void applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Applies impulses to velocity of involved bodies to satisfy these constraints
-	void applyConstraints(BodyInstant& body_1, BodyInstant& body_2) override;
+	void applyConstraints(BodyInstant& body_1, BodyInstant& body_2) ;
 
 };
 
 auto static getStructure(ManifoldCollision& o) {
-	return std::tie( o.id_1, o.shape_1, o.id_2, o.shape_2, o.last_update_time, o.hash, o.points);
+	return std::tie(o.id_1, o.shape_1, o.id_2, o.shape_2,  o.points);
 }
 
 
@@ -316,7 +307,7 @@ public:
 	//Finds all collisions
 	//Creates or destroys constraints so the contents of constraints match the current collisions
 	//Also sets points and normals for collisions
-	void updateCollisions();
+	void updateCollisions(std::unordered_map<int64_t, BodyInstant>& bodies);
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics();
@@ -362,7 +353,7 @@ public:
 
 
 	static inline int ticks_per_second = 120;
-	static inline int constraint_iterations = 6;
+	static inline int constraint_iterations = 10;
 
 
 	Root(){};

@@ -372,25 +372,142 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 }
 
 
-
-//Returns an identifying hash that can be used to group this constraint into a set
-int64_t Collision::getHash() const {
-	return 0 ; // TODO
-}
-
 //Update the constraint target based on information at the start of the frame
 void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1.body->position;
+	glm::vec3 r2 = point - body_2.body->position;
+	glm::vec3 contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	float velocity_against_normal = glm::dot(contact_velocity_1 - contact_velocity_2, normal);
+
+	float restitution_bias = 0.0f; // inelastic
+	if (velocity_against_normal > min_velocity_for_elastic) {
+		float e = fmax(RigidBody::types[body_1.body->type].elasticity, RigidBody::types[body_2.body->type].elasticity);
+		restitution_bias = e * velocity_against_normal; // elastic
+	}
+
+	//Bias against penetration with spring force
+	float penetration_bias = penetration_spring_coefficient * std::max(0.0f, penetration_depth - allowed_collision_depth);
+
+	target = restitution_bias + penetration_bias;
+
+	//Set the warming impulse
+	warm_tangent_impulse -= normal * glm::dot(normal, warm_tangent_impulse);
+	warm_impulse = normal * glm::dot(normal, warm_impulse);
+
+	tangents.clear();
+	glm::vec3 ref = (std::abs(normal.y) < 0.8f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
+	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
 }
 
 //Apply starting impulses carried over if the constraint has existed for multiple frames in a row
 void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+
+	warm_tangent_impulse -= normal * glm::dot(normal, warm_tangent_impulse);
+	warm_impulse = normal * glm::dot(normal, warm_impulse);
+
+	tangents.clear();
+	glm::vec3 ref = (std::abs(normal.y) < 0.8f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
+	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
+
+	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
+
+	body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
+	body_2.body->velocity += impulse * RigidBody::types[body_2.body->type].inv_mass;
+
+	glm::vec3 r1 = point - body_1.body->position;
+	glm::vec3 r2 = point - body_2.body->position;
+	body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse);
+	body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse);
 }
 
 //Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
 void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+	//printf("Collision applying constraint\n");
+	BodyType& body_1_type = RigidBody::types[body_1.body->type];
+	BodyType& body_2_type = RigidBody::types[body_2.body->type];
+
+	//lever arms for torque
+	glm::vec3 r1 = point - body_1.body->position;
+	glm::vec3 r2 = point - body_2.body->position;
+
+	glm::vec3 contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	glm::vec3 relative_velocity = contact_velocity_2 - contact_velocity_1;
+	float velocity_along_normal = glm::dot(relative_velocity, normal);
+
+	//calculate effective mass
+	float rot_term1 = glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, normal), r1), normal);
+	float rot_term2 = glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, normal), r2), normal);
+	float effective_mass_n = body_1_type.inv_mass + body_2_type.inv_mass + rot_term1 + rot_term2;
+	if (effective_mass_n <= 1e-6f) {
+		//printf("Collision early exit\n");
+		return; // two immovable objects
+	}
+
+	//Calculate current change needed based on already applied
+	float impulse_mag_n = (target - velocity_along_normal) / effective_mass_n;
+	float old_accumulated_n = glm::dot(warm_impulse, normal);
+	float new_accumulated_n = std::max(0.0f, old_accumulated_n + impulse_mag_n);
+	float current_impulse_n = new_accumulated_n - old_accumulated_n;
+	glm::vec3 impulse_vec_n = normal * current_impulse_n;
+
+	//Apply normal impulse
+	body_1.body->velocity -= impulse_vec_n * body_1_type.inv_mass;
+	body_2.body->velocity += impulse_vec_n * body_2_type.inv_mass;
+	body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse_vec_n);
+	body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse_vec_n);
+
+	//update warm impulse
+	warm_impulse += impulse_vec_n;
+
+	// Recalculate velocities at point after normal impulse
+	contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
+	contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	relative_velocity = contact_velocity_2 - contact_velocity_1;
+
+
+	glm::vec3 tangent_impulse(0);
+	for (auto& tangent : tangents) {
+		float velocity_along_tangent = glm::dot(tangent, relative_velocity);
+
+		// Effective mass for tangent direction
+		float rot_term1_t = glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, tangent), r1), tangent);
+		float rot_term2_t = glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, tangent), r2), tangent);
+		float effective_mass_t = body_1_type.inv_mass + body_2_type.inv_mass + rot_term1_t + rot_term2_t;
+		if (effective_mass_t < 1e-6f) {
+			continue;
+		}
+		//Compute maximum tangent velocity ot be lost
+		float impulse_mag_t = -1.0f * velocity_along_tangent / effective_mass_t;
+		tangent_impulse += tangent * impulse_mag_t; ;
+	}
+
+	glm::vec3 accumulated_friction = tangent_impulse + warm_tangent_impulse;
+	float friction_magnitude = glm::length(accumulated_friction);
+	if (friction_magnitude < 1e-6f) {
+		accumulated_friction = glm::vec3(0, 0, 0);
+	}
+	else {
+		float max_friction = (body_1_type.friction + body_2_type.friction) * 0.5f * new_accumulated_n;
+		float clamped_magnitude = std::min(friction_magnitude, max_friction);
+		accumulated_friction *= clamped_magnitude / friction_magnitude;
+	}
+	tangent_impulse = accumulated_friction - warm_tangent_impulse;
+
+
+	// Apply Tangent Impulse
+	body_1.body->velocity -= tangent_impulse * body_1_type.inv_mass;
+	body_2.body->velocity += tangent_impulse * body_2_type.inv_mass;
+	body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, tangent_impulse);
+	body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, tangent_impulse);
+
+	//printf("appled impulse!\n");
+	//update warm impulse
+	warm_tangent_impulse = accumulated_friction;
 }
 
 //Retargets this constraint to the objects after they have moved
@@ -401,41 +518,146 @@ bool Collision::retargetConstraint(const BodyInstant& body_1, const BodyInstant&
 
 
 ManifoldCollision::ManifoldCollision(int64_t id1, int s1, int64_t id2, int s2){
-	//TODO
+	id_1 = id1 ;
+	shape_1 = s1 ;
+	id_2 = id2 ;
+	shape_2 = s2 ;
 }
 
 //Returns an identifying hash that can be used to group constraints into this set
 int64_t ManifoldCollision::getHash() const {
-	return 0; // TODO
+	return Collision::getHash(id_1, shape_1, id_2, shape_2);
 }
 
 
 //Add a constraint to this set
-void ManifoldCollision::addConstraint(Constraint& new_constraint){
-	// TODO
+void ManifoldCollision::addConstraint(Collision& new_point, BodyInstant& body_1, BodyInstant& body_2){
+	std::vector<int> to_keep;
+	int closest = -1;
+	float cd2 = FLT_MAX;
+	bool needs_start = points.size() == 0;
+	for (int k = 0; k < points.size(); k++) {
+		bool valid = points[k].retargetConstraint(body_1, body_2);
+		if (valid) {
+			to_keep.push_back(k);
+			if (glm::distance2(points[k].point, new_point.point) < cd2) {
+				closest = k;
+			}
+		}
+	}
+
+	//Point is so close it's the same point
+	if (closest >= 0 && cd2 < squared_distance_for_match) {
+		points[closest].local_a = new_point.local_a;
+		points[closest].local_b = new_point.local_b; // overwrite with new point 
+		points[closest].point = new_point.point;
+		points[closest].normal = new_point.normal;
+		// but carry over warm impulses
+	}
+	else if (closest >= 0 && points.size() >= max_collision_points) { // Too many collision points
+		points[closest] = new_point; // overwrite with new point
+		// dont carry over warm impulses
+	}
+	else { //We can have a totally new point
+		to_keep.push_back((int)points.size());
+		points.push_back(new_point);
+	}
+
+	std::vector<Collision> new_points;
+	for (int k : to_keep) {
+		new_points.push_back(points[k]);
+	}
+	points = new_points;
+
+	//printf("collision manifold updated to %d points\n", (int)points.size()) ;
 }
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
 void ManifoldCollision::updateConstraints(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+	for (auto& p : points) {
+		p.updateConstraint(body_1, body_2);
+	}
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
 void ManifoldCollision::applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+	for (auto& p : points) {
+		p.applyWarmingImpulse(body_1, body_2);
+	}
 }
 
 //Applies impulses to velocity of involved bodies to satisfy these constraints
 void ManifoldCollision::applyConstraints(BodyInstant& body_1, BodyInstant& body_2){
-	// TODO
+	//printf("manifold applying constraints to %d points\n", (int)points.size());
+	for (auto& p : points) {
+		p.applyConstraint(body_1, body_2);
+	}
 }
 
 
 //Finds all collisions
-	//Creates or destroys constraints so the contents of constraints match the current collisions
-	//Also sets points and normals for collisions
-void Cell::updateCollisions(){
+//Creates or destroys constraints so the contents of constraints match the current collisions
+//Also sets points and normals for collisions
+void Cell::updateCollisions(std::unordered_map<int64_t, BodyInstant>& bodies){
+	//printf("Updating collisions on %d bodies\n", (int)bodies.size()) ;
+	std::unordered_set<int64_t> found_constraints;
+	for (auto& [id1, body_1] : bodies) {
+		BodyType& body_1_type = RigidBody::types[body_1.body->type] ;
+		for (auto& [id2, body_2] : bodies) {
+			BodyType& body_2_type = RigidBody::types[body_2.body->type];
+			if (id1 < id2 && // only check each pair once
+				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
+				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0) && // only check if one is moveable
+				Physics::AAABIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
+				//printf("AABBs intersect  %lld to %lld\n", id1, id2);
+				for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
+					for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
+
+						auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+							float penetration_depth = glm::length(sp.x) ;
+							if (penetration_depth > Physics::Collision::allowed_collision_depth * 0.5f) {
+								glm::vec3 point = (sp.a + sp.b) * 0.5f;
+								glm::vec3 normal = glm::normalize(sp.x);
+								normal = glm::normalize(normal);
+								int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
+
+								Collision constraint;
+								constraint.point = point;
+								constraint.normal = normal;
+								constraint.local_a = body_1.inv_pose * glm::vec4(sp.a, 1);
+								constraint.local_b = body_2.inv_pose * glm::vec4(sp.b, 1);
+								constraint.penetration_depth = penetration_depth;
+
+								if (collisions.find(constraint_hash) == collisions.end()) {
+									collisions[constraint_hash] = ManifoldCollision(id1, shape_1, id2, shape_2);
+									//printf("Collision manifold created\n");
+								}
+
+								collisions[constraint_hash].addConstraint(constraint, body_1, body_2);
+								found_constraints.insert(constraint_hash);
+
+							}
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	//Delete existing collisions not found now
+	std::vector<int64_t> to_delete;
+	for (auto& [id, constraint] : collisions) {
+		if (found_constraints.find(id) == found_constraints.end()) {
+			to_delete.push_back(id);
+		}
+	}
+	for (auto& id : to_delete) {
+		collisions.erase(id);
+	}
 
 
 }
@@ -463,7 +685,7 @@ void Cell::runPhysics(){
 	}
 
 
-	updateCollisions();
+	updateCollisions(read_bodies);
 	
 	for (auto& [id, constraint] : collisions) {
 		auto iter1 = read_bodies.find(constraint.id_1);
@@ -480,6 +702,7 @@ void Cell::runPhysics(){
 		}
 	}
 	for (int i = 0; i < Root::constraint_iterations; i++) {
+		//printf("Constraint iteration: %d\n", i) ;
 		for (auto& [id, constraint] : collisions) {
 			auto iter1 = read_bodies.find(constraint.id_1);
 			auto iter2 = read_bodies.find(constraint.id_2);
@@ -492,11 +715,7 @@ void Cell::runPhysics(){
 	for(auto& [id, body] : read_bodies){
 		//Save results that real bodies want to read
 		constraint_result[id] = {body.body->velocity, body.body->angular_velocity} ;
-
-		//TODO remove when actual constraitns are implemented
-		if(body.body->receives_impulse && body.body->position.y < -4 && body.body->velocity.y < 0){
-			constraint_result[id].first.y =  - 0.5f * constraint_result[id].first.y ;
-		}
+		//printf("result velocity: %f, %f, %f\n", body.body->velocity.x, body.body->velocity.y, body.body->velocity.z) ;
 	}
 
 	queue(id,target_time + frame_length,&Cell::runPhysics) ;
