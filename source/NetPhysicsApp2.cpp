@@ -277,7 +277,7 @@ void NetPhysicsApp2::host() {
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
-	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(10));
+	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(10.0f));
 
 
 	glm::vec3 mid = (min + max) * 0.5f;

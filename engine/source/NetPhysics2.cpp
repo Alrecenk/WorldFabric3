@@ -70,8 +70,9 @@ void RigidBody::integrateVelocity(float dt) {
 
 }
 
-BodyInstantData RigidBody::computeBodyInstant() const{
-	BodyInstantData data ;
+BodyInstant RigidBody::computeBodyInstant() const{
+	BodyInstant data ;
+	data.body = std::make_shared<RigidBody>(*this);
 	data.pose = glm::mat4(1.0f);
 	data.pose = glm::translate(data.pose, position);
 	data.pose = data.pose * glm::mat4_cast(orientation);
@@ -123,8 +124,7 @@ void RigidBody::runPhysics(){
 	//printf("rigid body run physics %lf \n", time);
 	double frame_length = 1.0 / Root::ticks_per_second;
 	int frame = (int)(time * Root::ticks_per_second);
-	double frame_slice = 0.1 ;
-	double target_time = (frame_slice+frame) * frame_length;
+	double target_time = (frame + interframe_time) * frame_length;
 
 	//If this function is off step then it's probably new (or maybe backed up)
 	if(fabs(time-target_time)> frame_length *0.1){
@@ -379,23 +379,23 @@ int64_t Collision::getHash() const {
 }
 
 //Update the constraint target based on information at the start of the frame
-void Collision::updateConstraint(RigidBody* body_1, RigidBody* body_2){
+void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
 }
 
 //Apply starting impulses carried over if the constraint has existed for multiple frames in a row
-void Collision::applyWarmingImpulse(RigidBody* body_1, RigidBody* body_2){
+void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
 }
 
 //Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
-void Collision::applyConstraint(RigidBody* body_1, RigidBody* body_2){
+void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
 }
 
 //Retargets this constraint to the objects after they have moved
 //Returns whether constraint is still valid
-bool Collision::retargetConstraint(const RigidBody* body_1, const RigidBody* body_2){
+bool Collision::retargetConstraint(const BodyInstant& body_1, const BodyInstant& body_2){
 	return false; // TODO
 }
 
@@ -417,38 +417,101 @@ void ManifoldCollision::addConstraint(Constraint& new_constraint){
 
 //Update the constraint targets based on information at the start of the frame
 //Returns if any of the constraints are active at all
-void ManifoldCollision::updateConstraints(RigidBody* body_1, RigidBody* body_2){
+void ManifoldCollision::updateConstraints(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
 }
 
 //Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-void ManifoldCollision::applyWarmingImpulses(RigidBody* body_1, RigidBody* body_2){
+void ManifoldCollision::applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
 }
 
 //Applies impulses to velocity of involved bodies to satisfy these constraints
-void ManifoldCollision::applyConstraints(RigidBody* body_1, RigidBody* body_2){
+void ManifoldCollision::applyConstraints(BodyInstant& body_1, BodyInstant& body_2){
 	// TODO
+}
+
+
+//Finds all collisions
+	//Creates or destroys constraints so the contents of constraints match the current collisions
+	//Also sets points and normals for collisions
+void Cell::updateCollisions(){
+
+
 }
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void Cell::runPhysics(){
-	printf("cell run physics called!\n");
-	//TODO
+	//printf("cell run physics called!\n");
+	double frame_length = 1.0 / Root::ticks_per_second;
+	int frame = (int)(time * Root::ticks_per_second);
+	double target_time = (interframe_time + frame) * frame_length;
+
+	// If this function is off step then it's probably new (or maybe backed up)
+	if (fabs(time - target_time) > frame_length * 0.1) {
+		//printf("Miss-step, target: %lf\n", target_time) ;
+		queue(id, target_time + frame_length, &RigidBody::runPhysics); // requeue on the step
+		return; // take no other action at this time
+	}
+
+	std::unordered_map<int64_t, BodyInstant> read_bodies;
+	for (const int64_t& id : bodies) {
+		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
+		if (body) {
+			read_bodies[id] = body->computeBodyInstant();
+		}
+	}
+
+
+	updateCollisions();
+	
+	for (auto& [id, constraint] : collisions) {
+		auto iter1 = read_bodies.find(constraint.id_1);
+		auto iter2 = read_bodies.find(constraint.id_2);
+		if(iter1 != read_bodies.end() && iter2 != read_bodies.end()){
+			constraint.updateConstraints(iter1->second, iter2->second);
+		}
+	}
+	for (auto& [id, constraint] : collisions) {
+		auto iter1 = read_bodies.find(constraint.id_1);
+		auto iter2 = read_bodies.find(constraint.id_2);
+		if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
+			constraint.applyWarmingImpulses(iter1->second, iter2->second);
+		}
+	}
+	for (int i = 0; i < Root::constraint_iterations; i++) {
+		for (auto& [id, constraint] : collisions) {
+			auto iter1 = read_bodies.find(constraint.id_1);
+			auto iter2 = read_bodies.find(constraint.id_2);
+			if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
+				constraint.applyConstraints(iter1->second, iter2->second);
+			}
+		}
+	}
+
+	for(auto& [id, body] : read_bodies){
+		//Save results that real bodies want to read
+		constraint_result[id] = {body.body->velocity, body.body->angular_velocity} ;
+
+		//TODO remove when actual constraitns are implemented
+		if(body.body->receives_impulse && body.body->position.y < -4 && body.body->velocity.y < 0){
+			constraint_result[id].first.y =  - 0.5f * constraint_result[id].first.y ;
+		}
+	}
+
+	queue(id,target_time + frame_length,&Cell::runPhysics) ;
 }
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
-	printf("cell addbody called! %lld\n", body_id);
-	//TODO
-
+	//printf("cell addbody called! %lld\n", body_id);
+	bodies.insert(body_id);
 }
 
 //Removes a body to the cell
 void Cell::removeBody(const int64_t& body_id) {
-	printf("cell removebody called! %lld\n", body_id);
-	//TODO
-
+	//printf("cell removebody called! %lld\n", body_id);
+	bodies.erase(body_id);
 }
 
 //Returns the nearest position to the target that the given body could be placed without colliding
@@ -474,11 +537,18 @@ std::pair<std::vector<int64_t>, bool> Root::getCells(const glm::vec3& center, co
 
 //create any cells necessary to cover the given bounding box
 void Root::updateCells(const glm::vec3& center, const float& radius){
-	printf("Root updateCells called\n");
+	//printf("Root updateCells called\n");
 	if(cells.size() == 0){
 		std::shared_ptr<Cell> cell = std::make_shared<Cell>() ;
-		cells.push_back(create(cell, time)) ;
-		printf("cell created!\n");
+		int64_t cell_id = create(cell, time) ;
+		cells.push_back(cell_id) ;
+		
+		double frame_length = 1.0 / Root::ticks_per_second;
+		int frame = (int)(time * Root::ticks_per_second);
+		double target_time = (frame + Cell::interframe_time) * frame_length;
+		queue(cell_id, target_time + frame_length, &Cell::runPhysics);
+
+		printf("Cell created: %lld!\n", cell_id);
 	}
 }
 

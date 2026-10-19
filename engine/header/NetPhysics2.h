@@ -5,6 +5,8 @@
 #include "WorldPlugin.h"
 #include "ActionMap.h"
 
+#include <unordered_set>
+#include <unordered_map>
 
 namespace NetPhysics2 {
 
@@ -35,11 +37,12 @@ public:
 
 };
 
+class RigidBody ;
 
-class BodyInstantData{
+//An editable reference to a body with computed fields filled out
+class BodyInstant : public Physics::PosedBody{
 public:
-	glm::mat4 pose ;
-	glm::mat4 inv_pose ;
+	std::shared_ptr<RigidBody> body ;
 	glm::mat3 inv_moment;
 	std::pair<glm::vec3, glm::vec3> AABB;
 
@@ -57,9 +60,10 @@ public:
 	int64_t root_id = -1; // links to root of physics system for finding cells
 	std::vector<int64_t> cells ; // cells currently occupied
 
-
 	bool receives_impulse = true;
 	bool applies_impulse = true;
+
+	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 
 	RigidBody() {}
 
@@ -72,7 +76,7 @@ public:
 
 	void integrateAcceleration(float dt);
 
-	BodyInstantData computeBodyInstant() const;
+	BodyInstant computeBodyInstant() const;
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics();
@@ -165,13 +169,13 @@ public:
 	virtual int64_t getHash() const = 0;
 
 	//Update the constraint target based on information at the start of the frame
-	virtual void updateConstraint(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
 	//Apply starting impulses carried over if the constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulse(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
 	//Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
-	virtual void applyConstraint(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void applyConstraint(BodyInstant& body_1, BodyInstant& body_2) = 0;
 };
 
 class ConstraintSet {
@@ -188,13 +192,13 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	virtual void updateConstraints(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void updateConstraints(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulses(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
 	//Applies impulses to velocity of involved bodies to satisfy these constraints
-	virtual void applyConstraints(RigidBody* body_1, RigidBody* body_2) = 0;
+	virtual void applyConstraints(BodyInstant& body_1, BodyInstant& body_2) = 0;
 
 };
 
@@ -229,17 +233,17 @@ public:
 	virtual int64_t getHash() const override;
 
 	//Update the constraint target based on information at the start of the frame
-	virtual void updateConstraint(RigidBody* body_1, RigidBody* body_2) override;
+	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2) override;
 
 	//Apply starting impulses carried over if the constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulse(RigidBody* body_1, RigidBody* body_2) override;
+	virtual void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2) override;
 
 	//Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
-	virtual void applyConstraint(RigidBody* body_1, RigidBody* body_2) override;
+	virtual void applyConstraint(BodyInstant& body_1, BodyInstant& body_2) override;
 
 	//Retargets this constraint to the objects after they have moved
 	//Returns whether constraint is still valid
-	bool retargetConstraint(const RigidBody* body_1, const RigidBody* body_2);
+	bool retargetConstraint(const BodyInstant& body_1, const BodyInstant& body_2);
 };
 
 
@@ -278,13 +282,13 @@ public:
 
 	//Update the constraint targets based on information at the start of the frame
 	//Returns if any of the constraints are active at all
-	void updateConstraints(RigidBody* body_1, RigidBody* body_2) override;
+	void updateConstraints(BodyInstant& body_1, BodyInstant& body_2) override;
 
 	//Apply starting impulses carried over if any constraint has existed for multiple frames in a row
-	void applyWarmingImpulses(RigidBody* body_1, RigidBody* body_2) override;
+	void applyWarmingImpulses(BodyInstant& body_1, BodyInstant& body_2) override;
 
 	//Applies impulses to velocity of involved bodies to satisfy these constraints
-	void applyConstraints(RigidBody* body_1, RigidBody* body_2) override;
+	void applyConstraints(BodyInstant& body_1, BodyInstant& body_2) override;
 
 };
 
@@ -297,14 +301,22 @@ auto static getStructure(ManifoldCollision& o) {
 //Runs physics pdates in a local region
 class Cell : public WorldObject {
 public:
-	int64_t root ;
+	int64_t root_id ;
 	float size = -1; // Cell occupies a box centered on position with axis aligned radius of size
-	std::vector<int64_t> bodies;
-	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
+	std::unordered_set<int64_t> bodies;
+	std::unordered_map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	
-	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
+	std::unordered_map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
+
+	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
 
 	Cell() {};
+
+
+	//Finds all collisions
+	//Creates or destroys constraints so the contents of constraints match the current collisions
+	//Also sets points and normals for collisions
+	void updateCollisions();
 
 	//Walks through state machine to run each physics step in lockstep with other elements
 	void runPhysics();
@@ -339,7 +351,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root, o.size, o.bodies, o.collisions, o.constraint_result);
+	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result);
 }
 
 //Contains cells and routes body requests to the appropriate one
