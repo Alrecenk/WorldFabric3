@@ -133,7 +133,7 @@ void RigidBody::runPhysics(){
 		return ; // take no other action at this time
 	}
 
-	std::shared_ptr<const Root> root = read<Root>(root_id) ;
+	
 	
 	//Incorporate constraints from the cells we're touching
 	int amount = 0 ;
@@ -142,9 +142,12 @@ void RigidBody::runPhysics(){
 	for(int64_t& cell_id : cells){
 		std::shared_ptr<const Cell> cell = read<Cell>(cell_id);
 		if(cell){
-			amount++;
-			v_total += cell->constraint_result.at(id).first ;
-			av_total += cell->constraint_result.at(id).second;
+			auto iter = cell->constraint_result.find(id);
+			if(iter != cell->constraint_result.end()){
+				amount++;
+				v_total += iter->second.first ;
+				av_total += iter->second.second ;
+			}
 		}
 	}
 	if(amount > 0){
@@ -160,31 +163,37 @@ void RigidBody::runPhysics(){
 	integrateVelocity(dt);
 	integrateAcceleration(dt);
 
-	//Check our cells and send updates iff they have changed
-	std::vector<int64_t> new_cells = root->getCells(position, types[type].bounding_radius);
+	std::shared_ptr<const Root> root = read<Root>(root_id);
+	if (root) {
 
-	for(int64_t& nc : new_cells){
-		bool found = false;
+		//Check our cells and send updates iff they have changed
+		std::pair<std::vector<int64_t>, bool> new_cells = root->getCells(position, types[type].bounding_radius);
+
+		for(int64_t& nc : new_cells.first){
+			bool found = false;
+			for (int64_t& c : cells) {
+				found |= c == nc ;
+			}
+			if(!found){
+				queue(nc,time + randomFloat() * frame_length * 0.1, &Cell::addBody, id) ;
+			}
+		}
 		for (int64_t& c : cells) {
-			found |= c == nc ;
+			bool found = false;
+			for (int64_t& nc : new_cells.first) {
+				found |= c == nc;
+			}
+			if (!found) {
+				queue(c, time + randomFloat() * frame_length * 0.1, &Cell::removeBody, id);
+			}
 		}
-		if(!found){
-			queue(nc,time, &Cell::addBody, id) ;
+
+		cells = new_cells.first ;
+
+		if(new_cells.second){
+			queue(root_id,time + randomFloat() * frame_length*0.5,&Root::updateCells, position, types[type].bounding_radius);
 		}
 	}
-	for (int64_t& c : cells) {
-		bool found = false;
-		for (int64_t& nc : new_cells) {
-			found |= c == nc;
-		}
-		if (!found) {
-			queue(c, time, &Cell::removeBody, id);
-		}
-	}
-
-	cells = new_cells ;
-
-	//TODO determine if new cells are needed cand call update Cells on Root
 
 	//Requeue this event at the beginning of the next frame
 	queue(id, target_time + frame_length, &RigidBody::runPhysics);
@@ -430,14 +439,14 @@ void Cell::runPhysics(){
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
-	printf("cell addbody called!\n");
+	printf("cell addbody called! %lld\n", body_id);
 	//TODO
 
 }
 
 //Removes a body to the cell
 void Cell::removeBody(const int64_t& body_id) {
-	printf("cell removebody called!\n");
+	printf("cell removebody called! %lld\n", body_id);
 	//TODO
 
 }
@@ -450,15 +459,27 @@ glm::vec3 Cell::nearestValidPosition(const std::string& world, std::shared_ptr<c
 }
 
 
-//return the ids of all cells overlapping the bounding box of the given bounding sphere
-std::vector<int64_t> Root::getCells(const glm::vec3& center, const float& radius) const{
-	return std::vector<int64_t>() ; // TODO
+Root::Root(float size){
+	cell_size = size ;
+}
+
+//returns the ids of all cells overlapping the bounding box of the given bounding sphere
+	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
+	//If the second element is true for a rigid body then that rigid body should call updateCells with the same data
+std::pair<std::vector<int64_t>, bool> Root::getCells(const glm::vec3& center, const float& radius) const{
+		//printf("root get cells called\n");
+		//TODO add support for more than one cell
+		return std::pair<std::vector<int64_t>, bool>(cells, (cells.size() == 0));
 }
 
 //create any cells necessary to cover the given bounding box
 void Root::updateCells(const glm::vec3& center, const float& radius){
-	//TODO
-	printf("Root updateCells called!\n");
+	printf("Root updateCells called\n");
+	if(cells.size() == 0){
+		std::shared_ptr<Cell> cell = std::make_shared<Cell>() ;
+		cells.push_back(create(cell, time)) ;
+		printf("cell created!\n");
+	}
 }
 
 void registerPhysics(){

@@ -356,8 +356,10 @@ public:
 	Root(){};
 	Root(float size) ;
 
-	//return the ids of all cells overlapping the bounding box of the given bounding sphere
-	std::vector<int64_t> getCells(const glm::vec3& center, const float& radius) const ;
+	//returns the ids of all cells overlapping the bounding box of the given bounding sphere
+	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
+	//If the second element is true for a rigid body then that rigid body should call updateCells with the same data
+	std::pair<std::vector<int64_t>,bool> getCells(const glm::vec3& center, const float& radius) const ;
 
 	//create any cells necessary to cover the given bounding box
 	void updateCells(const glm::vec3& center, const float& radius) ;
