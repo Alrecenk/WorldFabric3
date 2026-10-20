@@ -638,7 +638,7 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 						if (simplex.size() > 0) {
 							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
 							float penetration_depth = glm::length(sp.x) ;
-							if (penetration_depth > Physics::Collision::allowed_collision_depth * 0.5f) {
+							if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
 								glm::vec3 point = (sp.a + sp.b) * 0.5f;
 								glm::vec3 normal = glm::normalize(sp.x);
 								normal = glm::normalize(normal);
@@ -705,7 +705,7 @@ void Cell::runPhysics(){
 			}
 			read_bodies[id] = body->computeBodyInstant();
 		}else{
-			printf("body could not be read!\n");
+			//printf("body could not be read!\n");
 		}
 	}
 

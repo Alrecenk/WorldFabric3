@@ -23,9 +23,9 @@ public:
 
 	float elasticity = 0.5f;
 	float friction = 0.6f;
-	float drag = 0.5f;
-	float angular_drag = 0.01f;
-	float max_speed = 60.0f;
+	float drag = 0.07f;
+	float angular_drag = 0.1f;
+	float max_speed = 10.0f;
 	float max_angular_speed = 30.0f;
 
 
@@ -51,7 +51,7 @@ public:
 	
 	int type = -1 ; // index into static type list
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::vec3 acceleration = glm::vec3(0, -10, 0);
+	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
@@ -130,10 +130,10 @@ public:
 	glm::vec3 grab_offset;
 	double last_grab_time = 0;
 	float grab_distance = 0;
-	float max_grab_velocity = 40.0f;
+	float max_grab_velocity = 5.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
-	static inline float max_speed_base = 0.5f;
+	static inline float max_speed_base = 0.3f;
 	static inline float max_speed_mult = 1.5f;
 
 	glm::mat4 pose;
@@ -211,9 +211,9 @@ public:
 	float target = 0;
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 2.0f;
-	static inline float allowed_collision_depth = 0.05f;
-	static inline float min_velocity_for_elastic = 0.1f;
+	static inline float penetration_spring_coefficient = 0.3f;
+	static inline float allowed_collision_depth = 0.005f;
+	static inline float min_velocity_for_elastic = 0.02f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
@@ -251,7 +251,7 @@ public:
 
 	std::vector<Collision> points;
 
-	static inline float squared_distance_for_match = 1e-5f;
+	static inline float squared_distance_for_match = 1e-6f;
 	static inline int max_collision_points = 4;
 
 
