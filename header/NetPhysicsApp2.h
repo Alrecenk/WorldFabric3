@@ -68,9 +68,7 @@ private:
 
 	glm::vec3 min = { -1,0.5,-1 };
 	glm::vec3 max = { 1,2.5,1 };
-	float gravity = 4.0f;
-	int millis_between_balls = 300;
-	int max_balls = 150;
+
 	float wall_size = 3.0f;
 
 
