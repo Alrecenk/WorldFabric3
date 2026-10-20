@@ -152,7 +152,7 @@ void ConstraintTestApp::enter(std::shared_ptr<MachineState> from) {
 	*/
 
 
-	for (int y = -3; y < 1; y++) {
+	for (int y = -2; y < 0; y++) {
 		cell->add(box_type, glm::vec3(0, y, 0));
 	}
 
@@ -212,7 +212,8 @@ void ConstraintTestApp::run() {
 	}
 
 	updateCamera();
-	cell->runPhysicsFrame(dt, 4);
+	dt = 1.0f/100.0f ;
+	cell->runPhysicsFrame(dt, 10);
 	cell->updateGraphics();
 
 

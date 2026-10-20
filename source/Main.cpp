@@ -25,6 +25,7 @@
 #include "CollisionTestApp.h"
 #include "PyramidApp.h"
 #include "NetPhysicsApp.h"
+#include "NetPhysicsApp2.h"
 
 #include "Timeline.h"
 #include "VulkanPlugin.h"
@@ -435,8 +436,11 @@ void setupGameStates() {
 	//app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
 	//app->setState(PyramidApp::state_name);
 
-	app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
-	app->setState(NetPhysicsApp::state_name);
+	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
+	//app->setState(NetPhysicsApp::state_name);
+
+	app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
+	app->setState(NetPhysicsApp2::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -499,7 +503,6 @@ int exampleMain(int argc, char* argv[]) {
 	}
 
 	//WorldPlugin::enableEventLogging(concat("./event_log_", t) +".csv", WorldPlugin::FINAL_EVENTS);
-	//WorldPlugin::enableEventLogging(concat("./event_log_", t) + ".csv", concat("./extended_log_", t) + " .csv", WorldPlugin::FINAL_EVENTS);
 
 	std::map<int, std::string > plugin_name;
 	plugin_name[0] = "openXR";
@@ -584,7 +587,7 @@ int exampleMain(int argc, char* argv[]) {
 
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	//Narball::main(argc, argv);
+	exampleMain(argc, argv);
 	//CSVLog::findDesync({ "event_log_1.csv", "event_log_2.csv" }, "time", 1.0);
 }

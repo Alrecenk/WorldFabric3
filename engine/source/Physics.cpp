@@ -1188,10 +1188,8 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 // Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB, int max_iterations) {
-	static std::vector<SupportTriangle> polytope;
-	static std::vector<SupportEdge> edge_list;
-	polytope = collision_result;
-	edge_list.clear();
+	std::vector<SupportTriangle> polytope = collision_result;
+	std::vector<SupportEdge> edge_list;
 	int iterations = 0;
 	while (true) {
 
@@ -1345,7 +1343,8 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 						auto simplex = Physics::detectCollision(body_1.get(), body_1->shape[shapeA].get(), body_2.get(), body_2->shape[shapeB].get());
 						if (simplex.size() > 0) {
 							Physics::SupportPoint sp = Physics::getPenetration(simplex, body_1.get(), body_1->shape[shapeA].get(),body_2.get(), body_2->shape[shapeB].get());
-							if (glm::length(sp.x) > Physics::Collision::allowed_collision_depth * 0.5f) {
+							float penetration_depth = glm::length(sp.x);
+							if (penetration_depth > Physics::Collision::allowed_collision_depth * 0.5f) {
 								glm::vec3 point = (sp.a + sp.b) * 0.5f;
 								glm::vec3 normal = glm::normalize(sp.x);
 
@@ -1362,7 +1361,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 								constraint->normal = normal;
 								constraint->local_a = body_1->inv_pose * glm::vec4(sp.a,1) ;
 								constraint->local_b = body_2->inv_pose * glm::vec4(sp.b, 1) ;
-								constraint->penetration_depth = glm::length(sp.x) ;
+								constraint->penetration_depth = penetration_depth ;
 
 								if(constraints.find(constraint_id) == constraints.end()){
 									constraints[constraint_id] = std::make_shared<ManifoldCollision>(constraint_id) ;
