@@ -51,7 +51,7 @@ public:
 class RigidBody : public WorldObject {
 public:
 	
-	int type = -1 ; // index into static type list
+	char type = -1 ; // index into static type list
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
@@ -203,11 +203,13 @@ public:
 
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
-	std::vector<glm::vec3> tangents;
-	glm::vec3 point; // middle point of collision
 	glm::vec3 normal; // normal points from object 1 to object 2
 	glm::vec3 local_a; // point on surface of a in A's local coordinates
 	glm::vec3 local_b; // point on surface of b in B's local coordinates
+
+	//The values below are used internally within an cell update but are not saved across frames
+	glm::vec3 point; // middle point of collision
+	std::vector<glm::vec3> tangents;
 	float penetration_depth = 0;
 	float target = 0;
 
@@ -293,7 +295,7 @@ public:
 	std::set<int64_t> bodies;
 	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	
-	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
+	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint reslt
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
 
