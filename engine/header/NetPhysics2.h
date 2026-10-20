@@ -21,12 +21,12 @@ public:
 	std::string model;
 	glm::mat4 render_transform;
 
-	float elasticity = 0.4f;
+	float elasticity = 0.5f;
 	float friction = 0.6f;
-	float drag = 1.0f;
+	float drag = 0.5f;
 	float angular_drag = 0.01f;
-	float max_speed = 40.0f;
-	float max_angular_speed = 20.0f;
+	float max_speed = 60.0f;
+	float max_angular_speed = 30.0f;
 
 
 	BodyType(){};
@@ -130,7 +130,7 @@ public:
 	glm::vec3 grab_offset;
 	double last_grab_time = 0;
 	float grab_distance = 0;
-	float max_grab_velocity = 20.0f;
+	float max_grab_velocity = 40.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
 	static inline float max_speed_base = 0.1f;
