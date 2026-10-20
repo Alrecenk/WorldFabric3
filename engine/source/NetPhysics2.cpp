@@ -98,7 +98,7 @@ BodyInstant RigidBody::computeBodyInstant() const{
 	return data ;
 }
 
-void RigidBody::integrateAcceleration(float dt) {
+void RigidBody::integrateAcceleration(float dt, const glm::vec3& acceleration) {
 	if (types[type].inv_mass <= 0 || !receives_impulse) { // don't accelerate objects with infinite mass
 		return;
 	}
@@ -163,10 +163,12 @@ void RigidBody::runPhysics(){
 
 	//printf("actually running: %f\n", dt);
 	integrateVelocity(dt);
-	integrateAcceleration(dt);
+	
 
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
+
+		integrateAcceleration(dt, root->acceleration);
 
 		//Check our cells and send updates iff they have changed
 		std::pair<std::vector<int64_t>, bool> new_cells = root->getCells(position, types[type].bounding_radius);

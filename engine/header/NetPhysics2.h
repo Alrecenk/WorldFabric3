@@ -53,7 +53,6 @@ public:
 	
 	int type = -1 ; // index into static type list
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
@@ -74,7 +73,7 @@ public:
 
 	void integrateVelocity(float dt);
 
-	void integrateAcceleration(float dt);
+	void integrateAcceleration(float dt, const glm::vec3& acceleration);
 
 	BodyInstant computeBodyInstant() const;
 
@@ -117,7 +116,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
@@ -350,6 +349,8 @@ public:
 	//std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
 	std::map<glm::ivec3, int64_t> cells ;
 
+	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
+
 	static inline int ticks_per_second = 120;
 	static inline int constraint_iterations = 8;
 
@@ -386,7 +387,7 @@ public:
 };
 
 auto static getStructure(Root& o) {
-	return std::tie(o.position, o.cell_size, o.cells);
+	return std::tie(o.position, o.cell_size, o.cells, o.acceleration);
 }
 
 void registerPhysics();
