@@ -193,7 +193,7 @@ void WorldPlugin::run(){
 					std::pair<int, std::vector<char>> packet = registry->serializeObj(&copy);
 
 					std::vector<char> serial = serialize(packet); // need to serialize with the type since we send multiply types on this socket
-					//printf("Sent Full packet to %d size: %d\n", socket_id, (int)serial.size());
+					printf("Sent Full packet to %d size: %d\n", socket_id, (int)serial.size());
 					//copy.print();
 					bool success = socket->send(socket_id, serial);
 					if (!success) {
