@@ -136,8 +136,6 @@ void RigidBody::runPhysics(){
 		queue(id,target_time + frame_length,&RigidBody::runPhysics) ; // requeue on the step
 		return ; // take no other action at this time
 	}
-
-	
 	
 	//Incorporate constraints from the cells we're touching
 	int amount = 0 ;
@@ -237,8 +235,6 @@ int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const s
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
-
-
 //created is called when an objectis observed that ws no observed last time view was called on the world
 void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
@@ -265,8 +261,7 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 		last_orientation = body->orientation;
 		last_pose_time = body->time;
 
-	}
-	else {
+	} else {
 
 		double observation_time = worlds->getWorldTime("netphysics", body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
 		float observation_age = (float)(observation_time - body->time);// time difference between what we're supposed to see and what we observed
@@ -616,6 +611,12 @@ void ManifoldCollision::applyConstraints(BodyInstant& body_1, BodyInstant& body_
 }
 
 
+Cell::Cell(int64_t root, const glm::vec3& pos, float cell_size){
+	root_id = root ;
+	position = pos ;
+	size = cell_size ;
+}
+
 //Finds all collisions
 //Creates or destroys constraints so the contents of constraints match the current collisions
 //Also sets points and normals for collisions
@@ -823,29 +824,57 @@ Root::Root(float size){
 	cell_size = size ;
 }
 
+//Returns the cell indices for a given point
+glm::ivec3 Root::getCellCoord(const glm::vec3& p) const{
+	return glm::ivec3( std::floor(p.x/cell_size), std::floor(p.y / cell_size), std::floor(p.z / cell_size)) ;
+}
+
 //returns the ids of all cells overlapping the bounding box of the given bounding sphere
-	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
-	//If the second element is true for a rigid body then that rigid body should call updateCells with the same data
+//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
+//If the second element is true for a rigid body then that rigid body should call updateCells with the same data
 std::pair<std::vector<int64_t>, bool> Root::getCells(const glm::vec3& center, const float& radius) const{
-		//printf("root get cells called\n");
-		//TODO add support for more than one cell
-		return std::pair<std::vector<int64_t>, bool>(cells, (cells.size() == 0));
+		std::vector<int64_t> result ;
+		glm::vec3 rad = glm::vec3(radius,radius,radius);
+		glm::ivec3 min = getCellCoord(center - rad);
+		glm::ivec3 max = getCellCoord(center + rad);
+		bool any_missing = false;
+		for(int x = min.x ; x <=max.x; x++){
+			for (int y = min.y; y <= max.y; y++) {
+				for (int z = min.z; z <= max.z; z++) {
+					auto iter = cells.find(glm::ivec3(x,y,z)) ;
+					if(iter != cells.end()){
+						result.push_back(iter->second);
+					}else{
+						any_missing = true ;
+					}
+				}
+			}
+		}
+		return { result, any_missing} ;
 }
 
 //create any cells necessary to cover the given bounding box
 void Root::updateCells(const glm::vec3& center, const float& radius){
-	//printf("Root updateCells called\n");
-	if(cells.size() == 0){
-		std::shared_ptr<Cell> cell = std::make_shared<Cell>() ;
-		int64_t cell_id = create(cell, time) ;
-		cells.push_back(cell_id) ;
-		
-		double frame_length = 1.0 / Root::ticks_per_second;
-		int frame = (int)(time * Root::ticks_per_second);
-		double target_time = (frame + Cell::interframe_time) * frame_length;
-		queue(cell_id, target_time + frame_length, &Cell::runPhysics);
+	double frame_length = 1.0 / Root::ticks_per_second;
+	int frame = (int)(time * Root::ticks_per_second);
+	double target_time = (frame + Cell::interframe_time) * frame_length;
 
-		printf("Cell created: %lld!\n", cell_id);
+	glm::vec3 rad = glm::vec3(radius, radius, radius);
+	glm::ivec3 min = getCellCoord(center - rad);
+	glm::ivec3 max = getCellCoord(center + rad);
+	for (int x = min.x; x <= max.x; x++) {
+		for (int y = min.y; y <= max.y; y++) {
+			for (int z = min.z; z <= max.z; z++) {
+				glm::ivec3 coord = glm::ivec3(x, y, z) ;
+				auto iter = cells.find(coord);
+				if (iter == cells.end()) {
+					glm::vec3 pos =( glm::vec3(coord) + glm::vec3(0.5f,0.5f,0.5f))* cell_size ;
+					cells[coord] = create(std::make_shared<Cell>(id, pos, cell_size),time) ;
+					queue(cells[coord], target_time + frame_length, &Cell::runPhysics);
+					printf("Created cell (%d) at: %f, %f, %f\n", (int)(cells.size()-1), pos.x,pos.y, pos.z) ;
+				}
+			}
+		}
 	}
 }
 

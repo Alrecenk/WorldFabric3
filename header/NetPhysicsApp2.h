@@ -68,8 +68,8 @@ private:
 
 	glm::vec3 min = { -1,0.5,-1 };
 	glm::vec3 max = { 1,2.5,1 };
-
-	float wall_size = 3.0f;
+	float cell_size = 2.0f ;
+	float wall_size = 2.0f;
 
 
 	// Camera control stuff

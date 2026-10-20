@@ -74,6 +74,15 @@ struct std::hash<glm::ivec3>
 	}
 };
 
+//Overriding < makes it possible to put ivec3 as a key in a map
+//std::tie provides a tuple which provides lexicographical ordering of it's elements (i.e. left to right from params)
+namespace glm {
+	// Overloading the < operator inside the glm namespace
+	inline bool operator<(const ivec3& a, const ivec3& b) {
+		return std::tie(a.x, a.y, a.z) < std::tie(b.x, b.y, b.z);
+	}
+}
+
 
 // Overriding std::hash allows data types to be used as keys in unordered maps and sets
 template<>

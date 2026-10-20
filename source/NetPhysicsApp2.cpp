@@ -278,7 +278,7 @@ void NetPhysicsApp2::host() {
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
-	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(10.0f));
+	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(cell_size));
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
@@ -320,18 +320,10 @@ void NetPhysicsApp2::host() {
 
 
 
-	for (int y = -3; y < 1; y++) {
-		auto box = std::make_shared<NetPhysics2::RigidBody>(root_id, box_type, glm::vec3(0, y, 0));
-		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
-		body_id = worlds->create(WORLD, box);
-		worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	}
-
-
 	//Add some random stuff
 	int amount = 20;
 	for (int k = 0; k < amount; k++) {
-		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
+		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.6f + randomFloat() * 0.4f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
 		float rand = k / (float)amount;
 		//rand = 1.0f ;

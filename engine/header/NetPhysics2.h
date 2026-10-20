@@ -5,6 +5,8 @@
 #include "WorldPlugin.h"
 #include "ActionMap.h"
 
+#include <map>
+
 
 namespace NetPhysics2 {
 
@@ -298,6 +300,7 @@ public:
 
 	Cell() {};
 
+	Cell(int64_t root, const glm::vec3& pos, float cell_size);
 
 	//Finds all collisions
 	//Creates or destroys constraints so the contents of constraints match the current collisions
@@ -344,8 +347,8 @@ auto static getStructure(Cell& o) {
 class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
-	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
-
+	//std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+	std::map<glm::ivec3, int64_t> cells ;
 
 	static inline int ticks_per_second = 120;
 	static inline int constraint_iterations = 8;
@@ -353,6 +356,9 @@ public:
 
 	Root(){};
 	Root(float size) ;
+
+	//Returns the cell indices for a given point
+	glm::ivec3 getCellCoord(const glm::vec3& p) const ;
 
 	//returns the ids of all cells overlapping the bounding box of the given bounding sphere
 	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
