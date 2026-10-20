@@ -133,7 +133,7 @@ public:
 	float max_grab_velocity = 40.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
-	static inline float max_speed_base = 0.1f;
+	static inline float max_speed_base = 0.5f;
 	static inline float max_speed_mult = 1.5f;
 
 	glm::mat4 pose;
@@ -347,8 +347,8 @@ public:
 	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
 
 
-	static inline int ticks_per_second = 100;
-	static inline int constraint_iterations = 10;
+	static inline int ticks_per_second = 120;
+	static inline int constraint_iterations = 8;
 
 
 	Root(){};
