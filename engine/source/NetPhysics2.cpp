@@ -407,11 +407,6 @@ void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 	warm_tangent_impulse -= normal * glm::dot(normal, warm_tangent_impulse);
 	warm_impulse = normal * glm::dot(normal, warm_impulse);
 
-	tangents.clear();
-	glm::vec3 ref = (std::abs(normal.y) < 0.8f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
-	tangents.push_back(glm::normalize(glm::cross(normal, ref)));
-	tangents.push_back(glm::normalize(glm::cross(normal, tangents[0])));
-
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
 
 	//printf("Warm impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
@@ -871,7 +866,7 @@ void Root::updateCells(const glm::vec3& center, const float& radius){
 					glm::vec3 pos =( glm::vec3(coord) + glm::vec3(0.5f,0.5f,0.5f))* cell_size ;
 					cells[coord] = create(std::make_shared<Cell>(id, pos, cell_size),time) ;
 					queue(cells[coord], target_time + frame_length, &Cell::runPhysics);
-					printf("Created cell (%d) at: %f, %f, %f\n", (int)(cells.size()-1), pos.x,pos.y, pos.z) ;
+					//printf("Created cell (%d) at: %f, %f, %f\n", (int)(cells.size()-1), pos.x,pos.y, pos.z) ;
 				}
 			}
 		}

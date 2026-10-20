@@ -240,7 +240,7 @@ public:
 
 
 auto static getStructure(Collision& o) {
-	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target);
+	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.normal, o.local_a, o.local_b/*, o.tangents, o.point,o.penetration_depth,o.target*/ );
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
