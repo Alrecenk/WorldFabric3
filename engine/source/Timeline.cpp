@@ -12,6 +12,10 @@ using VoidEvent = Timeline::VoidEvent;
 //Read another object in the timeline, speed of info will be enforced
 //Returns nullptr if the object doesn't exist or isn't yet readable
 std::shared_ptr<const WorldObject> Timeline::WorldObject::read(int64_t read_id) const {
+	if(world == nullptr){
+		printf("calling internal event read when not in an internal event!\n");
+		return std::shared_ptr<const WorldObject>() ;
+	}
 	return world->read(read_id, event_position, time);
 }
 
@@ -49,16 +53,15 @@ std::shared_ptr<const WorldObject> Timeline::ObjectHistory::read(const glm::vec3
 		double readable_time = o->time + distance  / world->max_info_speed;
 		if (readable_time <= time) {
 			if (o->destroyed || distance > world->max_read_distance) {
-				return std::shared_ptr<const WorldObject>();
+				return nullptr;
 			}
 			else {
 				return o;
 			}
 		} else if (i != last) { // can't read it, keep looking
 			i = (i + size - 1) % size;
-		}
-		else { // we reached last and it wasn't readable
-			return std::shared_ptr<const WorldObject>();
+		}else { // we reached last and it wasn't readable
+			return nullptr;
 		}
 	}
 }

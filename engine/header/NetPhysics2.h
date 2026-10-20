@@ -5,6 +5,8 @@
 #include "WorldPlugin.h"
 #include "ActionMap.h"
 
+#include <map>
+
 
 namespace NetPhysics2 {
 
@@ -23,9 +25,9 @@ public:
 
 	float elasticity = 0.5f;
 	float friction = 0.6f;
-	float drag = 0.5f;
-	float angular_drag = 0.01f;
-	float max_speed = 60.0f;
+	float drag = 0.07f;
+	float angular_drag = 0.1f;
+	float max_speed = 10.0f;
 	float max_angular_speed = 30.0f;
 
 
@@ -49,9 +51,8 @@ public:
 class RigidBody : public WorldObject {
 public:
 	
-	int type = -1 ; // index into static type list
+	char type = -1 ; // index into static type list
 	glm::vec3 velocity = glm::vec3(0, 0, 0);
-	glm::vec3 acceleration = glm::vec3(0, -10, 0);
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
@@ -72,7 +73,7 @@ public:
 
 	void integrateVelocity(float dt);
 
-	void integrateAcceleration(float dt);
+	void integrateAcceleration(float dt, const glm::vec3& acceleration);
 
 	BodyInstant computeBodyInstant() const;
 
@@ -115,7 +116,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.acceleration, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
@@ -130,10 +131,10 @@ public:
 	glm::vec3 grab_offset;
 	double last_grab_time = 0;
 	float grab_distance = 0;
-	float max_grab_velocity = 40.0f;
+	float max_grab_velocity = 5.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
-	static inline float max_speed_base = 0.5f;
+	static inline float max_speed_base = 0.3f;
 	static inline float max_speed_mult = 1.5f;
 
 	glm::mat4 pose;
@@ -202,18 +203,20 @@ public:
 
 	glm::vec3 warm_impulse;
 	glm::vec3 warm_tangent_impulse;
-	std::vector<glm::vec3> tangents;
-	glm::vec3 point; // middle point of collision
 	glm::vec3 normal; // normal points from object 1 to object 2
 	glm::vec3 local_a; // point on surface of a in A's local coordinates
 	glm::vec3 local_b; // point on surface of b in B's local coordinates
+
+	//The values below are used internally within an cell update but are not saved across frames
+	glm::vec3 point; // middle point of collision
+	std::vector<glm::vec3> tangents;
 	float penetration_depth = 0;
 	float target = 0;
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 2.0f;
-	static inline float allowed_collision_depth = 0.05f;
-	static inline float min_velocity_for_elastic = 0.1f;
+	static inline float penetration_spring_coefficient = 0.3f;
+	static inline float allowed_collision_depth = 0.005f;
+	static inline float min_velocity_for_elastic = 0.02f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
@@ -238,7 +241,7 @@ public:
 
 
 auto static getStructure(Collision& o) {
-	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.tangents, o.point, o.normal, o.local_a, o.local_b, o.penetration_depth, o.target);
+	return std::tie(o.warm_impulse, o.warm_tangent_impulse, o.normal, o.local_a, o.local_b/*, o.tangents, o.point,o.penetration_depth,o.target*/ );
 }
 
 //A simple collision that uses a single point and does not maintain a manifold
@@ -251,7 +254,7 @@ public:
 
 	std::vector<Collision> points;
 
-	static inline float squared_distance_for_match = 1e-5f;
+	static inline float squared_distance_for_match = 1e-6f;
 	static inline int max_collision_points = 4;
 
 
@@ -292,12 +295,13 @@ public:
 	std::set<int64_t> bodies;
 	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	
-	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velo9city and angular velocity of constraint reslt
+	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint reslt
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
 
 	Cell() {};
 
+	Cell(int64_t root, const glm::vec3& pos, float cell_size);
 
 	//Finds all collisions
 	//Creates or destroys constraints so the contents of constraints match the current collisions
@@ -344,8 +348,10 @@ auto static getStructure(Cell& o) {
 class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
-	std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+	//std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+	std::map<glm::ivec3, int64_t> cells ;
 
+	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
 
 	static inline int ticks_per_second = 120;
 	static inline int constraint_iterations = 8;
@@ -353,6 +359,9 @@ public:
 
 	Root(){};
 	Root(float size) ;
+
+	//Returns the cell indices for a given point
+	glm::ivec3 getCellCoord(const glm::vec3& p) const ;
 
 	//returns the ids of all cells overlapping the bounding box of the given bounding sphere
 	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)
@@ -380,7 +389,7 @@ public:
 };
 
 auto static getStructure(Root& o) {
-	return std::tie(o.position, o.cell_size, o.cells);
+	return std::tie(o.position, o.cell_size, o.cells, o.acceleration);
 }
 
 void registerPhysics();
