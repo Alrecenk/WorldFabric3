@@ -304,6 +304,15 @@ float ConvexPolyhedron::rayTrace(const glm::vec3& p, const glm::vec3& v) const{
 	return -1.0f ; //TODO
 }
 
+//Returns the maximum distance from the origin of this shape
+float ConvexPolyhedron::boundingRadius() const {
+	float max_radius = 0 ;
+	for (auto& v : vertex) {
+		max_radius = fmax(max_radius, glm::dot(v,v)) ;
+	}
+	return sqrtf(max_radius) ;
+}
+
 //Returns an axis aligned bounding box for the shape if it had the given pose
 //First element is min values, second is max values
 std::pair<glm::vec3, glm::vec3> ConvexPolyhedron::getAABB(const glm::mat4& pose) const {
@@ -1018,6 +1027,11 @@ glm::vec3 Sphere::support(const glm::vec3& direction) const{
 //Returns a negative number if the ray does not intersect
 float Sphere::rayTrace(const glm::vec3& p, const glm::vec3& v) const{
 	return -1.0f ; // TODO
+}
+
+//Returns the maximum distance from the origin of this shape
+float Sphere::boundingRadius() const {
+	return radius ;
 }
 
 //Returns an axis aligned bounding box for the shape if it had the given pose

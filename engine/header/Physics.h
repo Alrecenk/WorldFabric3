@@ -24,6 +24,9 @@ public:
 	//First element is min values, second is max values
 	virtual std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const = 0;
 
+	//Returns the maximum distance from the origin of this shape
+	virtual float boundingRadius() const = 0;
+
 };
 
 
@@ -52,7 +55,6 @@ public:
 
 	ConvexPolyhedron(std::vector<Polygon>& polygons, float mass);
 
-
 	// Return the center of mass of this shape
 	glm::vec3 getCentroid();
 
@@ -69,6 +71,9 @@ public:
 	//Returns the t for closest intersection on the ray p + v*t
 	//Returns a negative number if the ray does not intersect
 	float rayTrace(const glm::vec3& p, const glm::vec3& v) const override;
+
+	//Returns the maximum distance from the origin of this shape
+	float boundingRadius() const override ;
 
 	//Returns an axis aligned bounding box for the shape if it had the given pose
 	//First element is min values, second is max values
@@ -134,6 +139,9 @@ public:
 	//Returns an axis aligned bounding box for the shape if it had the given pose
 	//First element is min values, second is max values
 	std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const override;
+
+	//Returns the maximum distance from the origin of this shape
+	float boundingRadius() const override;
 } ;
 
 auto static getStructure(ConvexPolyhedron& o) {

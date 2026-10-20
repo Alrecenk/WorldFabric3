@@ -25,8 +25,12 @@ BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, co
 		inv_mass = 1.0f / mass;
 	}
 
-	//TODO compute bounding radius
-	bounding_radius = 0.5f;
+	bounding_radius = 0;
+	for(auto& s : shape){
+		bounding_radius = fmax(bounding_radius, s->boundingRadius()) ;
+	}
+	printf("Boudning radius: %f\n", bounding_radius) ;
+
 }
 
 
