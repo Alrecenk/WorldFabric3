@@ -134,6 +134,7 @@ void WorldPlugin::run(){
 				}
 				std::pair<int, std::vector<char>> packet = registry->serializeObj(&update);
 				std::vector<char> serial = serialize(packet); // need to serialize with the type since we also send copy packet on these sockets sometimes
+				serial = LZ4compress(serial) ;
 				bool success = socket->send(socket_id, serial) ;
 				if(!success){
 					//printf("socket send failed without retry sendingserver updates, desync imminent at %lf\n", absolute_time);
@@ -152,6 +153,7 @@ void WorldPlugin::run(){
 			for (int k = 0; k < connection_1.update_packets.size(); k++) {
 				std::pair<int, std::vector<char>> packet = std::make_pair(Timeline::UPDATE_PACKET, *connection_1.update_packets[k]) ; //TODO avoid removing type and then reattaching it
 				std::vector<char> serial = serialize(packet); // need to serialize with the type since we also send copy packet on these sockets sometimes
+				serial = LZ4compress(serial);
 				for (auto& [id_2, connection_2] : connections) {
 					if(id_1 != id_2 && !connection_2.wants_full_sync && !connection_2.mismatched_version){
 						bool success = socket->send(id_2, serial);
@@ -181,6 +183,7 @@ void WorldPlugin::run(){
 				empty_copy->version = version;
 				std::pair<int, std::vector<char>> empty_packet = registry->serializeObj(empty_copy.get());
 				std::vector<char> serial = serialize(empty_packet);
+				serial = LZ4compress(serial) ;
 				bool success = socket->send(socket_id, serial);
 			}else{
 
@@ -193,7 +196,9 @@ void WorldPlugin::run(){
 					std::pair<int, std::vector<char>> packet = registry->serializeObj(&copy);
 
 					std::vector<char> serial = serialize(packet); // need to serialize with the type since we send multiply types on this socket
-					printf("Sent Full packet to %d size: %d\n", socket_id, (int)serial.size());
+					int original_size = (int)serial.size() ;
+					serial = LZ4compress(serial);
+					printf("Sent Full packet to %d of size %d (compressed to %d)\n", socket_id, original_size, (int)serial.size());
 					//copy.print();
 					bool success = socket->send(socket_id, serial);
 					if (!success) {
@@ -521,6 +526,7 @@ void WorldPlugin::connect(std::shared_ptr<Socket> new_socket, const std::string&
 	this->version = version ;
 	std::pair<int, std::vector<char>> empty_packet = registry->serializeObj(empty_copy.get());
 	std::vector<char> serial = serialize(empty_packet); // need to serialize with the type since we also send copy packet on these sockets sometimes
+	serial = LZ4compress(serial);
 	lock.unlock();
 	bool success = socket->send(0, serial);
 	if (success) {
@@ -585,6 +591,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 	this->version = version ;
 	std::pair<int, std::vector<char>> empty_packet = registry->serializeObj(empty_copy.get());
 	std::vector<char> serial = serialize(empty_packet); // need to serialize with the type since we also send copy packet on these sockets sometimes
+	serial = LZ4compress(serial);
 	lock.unlock();
 	bool success = socket->send(0, serial) ; 
 	if(success){
@@ -657,8 +664,8 @@ bool WorldPlugin::connected(int id){
 }
 
 //Called when a packet is received
-void WorldPlugin::receivePacket(int sender_id, const std::vector<char>& data){
-
+void WorldPlugin::receivePacket(int sender_id, const std::vector<char>& compressed_data){
+	std::vector<char> data = LZ4decompress(compressed_data) ;
 	std::tuple<int, std::vector<char>> packet = deserialize<int, std::vector<char>>(data) ;
 	int& type = get<0>(packet);
 	std::vector<char>& obj_data = get<1>(packet);

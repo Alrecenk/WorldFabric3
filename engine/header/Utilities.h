@@ -16,6 +16,7 @@
 #include "openvr.h"
 #include "glm/glm.hpp"
 
+#include "lz4.h"
 
 inline std::string loadTextFile(std::string path) {
 	std::ifstream file(path);
@@ -520,5 +521,50 @@ inline float rayTraceBoundingBox(const glm::vec3& p, const glm::vec3& v, const g
 inline bool boundingBoxCollision(const glm::vec3& min_1, const glm::vec3& max_1, const glm::vec3& min_2, const glm::vec3& max_2){
 	return min_1.x <= max_2.x && min_1.y <= max_2.y && min_1.z <= max_2.z && min_2.x <= max_1.x && min_2.y <= max_1.y && min_2.z <= max_2.z  ;
 }
+
+//Compress a buffer using LZ4
+inline std::vector<char> LZ4compress(const std::vector<char>& raw) {
+	if (raw.empty()){
+		return {};
+	}
+	uint32_t source_size = static_cast<uint32_t>(raw.size());
+	int max_result_size = LZ4_compressBound(source_size);
+	std::vector<char> compressed;
+	compressed.resize(sizeof(uint32_t) + max_result_size);
+	std::memcpy(compressed.data(), &source_size, sizeof(uint32_t));
+	int compressed_size = LZ4_compress_default(
+		raw.data(),
+		compressed.data() + sizeof(uint32_t),
+		source_size,
+		max_result_size
+	);
+
+	if (compressed_size <= 0) {
+		throw std::runtime_error("LZ4 compression failed");
+	}
+	compressed.resize(sizeof(uint32_t) + compressed_size);
+	return compressed;
+}
+
+//Decompress a buffer compressedwith LZ4compress
+inline std::vector<char> LZ4decompress(const std::vector<char>& compressed) {
+	if (compressed.size() < sizeof(uint32_t)) {
+		return {};
+	}
+	uint32_t original_size;
+	std::memcpy(&original_size, compressed.data(), sizeof(uint32_t));
+	std::vector<char> decompressed(original_size);
+	int result = LZ4_decompress_safe(
+		compressed.data() + sizeof(uint32_t),
+		decompressed.data(),
+		static_cast<int>(compressed.size() - sizeof(uint32_t)),
+		static_cast<int>(original_size)
+	);
+	if (result < 0) {
+		throw std::runtime_error("LZ4 decompression failed");
+	}
+	return decompressed;
+}
+
 
 #endif // #ifndef _UTILITIES_H_

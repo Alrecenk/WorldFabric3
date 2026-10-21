@@ -240,6 +240,7 @@
     <ClInclude Include="header\NetPhysicsApp2.h" />
     <ClInclude Include="header\PyramidApp.h" />
     <ClInclude Include="header\TraceApp.h" />
+    <ClInclude Include="include\lz4.h" />
     <ClInclude Include="Narball\header\Ball.h" />
     <ClInclude Include="Narball\header\HighlightParticle.h" />
     <ClInclude Include="Narball\header\Nameplate.h" />
@@ -910,6 +911,7 @@
     <ClCompile Include="engine\source\VulkanPlugin.cpp" />
     <ClCompile Include="engine\source\WorldPlugin.cpp" />
     <ClCompile Include="include\glm\detail\glm.cpp" />
+    <ClCompile Include="include\lz4.c" />
     <ClCompile Include="include\stb_vorbis.c" />
     <ClCompile Include="Narball\header\NarballMain.h">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\engine\header;$(VULKAN_SDK)/Include;./header;./include;./lib;./dll,.\Narball\header,.\Narball\source</AdditionalIncludeDirectories>
