@@ -1,170 +1,286 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(WorldFabric LANGUAGES C CXX)
+project(WorldFabric
+    DESCRIPTION "WorldFabric Engine and Narball"
+    LANGUAGES   C CXX
+)
 
+# ==============================================================================
+# Platform & Architecture Validation
+# ==============================================================================
+# Prebuilt import libraries in lib/ and runtime binaries in dll/ target x86_64
+# Windows exclusively. Fail fast during configuration on unsupported targets.
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "WorldFabric only builds for 64-bit Windows (the prebuilt libs in lib/ are x64).")
+    message(FATAL_ERROR "WorldFabric requires a 64-bit Windows target (prebuilt binaries in lib/ and dll/ are x64).")
 endif()
+
+# ==============================================================================
+# Build Options
+# ==============================================================================
+option(WF_COMPILE_SHADERS "Compile GLSL shaders to SPIR-V (.spv) during the build" ON)
+
+set(WF_VULKAN_HEADERS_TAG "v1.4.309" CACHE STRING
+    "Git tag used when fetching fallback Vulkan headers via FetchContent"
+)
+
+# ==============================================================================
+# Language Standards
+# ==============================================================================
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Vulkan headers: prefer an installed Vulkan SDK, otherwise fetch the matching
-# Vulkan-Headers + Vulkan-Utility-Libraries (for vk_enum_string_helper.h).
-# Only include directories are used; vulkan-1.lib is linked from lib/.
+# ==============================================================================
+# Dependencies: Vulkan Headers & Shader Compiler
+# ==============================================================================
+# Prefer headers from a locally installed Vulkan SDK when available and complete
+# (specifically checking for vk_enum_string_helper.h). Otherwise, fetch the
+# matching Khronos header repositories. Only headers are needed here because
+# vulkan-1.lib is linked directly from the repository's lib/ directory.
 find_package(Vulkan QUIET)
+
 if(Vulkan_FOUND AND EXISTS "${Vulkan_INCLUDE_DIRS}/vulkan/vk_enum_string_helper.h")
     set(WF_VULKAN_INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS})
-    message(STATUS "Using Vulkan SDK headers: ${Vulkan_INCLUDE_DIRS}")
+    message(STATUS "Vulkan: Using installed SDK headers (${Vulkan_INCLUDE_DIRS})")
 else()
     include(FetchContent)
-    set(WF_VULKAN_HEADERS_TAG "v1.4.309" CACHE STRING "Tag used when fetching Vulkan headers")
-    # SOURCE_SUBDIR points at a non-existent dir so the projects are downloaded but not configured.
+
+    # Point SOURCE_SUBDIR at a non-existent directory so FetchContent downloads
+    # the header repositories without executing their CMakeLists.txt files.
     FetchContent_Declare(vulkan_headers
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-        GIT_TAG ${WF_VULKAN_HEADERS_TAG}
-        GIT_SHALLOW TRUE
-        SOURCE_SUBDIR _none)
+        GIT_TAG        ${WF_VULKAN_HEADERS_TAG}
+        GIT_SHALLOW    TRUE
+        SOURCE_SUBDIR  _header_only_noop
+    )
     FetchContent_Declare(vulkan_utility
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Utility-Libraries.git
-        GIT_TAG ${WF_VULKAN_HEADERS_TAG}
-        GIT_SHALLOW TRUE
-        SOURCE_SUBDIR _none)
+        GIT_TAG        ${WF_VULKAN_HEADERS_TAG}
+        GIT_SHALLOW    TRUE
+        SOURCE_SUBDIR  _header_only_noop
+    )
     FetchContent_MakeAvailable(vulkan_headers vulkan_utility)
+
     set(WF_VULKAN_INCLUDE_DIRS
         "${vulkan_headers_SOURCE_DIR}/include"
-        "${vulkan_utility_SOURCE_DIR}/include")
-    message(STATUS "Vulkan SDK not found; using fetched Vulkan headers ${WF_VULKAN_HEADERS_TAG}")
+        "${vulkan_utility_SOURCE_DIR}/include"
+    )
+    message(STATUS "Vulkan: SDK not found; using fetched headers (${WF_VULKAN_HEADERS_TAG})")
 endif()
 
+find_program(WF_GLSLC
+    NAMES glslc
+    HINTS ${Vulkan_GLSLC_EXECUTABLE} "$ENV{VULKAN_SDK}/Bin"
+    DOC   "Path to the Vulkan glslc SPIR-V shader compiler"
+)
+
+# ==============================================================================
+# Primary Executable Target: WorldFabric
+# ==============================================================================
+add_executable(WorldFabric)
+
+# Collect project sources and headers. CONFIGURE_DEPENDS instructs CMake/Ninja
+# to automatically re-check these globs at build time when files are added or
+# removed.
 file(GLOB WF_SOURCES CONFIGURE_DEPENDS
-    engine/source/*.cpp
-    engine/source/*.c
-    Narball/source/*.cpp
-    Narball/source/*.c
-    source/*.cpp
-    source/*.c
-    include/*.cpp
-    include/*.c
-    include/glm/detail/*.cpp)
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/source/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/source/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/source/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/source/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/glm/detail/*.cpp"
+)
 
 file(GLOB WF_HEADERS CONFIGURE_DEPENDS
-    engine/header/*.h
-    header/*.h
-    Narball/header/*.h
-    include/*.h)
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/header/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/header/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/header/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+)
 
-add_executable(WorldFabric ${WF_SOURCES} ${WF_HEADERS})
+target_sources(WorldFabric PRIVATE
+    ${WF_SOURCES}
+    ${WF_HEADERS}
+)
 
-# The repo's include/ must come before the Vulkan SDK so its bundled SDL/GLM copies don't win.
+# Local include/ must precede WF_VULKAN_INCLUDE_DIRS so the repository's own
+# SDL3 and GLM headers take priority over copies bundled in the Vulkan SDK.
 target_include_directories(WorldFabric PRIVATE
-    engine/header
-    header
-    Narball/header
-    include
-    ${WF_VULKAN_INCLUDE_DIRS})
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/header"
+    "${CMAKE_CURRENT_SOURCE_DIR}/header"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/header"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    ${WF_VULKAN_INCLUDE_DIRS}
+)
 
 target_compile_definitions(WorldFabric PRIVATE
     _CONSOLE
     UNICODE
     _UNICODE
-    $<$<NOT:$<CONFIG:Debug>>:NDEBUG>)
-
-file(GLOB WF_LIBS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib)
-target_link_libraries(WorldFabric PRIVATE ${WF_LIBS})
+    $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
+)
 
 target_compile_options(WorldFabric PRIVATE
-    $<$<CONFIG:Release>:-O2>)
-# stdc++exp provides std::print's terminal support in libstdc++.
-target_link_libraries(WorldFabric PRIVATE ws2_32 glu32 stdc++exp)
-# Statically link the MinGW runtime
-target_link_options(WorldFabric PRIVATE -static)
+    $<$<CONFIG:Release>:-O2>
+)
 
-# Assets and shaders are loaded via paths relative to the working directory (./assets, ./Narball/...),
-# so they are copied next to the exe and the app runs from there.
-get_property(WF_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(WF_MULTI_CONFIG)
-    set(WF_RUNTIME_DIR ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
+# Link all prebuilt import libraries in lib/ alongside required system and
+# runtime libraries (stdc++exp provides C++23 std::print support in libstdc++).
+file(GLOB WF_PREBUILT_LIBS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib"
+)
+
+target_link_libraries(WorldFabric PRIVATE
+    ${WF_PREBUILT_LIBS}
+    ws2_32
+    glu32
+    stdc++exp
+)
+
+# Statically link the MinGW runtime so the executable does not depend on
+# external compiler runtime DLLs (libstdc++-6.dll, libgcc_s_seh-1.dll, etc.).
+target_link_options(WorldFabric PRIVATE
+    -static
+)
+
+# ==============================================================================
+# Runtime Output Directory & IDE Configuration
+# ==============================================================================
+# The engine loads assets and shaders via paths relative to the current working
+# directory (e.g., ./assets, ./shader, ./Narball/...). All build outputs,
+# compiled shaders, and runtime assets are placed together in WF_RUNTIME_DIR.
+#
+# Note: WF_RUNTIME_DIR is computed explicitly because add_custom_command(OUTPUT)
+# does not support target-dependent generator expressions like $<TARGET_FILE_DIR>.
+get_property(WF_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(WF_IS_MULTI_CONFIG)
+    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 else()
-    set(WF_RUNTIME_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
-set_target_properties(WorldFabric PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${WF_RUNTIME_DIR}
-    VS_DEBUGGER_WORKING_DIRECTORY ${WF_RUNTIME_DIR})
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT WorldFabric)
 
-# Shaders compile to <runtime dir>/<source path>.spv, because the app loads them from ./shader and ./Narball/shader.
-# Each build tree owns its outputs, so sharing them in the source tree would make trees invalidate each other.
-# Generated .spv files are not committed, so glslc (from the Vulkan SDK) is required.
-find_program(WF_GLSLC NAMES glslc HINTS ${Vulkan_GLSLC_EXECUTABLE} "$ENV{VULKAN_SDK}/Bin" DOC "glslc shader compiler")
-option(WF_COMPILE_SHADERS "Compile GLSL shaders to SPIR-V during the build" ON)
+set_target_properties(WorldFabric PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY      "${WF_RUNTIME_DIR}"
+    VS_DEBUGGER_WORKING_DIRECTORY "${WF_RUNTIME_DIR}"
+)
+
+set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    PROPERTY VS_STARTUP_PROJECT WorldFabric
+)
+
+# ==============================================================================
+# Shader Compilation (GLSL -> SPIR-V)
+# ==============================================================================
+# Shaders are compiled directly into <WF_RUNTIME_DIR>/<relative_shader_path>.spv
+# so each build tree maintains isolated outputs without polluting the source tree.
 file(GLOB WF_SHADER_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.vert
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.frag
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.comp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.vert
-    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.frag
-    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.comp)
+    "${CMAKE_CURRENT_SOURCE_DIR}/shader/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shader/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shader/*.comp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*.comp"
+)
+
 if(WF_COMPILE_SHADERS AND WF_GLSLC)
-    message(STATUS "Compiling shaders with ${WF_GLSLC}")
+    message(STATUS "Shaders: Compiling with ${WF_GLSLC}")
     set(WF_SHADER_OUTPUTS)
-    foreach(shader ${WF_SHADER_SOURCES})
-        file(RELATIVE_PATH shader_rel ${CMAKE_CURRENT_SOURCE_DIR} ${shader})
-        set(spv ${WF_RUNTIME_DIR}/${shader_rel}.spv)
-        set(depfile ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_rel}.d)
-        get_filename_component(depfile_dir ${depfile} DIRECTORY)
+
+    foreach(shader IN LISTS WF_SHADER_SOURCES)
+        file(RELATIVE_PATH shader_rel "${CMAKE_CURRENT_SOURCE_DIR}" "${shader}")
+        set(spv_output "${WF_RUNTIME_DIR}/${shader_rel}.spv")
+        set(depfile    "${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_rel}.d")
+        get_filename_component(depfile_dir "${depfile}" DIRECTORY)
+
         add_custom_command(
-            OUTPUT ${spv}
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${depfile_dir}
-            COMMAND ${WF_GLSLC} -MD -MF ${depfile} ${shader} -o ${spv}
-            DEPENDS ${shader}
-            DEPFILE ${depfile}
+            OUTPUT  "${spv_output}"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${depfile_dir}"
+            COMMAND "${WF_GLSLC}" -MD -MF "${depfile}" "${shader}" -o "${spv_output}"
+            DEPENDS "${shader}"
+            DEPFILE "${depfile}"
             COMMENT "Compiling shader ${shader_rel}"
-            VERBATIM)
-        list(APPEND WF_SHADER_OUTPUTS ${spv})
+            VERBATIM
+        )
+        list(APPEND WF_SHADER_OUTPUTS "${spv_output}")
     endforeach()
-    add_custom_target(shaders ALL DEPENDS ${WF_SHADER_OUTPUTS} SOURCES ${WF_SHADER_SOURCES})
+
+    add_custom_target(shaders ALL
+        DEPENDS ${WF_SHADER_OUTPUTS}
+        SOURCES ${WF_SHADER_SOURCES}
+    )
     add_dependencies(WorldFabric shaders)
 elseif(WF_COMPILE_SHADERS)
-    message(WARNING "glslc not found (install the Vulkan SDK or set WF_GLSLC); shaders will not be compiled")
+    message(WARNING "Shaders: glslc not found (install the Vulkan SDK or set WF_GLSLC); SPIR-V compilation skipped.")
 endif()
 
-# OUTPUT can't use target-dependent generator expressions, hence WF_RUNTIME_DIR instead of $<TARGET_FILE_DIR>.
+# ==============================================================================
+# Runtime Assets & DLL Deployment
+# ==============================================================================
+# Mirror runtime assets, raw shader sources, and configuration files into the
+# runtime directory. Pre-compiled .spv files in the source tree are excluded
+# so they do not conflict with outputs produced by the `shaders` target.
 file(GLOB_RECURSE WF_RUNTIME_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/assets/*
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*
-    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/asset/*
-    ${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*)
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shader/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/asset/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*"
+)
 list(FILTER WF_RUNTIME_SOURCES EXCLUDE REGEX "\\.spv$")
 list(APPEND WF_RUNTIME_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/steam_appid.txt
-    ${CMAKE_CURRENT_SOURCE_DIR}/server_settings.json)
+    "${CMAKE_CURRENT_SOURCE_DIR}/steam_appid.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/server_settings.json"
+)
+
 set(WF_RUNTIME_OUTPUTS)
-foreach(src ${WF_RUNTIME_SOURCES})
-    file(RELATIVE_PATH src_rel ${CMAKE_CURRENT_SOURCE_DIR} ${src})
-    set(dst ${WF_RUNTIME_DIR}/${src_rel})
+foreach(src IN LISTS WF_RUNTIME_SOURCES)
+    file(RELATIVE_PATH src_rel "${CMAKE_CURRENT_SOURCE_DIR}" "${src}")
+    set(dst "${WF_RUNTIME_DIR}/${src_rel}")
+
     add_custom_command(
-        OUTPUT ${dst}
-        COMMAND ${CMAKE_COMMAND} -E copy ${src} ${dst}
-        DEPENDS ${src}
-        VERBATIM)
-    list(APPEND WF_RUNTIME_OUTPUTS ${dst})
+        OUTPUT  "${dst}"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${src}" "${dst}"
+        DEPENDS "${src}"
+        VERBATIM
+    )
+    list(APPEND WF_RUNTIME_OUTPUTS "${dst}")
 endforeach()
-add_custom_target(runtime_files ALL DEPENDS ${WF_RUNTIME_OUTPUTS})
+
+add_custom_target(runtime_files ALL
+    DEPENDS ${WF_RUNTIME_OUTPUTS}
+)
 add_dependencies(WorldFabric runtime_files)
 
-file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
-add_custom_command(TARGET WorldFabric POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WF_RUNTIME_DLLS} $<TARGET_FILE_DIR:WorldFabric>
-    COMMAND_EXPAND_LISTS
-    COMMENT "Copying runtime DLLs next to WorldFabric.exe")
+# Copy third-party runtime DLLs alongside the built executable after linking.
+file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll"
+)
 
+add_custom_command(TARGET WorldFabric POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            ${WF_RUNTIME_DLLS}
+            "$<TARGET_FILE_DIR:WorldFabric>"
+    COMMAND_EXPAND_LISTS
+    COMMENT "Copying runtime DLLs to output directory"
+    VERBATIM
+)
+
+# ==============================================================================
+# Convenience Targets
+# ==============================================================================
+# Launch WorldFabric directly from its runtime directory (e.g., `cmake --build --target run`).
 add_custom_target(run
-    COMMAND $<TARGET_FILE:WorldFabric>
-    DEPENDS WorldFabric
-    WORKING_DIRECTORY ${WF_RUNTIME_DIR}
+    COMMAND           "$<TARGET_FILE:WorldFabric>"
+    DEPENDS           WorldFabric
+    WORKING_DIRECTORY "${WF_RUNTIME_DIR}"
     USES_TERMINAL
-    COMMENT "Running WorldFabric from the build directory")
+    COMMENT           "Running WorldFabric from ${WF_RUNTIME_DIR}"
+    VERBATIM
+)
+
