@@ -46,12 +46,15 @@ file(GLOB WF_SOURCES CONFIGURE_DEPENDS
     source/*.cpp)
 list(APPEND WF_SOURCES
     include/glm/detail/glm.cpp
+    include/lz4.c
     include/stb_vorbis.c)
 
 file(GLOB WF_HEADERS CONFIGURE_DEPENDS
     engine/header/*.h
     header/*.h
     Narball/header/*.h)
+list(APPEND WF_HEADERS
+    include/lz4.h)
 
 add_executable(WorldFabric ${WF_SOURCES} ${WF_HEADERS})
 
