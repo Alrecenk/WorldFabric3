@@ -124,7 +124,6 @@ target_compile_definitions(WorldFabric PRIVATE
     _CONSOLE
     UNICODE
     _UNICODE
-    $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
 )
 
 target_compile_options(WorldFabric PRIVATE
