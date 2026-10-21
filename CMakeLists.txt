@@ -124,10 +124,13 @@ target_compile_definitions(WorldFabric PRIVATE
     _CONSOLE
     UNICODE
     _UNICODE
+    GLM_FORCE_CTOR_INIT
+    GLM_FORCE_PURE
 )
 
 target_compile_options(WorldFabric PRIVATE
     $<$<CONFIG:Release>:-O2>
+    -ffp-contract=off
 )
 
 # Link all prebuilt import libraries in lib/ alongside required system and
