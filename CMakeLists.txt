@@ -42,19 +42,20 @@ endif()
 
 file(GLOB WF_SOURCES CONFIGURE_DEPENDS
     engine/source/*.cpp
+    engine/source/*.c
     Narball/source/*.cpp
-    source/*.cpp)
-list(APPEND WF_SOURCES
-    include/glm/detail/glm.cpp
-    include/lz4.c
-    include/stb_vorbis.c)
+    Narball/source/*.c
+    source/*.cpp
+    source/*.c
+    include/*.cpp
+    include/*.c
+    include/glm/detail/*.cpp)
 
 file(GLOB WF_HEADERS CONFIGURE_DEPENDS
     engine/header/*.h
     header/*.h
-    Narball/header/*.h)
-list(APPEND WF_HEADERS
-    include/lz4.h)
+    Narball/header/*.h
+    include/*.h)
 
 add_executable(WorldFabric ${WF_SOURCES} ${WF_HEADERS})
 
@@ -72,21 +73,8 @@ target_compile_definitions(WorldFabric PRIVATE
     _UNICODE
     $<$<NOT:$<CONFIG:Debug>>:NDEBUG>)
 
-set(WF_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-target_link_libraries(WorldFabric PRIVATE
-    ${WF_LIB_DIR}/glew32.lib
-    ${WF_LIB_DIR}/OpenAL32.lib
-    ${WF_LIB_DIR}/OpenGL32.Lib
-    ${WF_LIB_DIR}/openvr_api.lib
-    ${WF_LIB_DIR}/sdkencryptedappticket64.lib
-    ${WF_LIB_DIR}/SDL3.lib
-    ${WF_LIB_DIR}/SDL3_image.lib
-    ${WF_LIB_DIR}/SDL3_mixer.lib
-    ${WF_LIB_DIR}/SDL3_net.lib
-    ${WF_LIB_DIR}/SDL3_rtf.lib
-    ${WF_LIB_DIR}/SDL3_ttf.lib
-    ${WF_LIB_DIR}/steam_api64.lib
-    ${WF_LIB_DIR}/vulkan-1.lib)
+file(GLOB WF_LIBS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib)
+target_link_libraries(WorldFabric PRIVATE ${WF_LIBS})
 
 target_compile_options(WorldFabric PRIVATE
     $<$<CONFIG:Release>:-O2>)
