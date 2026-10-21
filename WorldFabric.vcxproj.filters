@@ -1575,6 +1575,9 @@
     <ClInclude Include="header\NetPhysicsApp2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\lz4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\doxyfile" />
@@ -2210,6 +2213,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="engine\source\NetPhysics2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\lz4.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
