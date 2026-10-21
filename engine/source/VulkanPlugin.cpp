@@ -1506,6 +1506,9 @@ TriangleShaderProgram::TriangleShaderProgram(
 }
 
 void TriangleShaderProgram::bindTextures(VkCommandBuffer cmd, VkDescriptorSet texture_bindings){
+	if(texture_bindings == 0){
+		printf("Likely error: undefined texture bidning!\n");
+	}
 	vkCmdBindDescriptorSets(cmd,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		layout,

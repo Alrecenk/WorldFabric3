@@ -801,7 +801,7 @@ public:
 	std::vector<std::shared_ptr<WFImage>> textures;
 	bool textures_changed = false;
 	bool has_descriptor = false;
-	VkDescriptorSet texture_set_descriptor ;
+	VkDescriptorSet texture_set_descriptor = VK_NULL_HANDLE ;
 
 
 	PushConstants push_constants ;
@@ -1104,24 +1104,26 @@ public:
 
 		}
 		//renderer->stampTime(cmd, "E");
-		vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
-		if(textures.size() >0){
-			program->bindTextures(cmd, texture_set_descriptor);
-		}
-		//renderer->stampTime(cmd,"F");
-		// Make the draw call
-		vkCmdDrawIndexedIndirect(cmd, draw_indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand));
-		//renderer->stampTime(cmd, "G");
+		if(texture_set_descriptor){
+			vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+			if(textures.size() >0){
+				program->bindTextures(cmd, texture_set_descriptor);
+			}
+			//renderer->stampTime(cmd,"F");
+			// Make the draw call
+			vkCmdDrawIndexedIndirect(cmd, draw_indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand));
+			//renderer->stampTime(cmd, "G");
 
-		if (debug_print) {
-			printf("draw indirect called %d ,%d\n", (int)vertices.size(), (int)instances.size());
+			if (debug_print) {
+				printf("draw indirect called %d ,%d\n", (int)vertices.size(), (int)instances.size());
 
-			Variant(*push_camera_matrix).printFormatted();
-			Variant(*push_camera_position).printFormatted();
+				Variant(*push_camera_matrix).printFormatted();
+				Variant(*push_camera_position).printFormatted();
 
-			for(int k=0;k<vertices.size();k++){
-				glm::vec4 clip = (*push_camera_matrix) * glm::vec4(vertices[k].position,1);
-				printf("%d : %f, %f, %f, %f\n", k, clip.x, clip.y, clip.z, clip.w) ;
+				for(int k=0;k<vertices.size();k++){
+					glm::vec4 clip = (*push_camera_matrix) * glm::vec4(vertices[k].position,1);
+					printf("%d : %f, %f, %f, %f\n", k, clip.x, clip.y, clip.z, clip.w) ;
+				}
 			}
 		}
 
