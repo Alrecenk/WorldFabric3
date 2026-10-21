@@ -204,7 +204,7 @@ private:
 	std::vector<SteamServerInfo> last_servers;
 
 	static inline std::shared_ptr<SteamSocket> steam_socket ;
-	static inline SteamServerInfo lobby_info ;
+	static SteamServerInfo lobby_info;
 
 	static inline bool join_lobby_pending = false ;
 	static inline CSteamID pending_join_lobby_id ;
