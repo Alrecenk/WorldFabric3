@@ -331,7 +331,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 	addTool(steamworks);
 	std::shared_ptr<AudioPlugin> sound_system(new AudioPlugin());
 	addTool(sound_system);
-	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, true)); // vsync, fullscreen
+	std::shared_ptr<VulkanPlugin> window(new VulkanPlugin(app_title, false, false)); // vsync, fullscreen
 	addTool(window);
 	std::shared_ptr<StatePlugin> app(new StatePlugin());
 	addTool(app);
@@ -433,14 +433,14 @@ void setupGameStates() {
 	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
 	//app->setState(ConstraintTestApp::state_name);
 
-	//app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
-	//app->setState(PyramidApp::state_name);
+	app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
+	app->setState(PyramidApp::state_name);
 
 	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
 	//app->setState(NetPhysicsApp::state_name);
 
-	app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
-	app->setState(NetPhysicsApp2::state_name);
+	//app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
+	//app->setState(NetPhysicsApp2::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -455,7 +455,7 @@ int exampleMain(int argc, char* argv[]) {
 	}
 	printf("Command: %s\n", command_line.c_str());
 
-	SteamworksPlugin::enabled = true; // can turn this on when you've got your own steam app id you want to boot
+	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
 	OpenXRPlugin::ENABLED = false; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");

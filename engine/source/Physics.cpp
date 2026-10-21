@@ -840,8 +840,10 @@ void ManifoldCollision::addConstraint(PhysicsContainer* cell, Constraint& new_co
 		bool valid = points[k].retargetConstraint(cell);
 		if(valid){
 			to_keep.push_back(k);
-			if (glm::distance2(points[k].point, new_point.point) < cd2) {
-				closest = k ;
+			float d2 = glm::distance2(points[k].point, new_point.point);
+			if (d2 < cd2) {
+				closest = k;
+				cd2 = d2;
 			}
 		}
 	}
