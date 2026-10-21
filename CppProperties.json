@@ -2,20 +2,14 @@
   "configurations": [
     {
       "inheritEnvironments": [
-        "msvc_x64"
+        "mingw_64"
       ],
-      "name": "x64-Release",
+      "name": "Mingw64",
       "includePath": [
         "${env.INCLUDE}",
         "${workspaceRoot}\\**"
       ],
-      "defines": [
-        "WIN32",
-        "NDEBUG",
-        "UNICODE",
-        "_UNICODE"
-      ],
-      "intelliSenseMode": "windows-msvc-x64"
+      "intelliSenseMode": "linux-gcc-x64"
     }
   ]
 }
