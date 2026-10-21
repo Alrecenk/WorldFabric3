@@ -253,7 +253,8 @@ private:
 
 };
 
-
+// Defined outside the class: GCC can't use SteamServerInfo's default member initializers until SteamworksPlugin is complete.
+inline SteamworksPlugin::SteamServerInfo SteamworksPlugin::lobby_info;
 
 
 
