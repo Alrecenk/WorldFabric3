@@ -131,10 +131,13 @@ target_compile_definitions(WorldFabric PRIVATE
 target_compile_options(WorldFabric PRIVATE
     $<$<CONFIG:Release>:-O2>
     -ffp-contract=off
+    -g
+    -gcodeview
+    -fno-omit-frame-pointer
 )
 
 # Link all prebuilt import libraries in lib/ alongside required system and
-# runtime libraries (stdc++exp provides C++23 std::print support in libstdc++).
+# runtime libraries.
 file(GLOB WF_PREBUILT_LIBS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib"
 )
@@ -143,13 +146,15 @@ target_link_libraries(WorldFabric PRIVATE
     ${WF_PREBUILT_LIBS}
     ws2_32
     glu32
-    stdc++exp
 )
 
 # Statically link the MinGW runtime so the executable does not depend on
-# external compiler runtime DLLs (libstdc++-6.dll, libgcc_s_seh-1.dll, etc.).
+# external compiler runtime DLLs, use LLD for linking, and emit a CodeView
+# .pdb alongside the executable for the Visual Studio profiler.
 target_link_options(WorldFabric PRIVATE
     -static
+    -fuse-ld=lld
+    "-Wl,--pdb=$<TARGET_FILE_DIR:WorldFabric>/$<TARGET_FILE_BASE_NAME:WorldFabric>.pdb"
 )
 
 # ==============================================================================
