@@ -17,13 +17,13 @@
         "rhs": "Windows"
       },
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
       }
     },
     {
       "name": "debug",
-      "displayName": "Clang (llvm-mingw) Debug",
+      "displayName": "GCC (MinGW) Debug",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
@@ -31,7 +31,7 @@
     },
     {
       "name": "release",
-      "displayName": "Clang (llvm-mingw) Release",
+      "displayName": "GCC (MinGW) Release",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"

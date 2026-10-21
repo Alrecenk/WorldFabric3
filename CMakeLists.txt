@@ -131,9 +131,6 @@ target_compile_definitions(WorldFabric PRIVATE
 target_compile_options(WorldFabric PRIVATE
     $<$<CONFIG:Release>:-O2>
     -ffp-contract=off
-    -g
-    -gcodeview
-    -fno-omit-frame-pointer
 )
 
 # Link all prebuilt import libraries in lib/ alongside required system and
@@ -153,8 +150,6 @@ target_link_libraries(WorldFabric PRIVATE
 # .pdb alongside the executable for the Visual Studio profiler.
 target_link_options(WorldFabric PRIVATE
     -static
-    -fuse-ld=lld
-    "-Wl,--pdb=$<TARGET_FILE_DIR:WorldFabric>/$<TARGET_FILE_BASE_NAME:WorldFabric>.pdb"
 )
 
 # ==============================================================================

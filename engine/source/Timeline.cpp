@@ -1030,6 +1030,7 @@ Timeline::Timeline(std::shared_ptr<Registry>& r, CopyPacket& packet){
 	max_info_speed = packet.max_info_speed ;
 	min_event_duration = packet.min_event_duration;
 	history_kept = packet.history_kept ;
+	max_read_distance = packet.max_read_distance;
 	last_vantage_time = packet.last_vantage_time;
 	last_vantage = packet.last_vantage ;
 	//printf("Copied data speed: %f event_dur: %f  history:%f\n", max_info_speed, min_event_duration, history_kept) ;
