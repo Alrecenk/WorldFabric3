@@ -568,8 +568,10 @@ void ManifoldCollision::addConstraint(const Collision& new_point) {
 		bool valid = points[k].retargetConstraint(body_1.get(), body_2.get());
 		if (valid) {
 			to_keep.push_back(k);
-			if (glm::distance2(points[k].point, new_point.point) < cd2) {
+			float d2 = glm::distance2(points[k].point, new_point.point);
+			if (d2 < cd2) {
 				closest = k;
+				cd2 = d2;
 			}
 		}
 	}
