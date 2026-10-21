@@ -110,7 +110,6 @@ public:
 			world->new_events.insert(event);
 		}
 
-		template<>
 		void inline queue(int64_t obj_id, double target_time, int func_id){
 			std::shared_ptr<VoidEvent> event = std::make_shared<VoidEvent>(obj_id, func_id, target_time, std::vector<char>());
 			event->dispatch_position = event_position;//if called on a read object dispatch position should be event object then this could be const
@@ -306,7 +305,6 @@ public:
 		queue(vantage, vantage_time, event);
 	}
 
-	template <>
 	void inline queue(const glm::vec3& vantage, double vantage_time, int64_t obj_id, double target_time, int method_id) {
 		std::shared_ptr<VoidEvent> event = std::make_shared<VoidEvent>(obj_id, method_id, target_time, std::vector<char>());
 		queue(vantage, vantage_time, event);

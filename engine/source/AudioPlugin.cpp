@@ -1,4 +1,5 @@
 #include "AudioPlugin.h"
+#include <cstring>
 
 #define STB_VORBIS_IMPLEMENTATION
 #include "stb_vorbis.c"
@@ -321,7 +322,7 @@ AudioPlugin::SoundData AudioPlugin::loadOGG(Variant& file_bytes){
 		printf("Loaded stereo file which will not work with openAL 3D sound!\n");
 		al_format = AL_FORMAT_STEREO16;
 	}else {
-		printf("Ogg file has %d channels – only mono or stereo are supported.\n", channels);
+		printf("Ogg file has %d channels ï¿½ only mono or stereo are supported.\n", channels);
 		free(pcm);
 		return SoundData();
 	}

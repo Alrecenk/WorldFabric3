@@ -1,6 +1,19 @@
 #include "SteamworksPlugin.h"
 #include "Registry.h"
 
+// Steam's C++ interfaces return CSteamID by value, which only works with MSVC's member-function ABI.
+// The flat API (declared in steam_api_flat.h) returns plain integers, so it is safe with any compiler (e.g. MinGW GCC).
+S_API uint64 SteamAPI_ISteamUser_GetSteamID(ISteamUser* self);
+S_API uint64 SteamAPI_ISteamMatchmaking_GetLobbyOwner(ISteamMatchmaking* self, uint64 steamIDLobby);
+
+static CSteamID getUserSteamID() {
+	return CSteamID(SteamAPI_ISteamUser_GetSteamID(SteamUser()));
+}
+
+static CSteamID getLobbyOwner(CSteamID lobby_id) {
+	return CSteamID(SteamAPI_ISteamMatchmaking_GetLobbyOwner(SteamMatchmaking(), lobby_id.ConvertToUint64()));
+}
+
 
 SteamworksPlugin::SteamworksPlugin(long app_id, const std::string& command_line):
 	steamapp_id(0),
@@ -118,7 +131,7 @@ void SteamworksPlugin::run() {
 	
 
 	if(client_can_join_game){
-		lobby_info.host_id = SteamMatchmaking()->GetLobbyOwner(lobby_info.id);
+		lobby_info.host_id = getLobbyOwner(lobby_info.id);
 		steam_socket->join(lobby_info.host_id);
 		client_can_join_game = false ;
 
@@ -163,7 +176,7 @@ std::string SteamworksPlugin::getLocalName(){
 	if (!enabled) {
 		return "SteamDisabled" ;
 	}
-	CSteamID my_id =  SteamUser()->GetSteamID() ;
+	CSteamID my_id =  getUserSteamID() ;
 	std::string my_name = std::string(SteamFriends()->GetFriendPersonaName(my_id)) ;
 	return my_name ;
 }
@@ -173,7 +186,7 @@ uint64 SteamworksPlugin::getLocalSteamID() {
 	if (!enabled) {
 		return 0;
 	}
-	return SteamUser()->GetSteamID().ConvertToUint64();
+	return getUserSteamID().ConvertToUint64();
 }
 
 //For the host, returns the index of the connection of a given SteamID
@@ -420,7 +433,7 @@ void SteamworksPlugin::onLobbyCreated(LobbyCreated_t* call_back){
 		return;
 	}
 	lobby_info.id = call_back->m_ulSteamIDLobby;
-	lobby_info.host_id = SteamUser()->GetSteamID();
+	lobby_info.host_id = getUserSteamID();
 	printf("Steam lobby creation succeeded with id %lld\n", lobby_info.id.ConvertToUint64()) ;
 
 	SteamMatchmaking()->SetLobbyData(lobby_info.id, "name", lobby_info.name.c_str());
@@ -466,7 +479,7 @@ void SteamworksPlugin::onServerLobbyCreated(LobbyCreated_t* call_back) {
 	printf("Server lobby apparently created ? \n");
 	/*
 	lobby_info.id = call_back->m_ulSteamIDLobby;
-	lobby_info.host_id = SteamUser()->GetSteamID();
+	lobby_info.host_id = getUserSteamID();
 	printf("Steam server lobby creation succeeded with id %lld\n", lobby_info.id.ConvertToUint64());
 
 	SteamMatchmaking()->SetLobbyData(lobby_info.id, "name", lobby_info.name.c_str());
