@@ -150,6 +150,8 @@ target_link_libraries(WorldFabric PRIVATE
 # .pdb alongside the executable for the Visual Studio profiler.
 target_link_options(WorldFabric PRIVATE
     -static
+	-fuse-ld=lld
+    "-Wl,--pdb=$<TARGET_FILE_DIR:WorldFabric>/$<TARGET_FILE_BASE_NAME:WorldFabric>.pdb"
 )
 
 # ==============================================================================
