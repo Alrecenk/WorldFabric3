@@ -73,9 +73,10 @@ void RigidBody::integrateVelocity(float dt) {
 
 
 	}
-	if(speed < max_sleep_speed && angular_speed < max_sleep_angular_speed){
-		wants_sleep = true ;
+	if(speed > max_sleep_speed || angular_speed > max_sleep_angular_speed){
+		last_active_frame = (int)(time * Root::ticks_per_second) ;
 	}
+	
 }
 
 BodyInstant RigidBody::computeBodyInstant() const{
@@ -165,7 +166,6 @@ void RigidBody::runPhysics(){
 	
 	//Move this object with its updated velocity
 	float dt = 1.0f/Root::ticks_per_second ;
-	bool last_wants_sleep = wants_sleep;
 	integrateVelocity(dt);
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
@@ -199,7 +199,7 @@ void RigidBody::runPhysics(){
 		}
 	}
 
-	asleep = wants_sleep && last_wants_sleep && cells.size() > 0; //don't sleep objects waiting on cell creation
+	asleep = frame- last_active_frame  > frames_to_sleep;
 
 	//Objects that escape the world are frozen at the boundary
 	float d2 = glm::dot(position, position) ;
@@ -207,7 +207,6 @@ void RigidBody::runPhysics(){
 		velocity = glm::vec3(0,0,0);
 		angular_velocity = glm::vec3(0, 0, 0);
 		position *= world_radius/sqrtf(d2) ;
-		wants_sleep = true;
 		asleep = true ;
 	}
 
@@ -222,11 +221,26 @@ void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat
 	velocity = v;
 	orientation = o;
 	angular_velocity = av;
+	last_active_frame = (int)(time * Root::ticks_per_second) ;
+	if (asleep) {
+		asleep = false;
+		double frame_length = 1.0 / Root::ticks_per_second;
+		double target_time = (last_active_frame + interframe_time) * frame_length;
+		queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	}
 }
 
 void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	receives_impulse = receives;
 	applies_impulse = applies;
+
+	last_active_frame = (int)(time * Root::ticks_per_second);
+	if (asleep) {
+		asleep = false;
+		double frame_length = 1.0 / Root::ticks_per_second;
+		double target_time = (last_active_frame + interframe_time) * frame_length;
+		queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	}
 }
 
 int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction) {
