@@ -49,18 +49,19 @@ RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::q
 }
 
 void RigidBody::integrateVelocity(float dt) {
+
+
+	float speed = glm::length(velocity);
+	if (speed > types[type].max_speed) {
+		velocity *= types[type].max_speed / speed;
+	}
+
+	float angular_speed = glm::length(angular_velocity);
+	if (angular_speed > types[type].max_angular_speed) {
+		angular_velocity *= types[type].max_angular_speed / angular_speed;
+	}
+
 	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
-
-		float speed = glm::length(velocity);
-		if (speed > types[type].max_speed) {
-			velocity *= types[type].max_speed / speed;
-		}
-
-		float angular_speed = glm::length(angular_velocity);
-		if (angular_speed > types[type].max_angular_speed) {
-			angular_velocity *= types[type].max_angular_speed / angular_speed;
-		}
-
 
 		position += velocity * dt;
 		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
@@ -70,8 +71,11 @@ void RigidBody::integrateVelocity(float dt) {
 		orientation += (omega_quat * orientation) * (0.5f * dt);
 		orientation = glm::normalize(orientation);
 
-	}
 
+	}
+	if(speed < max_sleep_speed && angular_speed < max_sleep_angular_speed){
+		wants_sleep = true ;
+	}
 }
 
 BodyInstant RigidBody::computeBodyInstant() const{
@@ -156,21 +160,16 @@ void RigidBody::runPhysics(){
 		velocity = v_total / amount ;
 		angular_velocity = av_total/amount ;
 	}
+	
 
-
-
+	
 	//Move this object with its updated velocity
 	float dt = 1.0f/Root::ticks_per_second ;
-
-	//printf("actually running: %f\n", dt);
+	bool last_wants_sleep = wants_sleep;
 	integrateVelocity(dt);
-
-
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
-
 		integrateAcceleration(dt, root->acceleration);
-
 		//Check our cells and send updates iff they have changed
 		std::pair<std::vector<int64_t>, bool> new_cells = root->getCells(position, types[type].bounding_radius);
 
@@ -200,12 +199,15 @@ void RigidBody::runPhysics(){
 		}
 	}
 
+	asleep = wants_sleep && last_wants_sleep && cells.size() > 0; //don't sleep objects waiting on cell creation
+
 	//Objects that escape the world are frozen at the boundary
 	float d2 = glm::dot(position, position) ;
 	if(d2 > world_radius*world_radius){
 		velocity = glm::vec3(0,0,0);
 		angular_velocity = glm::vec3(0, 0, 0);
 		position *= world_radius/sqrtf(d2) ;
+		wants_sleep = true;
 		asleep = true ;
 	}
 

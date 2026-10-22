@@ -61,10 +61,16 @@ public:
 
 	bool receives_impulse = true;
 	bool applies_impulse = true;
-	bool asleep = false;
+
+	// A body must be stationary for two consecutive frames to go to sleep 
+	// Wants sleep will be set first, and then if it still wants sleep on the next frame it will sleep
+	bool asleep = false; // if a body is asleep it is not calling runPhysics
+	bool wants_sleep = false; //Whether a body met sleep conditions last frame
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline float world_radius = 9.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
+	static inline float max_sleep_speed = 1e-4f; // if both speed and angular speed are below these threshold a body will want to sleep
+	static inline float max_sleep_angular_speed = 1e-4f ;
 
 	RigidBody() {}
 
@@ -118,7 +124,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.wants_sleep) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
