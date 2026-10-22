@@ -138,6 +138,7 @@ void RigidBody::runPhysics(){
 	//If this function is off step then it's probably new (or maybe backed up)
 	if(fabs(time-target_time)> frame_length *0.1){
 		//printf("Miss-step, target: %lf\n", target_time) ;
+		last_active_frame = frame ;
 		queue(id,target_time + frame_length,&RigidBody::runPhysics) ; // requeue on the step
 		return ; // take no other action at this time
 	}
@@ -199,8 +200,8 @@ void RigidBody::runPhysics(){
 		}
 	}
 
-	asleep = frame- last_active_frame  > frames_to_sleep;
-
+	// Don't sleep bodies before they can get into the grid
+	asleep = frame - last_active_frame  > frames_to_sleep && cells.size() > 0; 
 	//Objects that escape the world are frozen at the boundary
 	float d2 = glm::dot(position, position) ;
 	if(d2 > world_radius*world_radius){
@@ -767,24 +768,19 @@ void Cell::runPhysics(){
 
 	//glm::vec3 h = glm::vec3(0,0,0) ;
 	//int k = 0 ;
-	for(auto& [id, body] : read_bodies){
+	float sleep_speed2 = RigidBody::max_sleep_speed * RigidBody::max_sleep_speed ;
+	float angular_sleep_speed2 = RigidBody::max_sleep_angular_speed * RigidBody::max_sleep_angular_speed ;
+	for(auto& [body_id, body] : read_bodies){
 		//Save results that real bodies want to read
-		constraint_result[id] = {body.body->velocity, body.body->angular_velocity} ;
-		//printf("result velocity: %f, %f, %f\n", body.body->velocity.x, body.body->velocity.y, body.body->velocity.z) ;
-		/*
-		if(fabs(body.body->velocity.y) > 0.001f){
-			if(k == 0){
-				h.x = body.body->velocity.y ;
-			}
-			if (k == 1) {
-				h.y = body.body->velocity.y;
-			}
-			if (k == 2) {
-				h.z = body.body->velocity.y;
-			}
-			k++;
+		constraint_result[body_id] = {body.body->velocity, body.body->angular_velocity} ;
+		//Wake up sleeping bodies if they are being moved
+		if(body.body->asleep && body.body->receives_impulse && (
+			glm::dot(body.body->velocity, body.body->velocity) > sleep_speed2 ||
+			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
+		){
+			queue(body_id,time, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
 		}
-		*/
+		
 	}
 	//position = h*0.001f;
 
