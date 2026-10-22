@@ -26,7 +26,7 @@ public:
 	float elasticity = 0.5f;
 	float friction = 0.6f;
 	float drag = 0.07f;
-	float angular_drag = 0.1f;
+	float angular_drag = 0.3f;
 	float max_speed = 10.0f;
 	float max_angular_speed = 30.0f;
 
@@ -63,14 +63,14 @@ public:
 	bool applies_impulse = true;
 
 	bool asleep = false; // if a body is asleep it is not calling runPhysics
-	int last_active_frame = 1E8; // Lats frame a body moved on
+	int last_active_frame = 0; // Last frame a body moved on
 
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline int frames_to_sleep = 5 ; //if I body doesn't move for this many frames it will go to sleep
 	static inline float world_radius = 9.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
-	static inline float max_sleep_speed = 1e-4f; // if both speed and angular speed are below these threshold a body will want to sleep
-	static inline float max_sleep_angular_speed = 1e-4f ;
+	static inline float max_sleep_speed = 1e-2f; // if both speed and angular speed are below these threshold a body will want to sleep
+	static inline float max_sleep_angular_speed = 1e-2f ;
 
 	RigidBody() {}
 
@@ -92,6 +92,9 @@ public:
 
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
+
+	//Wake upa body that has been asleep
+	void wakeUp();
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
@@ -302,8 +305,9 @@ public:
 	float size = -1; // Cell occupies a box centered on position with axis aligned radius of size
 	std::set<int64_t> bodies;
 	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
-	
 	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint reslt
+	
+	bool asleep = false; // A cell can go to sleep if all bodies in it are asleep
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
 
@@ -349,7 +353,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result);
+	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result, o.asleep);
 }
 
 //Contains cells and routes body requests to the appropriate one
@@ -378,6 +382,9 @@ public:
 
 	//create any cells necessary to cover the given bounding box
 	void updateCells(const glm::vec3& center, const float& radius) ;
+
+	//Remove a cell from the table
+	void removeCell(const glm::vec3& center);
 
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
