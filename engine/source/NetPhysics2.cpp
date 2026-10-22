@@ -29,7 +29,6 @@ BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, co
 	for(auto& s : shape){
 		bounding_radius = fmax(bounding_radius, s->boundingRadius()) ;
 	}
-	printf("Boudning radius: %f\n", bounding_radius) ;
 
 }
 
@@ -49,18 +48,19 @@ RigidBody::RigidBody(int64_t root_id, int type, const glm::vec3& p, const glm::q
 }
 
 void RigidBody::integrateVelocity(float dt) {
+
+
+	float speed = glm::length(velocity);
+	if (speed > types[type].max_speed) {
+		velocity *= types[type].max_speed / speed;
+	}
+
+	float angular_speed = glm::length(angular_velocity);
+	if (angular_speed > types[type].max_angular_speed) {
+		angular_velocity *= types[type].max_angular_speed / angular_speed;
+	}
+
 	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
-
-		float speed = glm::length(velocity);
-		if (speed > types[type].max_speed) {
-			velocity *= types[type].max_speed / speed;
-		}
-
-		float angular_speed = glm::length(angular_velocity);
-		if (angular_speed > types[type].max_angular_speed) {
-			angular_velocity *= types[type].max_angular_speed / angular_speed;
-		}
-
 
 		position += velocity * dt;
 		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
@@ -70,8 +70,12 @@ void RigidBody::integrateVelocity(float dt) {
 		orientation += (omega_quat * orientation) * (0.5f * dt);
 		orientation = glm::normalize(orientation);
 
-	}
 
+	}
+	if(speed > max_sleep_speed || angular_speed > max_sleep_angular_speed){
+		last_active_frame = (int)(time * Root::ticks_per_second) ;
+	}
+	
 }
 
 BodyInstant RigidBody::computeBodyInstant() const{
@@ -133,6 +137,7 @@ void RigidBody::runPhysics(){
 	//If this function is off step then it's probably new (or maybe backed up)
 	if(fabs(time-target_time)> frame_length *0.1){
 		//printf("Miss-step, target: %lf\n", target_time) ;
+		last_active_frame = frame ;
 		queue(id,target_time + frame_length,&RigidBody::runPhysics) ; // requeue on the step
 		return ; // take no other action at this time
 	}
@@ -156,20 +161,15 @@ void RigidBody::runPhysics(){
 		velocity = v_total / amount ;
 		angular_velocity = av_total/amount ;
 	}
+	
 
 	
 	//Move this object with its updated velocity
 	float dt = 1.0f/Root::ticks_per_second ;
-
-	//printf("actually running: %f\n", dt);
 	integrateVelocity(dt);
-	
-
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
-
 		integrateAcceleration(dt, root->acceleration);
-
 		//Check our cells and send updates iff they have changed
 		std::pair<std::vector<int64_t>, bool> new_cells = root->getCells(position, types[type].bounding_radius);
 
@@ -199,8 +199,21 @@ void RigidBody::runPhysics(){
 		}
 	}
 
+	// Don't sleep bodies before they can get into the grid
+	asleep = frame - last_active_frame  > frames_to_sleep && cells.size() > 0; 
+	//Objects that escape the world are frozen at the boundary
+	float d2 = glm::dot(position, position) ;
+	if(d2 > world_radius*world_radius){
+		velocity = glm::vec3(0,0,0);
+		angular_velocity = glm::vec3(0, 0, 0);
+		position *= world_radius/sqrtf(d2) ;
+		asleep = true ;
+	}
+
 	//Requeue this event at the beginning of the next frame
-	queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	if(!asleep){
+		queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	}
 }
 
 void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av) {
@@ -208,11 +221,28 @@ void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat
 	velocity = v;
 	orientation = o;
 	angular_velocity = av;
+	wakeUp();
 }
 
 void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	receives_impulse = receives;
 	applies_impulse = applies;
+	wakeUp();
+}
+
+//Wake upa body that has been asleep
+void RigidBody::wakeUp(){
+	last_active_frame = (int)(time * Root::ticks_per_second);
+	if (asleep) {
+		asleep = false;
+		double frame_length = 1.0 / Root::ticks_per_second;
+		double target_time = (last_active_frame + interframe_time) * frame_length;
+		queue(id, target_time + frame_length, &RigidBody::runPhysics);
+		//readding the body may be a noop, but it will wake up the cells if they are asleep
+		for(int64_t& c_id : cells){
+			queue(c_id, time + random() * frame_length * 0.1, &Cell::addBody, id);
+		}
+	}
 }
 
 int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction) {
@@ -670,13 +700,13 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 
 	//Delete existing collisions not found now
 	std::vector<int64_t> to_delete;
-	for (auto& [id, constraint] : collisions) {
-		if (found_constraints.find(id) == found_constraints.end()) {
-			to_delete.push_back(id);
+	for (auto& [c_id, constraint] : collisions) {
+		if (found_constraints.find(c_id) == found_constraints.end()) {
+			to_delete.push_back(c_id);
 		}
 	}
-	for (auto& id : to_delete) {
-		collisions.erase(id);
+	for (auto& c_id : to_delete) {
+		collisions.erase(c_id);
 	}
 
 
@@ -697,13 +727,13 @@ void Cell::runPhysics(){
 	}
 
 	std::map<int64_t, BodyInstant> read_bodies;
-	for (const int64_t& id : bodies) {
-		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
+	for (const int64_t& body_id : bodies) {
+		std::shared_ptr<const RigidBody> body = read<RigidBody>(body_id);
 		if (body) {
-			if(time - body->time > frame_length){
-				printf("Body too old!\n");
+			if(time - body->time > frame_length && !body->asleep){
+				printf("Rigid body is too old, speed of light is too low for physics! Age: %lf  FrameLength: %lf\n", time - body->time, frame_length);
 			}
-			read_bodies[id] = body->computeBodyInstant();
+			read_bodies[body_id] = body->computeBodyInstant();
 		}else{
 			//printf("body could not be read!\n");
 		}
@@ -712,14 +742,14 @@ void Cell::runPhysics(){
 
 	updateCollisions(read_bodies);
 	
-	for (auto& [id, constraint] : collisions) {
+	for (auto& [body_id, constraint] : collisions) {
 		auto iter1 = read_bodies.find(constraint.id_1);
 		auto iter2 = read_bodies.find(constraint.id_2);
 		if(iter1 != read_bodies.end() && iter2 != read_bodies.end()){
 			constraint.updateConstraints(iter1->second, iter2->second);
 		}
 	}
-	for (auto& [id, constraint] : collisions) {
+	for (auto& [body_id, constraint] : collisions) {
 		auto iter1 = read_bodies.find(constraint.id_1);
 		auto iter2 = read_bodies.find(constraint.id_2);
 		if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
@@ -728,7 +758,7 @@ void Cell::runPhysics(){
 	}
 	for (int i = 0; i < Root::constraint_iterations; i++) {
 		//printf("Constraint iteration: %d\n", i) ;
-		for (auto& [id, constraint] : collisions) {
+		for (auto& [body_id, constraint] : collisions) {
 			auto iter1 = read_bodies.find(constraint.id_1);
 			auto iter2 = read_bodies.find(constraint.id_2);
 			if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
@@ -737,42 +767,55 @@ void Cell::runPhysics(){
 		}
 	}
 
-	//glm::vec3 h = glm::vec3(0,0,0) ;
-	//int k = 0 ;
-	for(auto& [id, body] : read_bodies){
+	float sleep_speed2 = RigidBody::max_sleep_speed * RigidBody::max_sleep_speed ;
+	float angular_sleep_speed2 = RigidBody::max_sleep_angular_speed * RigidBody::max_sleep_angular_speed ;
+	asleep = true ;
+	for(auto& [body_id, body] : read_bodies){
 		//Save results that real bodies want to read
-		constraint_result[id] = {body.body->velocity, body.body->angular_velocity} ;
-		//printf("result velocity: %f, %f, %f\n", body.body->velocity.x, body.body->velocity.y, body.body->velocity.z) ;
-		/*
-		if(fabs(body.body->velocity.y) > 0.001f){
-			if(k == 0){
-				h.x = body.body->velocity.y ;
-			}
-			if (k == 1) {
-				h.y = body.body->velocity.y;
-			}
-			if (k == 2) {
-				h.z = body.body->velocity.y;
-			}
-			k++;
+		constraint_result[body_id] = {body.body->velocity, body.body->angular_velocity} ;
+		//Wake up sleeping bodies if they are being moved
+		if(body.body->asleep && body.body->receives_impulse && (
+			glm::dot(body.body->velocity, body.body->velocity) > sleep_speed2 ||
+			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
+		){
+			asleep = false;
+			queue(body_id,time, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
+		}else if(!body.body->asleep){
+			asleep = false;
 		}
-		*/
 	}
-	//position = h*0.001f;
 
-	queue(id,target_time + frame_length,&Cell::runPhysics) ;
+	if(!asleep){
+		queue(id,target_time + frame_length,&Cell::runPhysics) ;
+	}
 }
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
 	//printf("cell addbody called! %lld\n", body_id);
 	bodies.insert(body_id);
+	if(asleep){
+		asleep = false;
+		double frame_length = 1.0 / Root::ticks_per_second;
+		int frame = (int)(time * Root::ticks_per_second);
+		double target_time = (interframe_time + frame) * frame_length;
+		//addBody is typically called from RigidBody:runPhsyics which is earlier in the frame, so try to start on same frame
+		queue(id, target_time , &Cell::runPhysics);
+	}
 }
 
 //Removes a body to the cell
 void Cell::removeBody(const int64_t& body_id) {
 	//printf("cell removebody called! %lld\n", body_id);
 	bodies.erase(body_id);
+	if (asleep) {
+		asleep = false;
+		double frame_length = 1.0 / Root::ticks_per_second;
+		int frame = (int)(time * Root::ticks_per_second);
+		double target_time = (interframe_time + frame) * frame_length;
+		//addBody is typically called from RigidBody:runPhsyics which is earlier in the frame, so try to start on same frame
+		queue(id, target_time, &Cell::runPhysics);
+	}
 }
 
 //Returns the nearest position to the target that the given body could be placed without colliding
@@ -877,6 +920,11 @@ void Root::updateCells(const glm::vec3& center, const float& radius){
 	}
 }
 
+//Remove a cell from the table
+void Root::removeCell(const glm::vec3& center){
+	cells.erase(getCellCoord(center)) ;
+}
+
 void registerPhysics(){
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->registerClass<RigidBody, RigidBodyView>("RigidBody");
@@ -891,6 +939,7 @@ void registerPhysics(){
 
 	worlds->registerClass<Root>("Physics Root");
 	worlds->registerMethod(&Root::updateCells, "Root::updateCells");
+	worlds->registerMethod(&Root::removeCell, "Root::removeCell");
 
 }
 
