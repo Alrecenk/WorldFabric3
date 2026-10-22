@@ -157,13 +157,14 @@ void RigidBody::runPhysics(){
 		angular_velocity = av_total/amount ;
 	}
 
-	
+
+
 	//Move this object with its updated velocity
 	float dt = 1.0f/Root::ticks_per_second ;
 
 	//printf("actually running: %f\n", dt);
 	integrateVelocity(dt);
-	
+
 
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
@@ -199,8 +200,19 @@ void RigidBody::runPhysics(){
 		}
 	}
 
+	//Objects that escape the world are frozen at the boundary
+	float d2 = glm::dot(position, position) ;
+	if(d2 > world_radius*world_radius){
+		velocity = glm::vec3(0,0,0);
+		angular_velocity = glm::vec3(0, 0, 0);
+		position *= world_radius/sqrtf(d2) ;
+		asleep = true ;
+	}
+
 	//Requeue this event at the beginning of the next frame
-	queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	if(!asleep){
+		queue(id, target_time + frame_length, &RigidBody::runPhysics);
+	}
 }
 
 void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av) {
@@ -700,8 +712,8 @@ void Cell::runPhysics(){
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
 		if (body) {
-			if(time - body->time > frame_length){
-				printf("Body too old!\n");
+			if(time - body->time > frame_length && !body->asleep){
+				printf("Rigid body is too old, speed of light is too low for physics! Age: %lf  FrameLength: %lf\n", time - body->time, frame_length);
 			}
 			read_bodies[id] = body->computeBodyInstant();
 		}else{

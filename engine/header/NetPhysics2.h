@@ -61,8 +61,10 @@ public:
 
 	bool receives_impulse = true;
 	bool applies_impulse = true;
+	bool asleep = false;
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
+	static inline float world_radius = 9.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
 
 	RigidBody() {}
 
@@ -116,7 +118,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
