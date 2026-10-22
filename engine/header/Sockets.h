@@ -7,6 +7,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <map>
 #include <queue>
 #include <chrono>

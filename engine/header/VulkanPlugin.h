@@ -18,6 +18,7 @@
 #include <GL/glu.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <cstring>
 
 #include <iostream>
 #include <fstream>
@@ -298,8 +299,8 @@ public:
 	// SDL bookkeeping
 	SDL_Window* window = nullptr;
 	std::string title;
-	int window_width = 960;
-	int window_height = 540;
+	int window_width = 1280;
+	int window_height = 720;
 	bool vsync_enabled = true ;
 	int target_frame_micros = 1000000 / 120; //if vsync off, attempts to hit this amount of time on each frame
 	int sleep_micros = 0;
@@ -789,18 +790,18 @@ public:
 	bool num_instances_changed = false; // changign he size of the buffer requires changign the binding descriptor
 
 	// Buffer to hold the command for indirect drawing
-	VkBuffer draw_indirect_buffer;
-	VkDeviceMemory draw_indirect_buffer_memory;
+	VkBuffer draw_indirect_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory draw_indirect_buffer_memory = VK_NULL_HANDLE;
 	bool draw_indirect_buffer_allocated = false;
 
-	VkBuffer last_draw_indirect_buffer; // hold onto reference to previous so we don't clear it while it's still in use
-	VkDeviceMemory last_draw_indirect_buffer_memory;
+	VkBuffer last_draw_indirect_buffer = VK_NULL_HANDLE; // hold onto reference to previous so we don't clear it while it's still in use
+	VkDeviceMemory last_draw_indirect_buffer_memory = VK_NULL_HANDLE;
 
 	// Texture data
 	std::vector<std::shared_ptr<WFImage>> textures;
 	bool textures_changed = false;
 	bool has_descriptor = false;
-	VkDescriptorSet texture_set_descriptor ;
+	VkDescriptorSet texture_set_descriptor = VK_NULL_HANDLE ;
 
 
 	PushConstants push_constants ;
@@ -1046,7 +1047,7 @@ public:
 				//clear buffer we were holding onto just in case
 				if(last_draw_indirect_buffer){
 					vkDestroyBuffer(renderer->device, last_draw_indirect_buffer, nullptr); // delete previous buffer from GPU
-					if (draw_indirect_buffer_memory) {
+					if (last_draw_indirect_buffer_memory) {
 						vkFreeMemory(renderer->device, last_draw_indirect_buffer_memory, nullptr); // TODO should also clean these up when triangle model destructed
 					}
 				}
@@ -1103,24 +1104,26 @@ public:
 
 		}
 		//renderer->stampTime(cmd, "E");
-		vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
-		if(textures.size() >0){
-			program->bindTextures(cmd, texture_set_descriptor);
-		}
-		//renderer->stampTime(cmd,"F");
-		// Make the draw call
-		vkCmdDrawIndexedIndirect(cmd, draw_indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand));
-		//renderer->stampTime(cmd, "G");
+		if(texture_set_descriptor){
+			vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+			if(textures.size() >0){
+				program->bindTextures(cmd, texture_set_descriptor);
+			}
+			//renderer->stampTime(cmd,"F");
+			// Make the draw call
+			vkCmdDrawIndexedIndirect(cmd, draw_indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand));
+			//renderer->stampTime(cmd, "G");
 
-		if (debug_print) {
-			printf("draw indirect called %d ,%d\n", (int)vertices.size(), (int)instances.size());
+			if (debug_print) {
+				printf("draw indirect called %d ,%d\n", (int)vertices.size(), (int)instances.size());
 
-			Variant(*push_camera_matrix).printFormatted();
-			Variant(*push_camera_position).printFormatted();
+				Variant(*push_camera_matrix).printFormatted();
+				Variant(*push_camera_position).printFormatted();
 
-			for(int k=0;k<vertices.size();k++){
-				glm::vec4 clip = (*push_camera_matrix) * glm::vec4(vertices[k].position,1);
-				printf("%d : %f, %f, %f, %f\n", k, clip.x, clip.y, clip.z, clip.w) ;
+				for(int k=0;k<vertices.size();k++){
+					glm::vec4 clip = (*push_camera_matrix) * glm::vec4(vertices[k].position,1);
+					printf("%d : %f, %f, %f, %f\n", k, clip.x, clip.y, clip.z, clip.w) ;
+				}
 			}
 		}
 

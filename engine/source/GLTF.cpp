@@ -3,6 +3,7 @@
 #include "OptimizationProblem.h"
 
 #include <math.h>
+#include <cstring>
 #include <map>
 #include <vector>
 #include <string>

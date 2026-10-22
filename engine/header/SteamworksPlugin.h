@@ -36,8 +36,8 @@ public:
 
 
 	struct SteamServerInfo {
-		CSteamID id;
-		CSteamID host_id; // user id of the host player
+		uint64_t id;
+		uint64_t host_id; // user id of the host player
 		std::string name = "";
 		std::string map = "";
 		std::string game_mode = "";
@@ -62,20 +62,20 @@ public:
 
 
 		// Open a steam client socket to connect to the given lobby id
-		void join(CSteamID lobby_to_join);
+		void join(uint64_t lobby_to_join);
 
 		// Open a steam client socket to connect to an ip
 		void join(SteamNetworkingIPAddr address_to_join) ;
 
 		//Start listening for connections as a private p2P server	
-		void host(CSteamID lobby_id, CSteamID host_id);
+		void host(uint64_t lobby_id, uint64_t host_id);
 
 		//Start listening for connections as a dedicated game server
 		void hostDedicated(const SteamNetworkingIPAddr address);
 
-		void addServerClient(HSteamNetConnection connection, CSteamID user_id);
+		void addServerClient(HSteamNetConnection connection, uint64_t user_id);
 
-		void removeServerClient(CSteamID user_id);
+		void removeServerClient(uint64_t user_id);
 
 		void removeServerClient(int player);
 
@@ -99,8 +99,8 @@ public:
 		PacketReceiver* packet_receiver = nullptr;
 		SteamNetworkingIdentity identity;
 		std::map<int, HSteamNetConnection> connections;
-		std::map<CSteamID, int> steamIDToPlayer;
-		std::map <CSteamID, bool> authenticated ;
+		std::map<uint64_t, int> steamIDToPlayer;
+		std::map <uint64_t, bool> authenticated ;
 		static inline const int MESSAGE_QUEUE_SIZE = 32;
 
 		
@@ -122,7 +122,7 @@ public:
 	static inline std::string tag = "SteamLink";
 	static inline bool wants_to_exit = false;
 	static inline int STEAM_SERVER_MASTER_PORT = 27016 ; // Steam's server browser port, needs to be open for servers to be public
-	static inline const uint64_t AUTH_PACKET_MAGIC_NUMBER = 0xBEBADBEBEEFED ; // a magic number ta the beginning of auth packets so we can ctach them when they come in out of order
+	static inline const uint64_t AUTH_PACKET_MAGIC_NUMBER = 0xBEBADBEBEEFED ; // a magic number at the beginning of auth packets so we can catch them when they come in out of order
 	
 	//Constructore for a typical game
 	SteamworksPlugin(long app_id,const std::string& command_line);
@@ -175,7 +175,7 @@ public:
 	void RefreshComplete(HServerListRequest, EMatchMakingServerResponse) override ;
 
 	// Join a Steam lobby and create a socket to communicate with its host
-	std::shared_ptr<SteamSocket> joinLobby(CSteamID lobby_id);
+	std::shared_ptr<SteamSocket> joinLobby(uint64_t lobby_id);
 
 	// Join a Steam ganme by ip and port 
 	std::shared_ptr<SteamSocket> joinAddress(SteamNetworkingIPAddr& addr) ;
@@ -204,10 +204,10 @@ private:
 	std::vector<SteamServerInfo> last_servers;
 
 	static inline std::shared_ptr<SteamSocket> steam_socket ;
-	static inline SteamServerInfo lobby_info ;
+	static SteamServerInfo lobby_info;
 
 	static inline bool join_lobby_pending = false ;
-	static inline CSteamID pending_join_lobby_id ;
+	static inline uint64_t pending_join_lobby_id ;
 	static inline bool join_address_pending = false ;
 	static inline SteamNetworkingIPAddr pending_join_address;
 	static inline std::chrono::high_resolution_clock::time_point creation_time = now();
@@ -216,7 +216,7 @@ private:
 	
 	//Process a command line or rich command line argument from Steam to extract join information
 	static bool commandLineHasLobbyJoin(const char* command_line) ;
-	static CSteamID getCommandLineLobbyJoin(const char* command_line);
+	static uint64_t getCommandLineLobbyJoin(const char* command_line);
 	static bool commandLineHasAddressJoin(const char* command_line);
 	static SteamNetworkingIPAddr getCommandLineAddressJoin(const char* command_line);
 	static void catchCommandLineJoin(const char* command_line);
@@ -253,7 +253,8 @@ private:
 
 };
 
-
+// Defined outside the class: GCC can't use SteamServerInfo's default member initializers until SteamworksPlugin is complete.
+inline SteamworksPlugin::SteamServerInfo SteamworksPlugin::lobby_info;
 
 
 

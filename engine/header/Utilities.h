@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <string>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <vector>
+#include <charconv>
 
 #include "openvr.h"
 #include "glm/glm.hpp"
