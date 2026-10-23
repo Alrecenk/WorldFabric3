@@ -433,14 +433,14 @@ void setupGameStates() {
 	//app->add(ConstraintTestApp::state_name, std::shared_ptr<ConstraintTestApp>(new ConstraintTestApp()));
 	//app->setState(ConstraintTestApp::state_name);
 
-	//app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
-	//app->setState(PyramidApp::state_name);
+	app->add(PyramidApp::state_name, std::shared_ptr<PyramidApp>(new PyramidApp()));
+	app->setState(PyramidApp::state_name);
 
 	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
 	//app->setState(NetPhysicsApp::state_name);
 
-	app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
-	app->setState(NetPhysicsApp2::state_name);
+	//app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
+	//app->setState(NetPhysicsApp2::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
