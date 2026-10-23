@@ -434,9 +434,9 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 		//printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_distance;
 		glm::vec3 world_point = (action->min + action->max)*0.5f;
-		grab_offset = last_view->position - world_point;
-		grab_orientation_offset = glm::inverse(glm::quat_cast(action->current_pose)) * last_view->orientation;
+		grab_pose_offset = glm::inverse(action->current_pose) * pose ;
 		last_grab_time = last_view->time;
+		last_action_rot = glm::normalize(glm::quat_cast(pose));
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
 	}
 	else if (signal == PosedGrab::RELEASED) {
@@ -447,8 +447,8 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 	}
 	else if (signal == PosedGrab::UPDATED) {
 		//printf("updating: %lld\n", last_view->id);
-
-		glm::vec3 world_point = grab_offset+(action->min + action->max) * 0.5f;
+		glm::mat4 held_pose = action->current_pose * grab_pose_offset ;
+		glm::vec3 world_point = held_pose*glm::vec4(0,0,0,1);
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
 		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
 
@@ -462,7 +462,21 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 				v *= max_grab_velocity / speed;
 				world_point = last_view->position + v * dt;
 			}
-			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, glm::quat_cast(action->current_pose) * grab_orientation_offset, glm::vec3(0, 0, 0));
+
+			glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
+			glm::quat action_rot = glm::normalize(glm::quat_cast(held_pose));
+			glm::quat relative_rot = glm::normalize(action_rot * glm::inverse(last_action_rot));
+			float angle = glm::angle(relative_rot);
+			if(angle > 1e-3f){
+				glm::vec3 axis = glm::axis(relative_rot);
+				angular_velocity = (angle * axis) / dt ;
+				float angular_speed = glm::length(angular_velocity) ;
+				if(angular_speed > max_grab_angular_velocity){
+					angular_velocity *= max_grab_angular_velocity / angular_speed;
+				}
+			}
+			last_action_rot = action_rot ;
+			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, action_rot , angular_velocity);
 			last_grab_time = last_view->time;
 		}
 	}

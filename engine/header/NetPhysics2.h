@@ -140,10 +140,12 @@ public:
 	std::shared_ptr<const RigidBody> last_view;
 
 	glm::vec3 grab_offset;
-	glm::quat grab_orientation_offset ;
+	glm::mat4 grab_pose_offset ;
+	glm::quat last_action_rot ;
 	double last_grab_time = 0;
 	float grab_distance = 0;
 	float max_grab_velocity = 5.0f;
+	float max_grab_angular_velocity = 15.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
 	static inline float max_speed_base = 0.3f;
