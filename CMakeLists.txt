@@ -129,11 +129,19 @@ target_compile_definitions(WorldFabric PRIVATE
 )
 
 target_compile_options(WorldFabric PRIVATE
+    # Optimization levels based on configuration
+    $<$<CONFIG:Debug>:-O0>
+    $<$<CONFIG:RelWithDebInfo>:-O2>
     $<$<CONFIG:Release>:-O3>
+    
+    # Common flags
     -ffp-contract=fast
-	-g
-    -gcodeview
-    -fno-omit-frame-pointer
+    -fno-omit-frame-pointer # CRITICAL for the VS Profiler to walk the stack correctly
+    
+    # Symbol generation
+    # We keep these for Debug and RelWithDebInfo. 
+    # We remove them from pure Release to keep the binary clean.
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-g -gcodeview>
 )
 
 # Link all prebuilt import libraries in lib/ alongside required system and
