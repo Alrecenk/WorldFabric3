@@ -403,6 +403,63 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 }
 
 
+void RigidBodyView::receiveAction(PosedGrab* action, ActionTrigger* trigger) {
+	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
+		ScenePlugin* scene = getTool<ScenePlugin>();
+		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
+
+		glm::vec3 world_point = (action->min + action->max) * 0.5f;
+		float distance = glm::distance(world_point, last_position) ;
+		if (distance < action->hover_distance) {// Only act if the actual model was hit and the closest
+			action->hover = last_view->id;
+			action->hover_distance = distance;
+			if (action->clicked) {
+				action->next_held = last_view->id;
+				action->active_item = trigger;
+			}
+		}
+	}
+}
+
+void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) {
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	if (signal == PosedGrab::CLICKED) {
+		//printf("grabbed: %lld\n", last_view->id);
+		grab_distance = action->hover_distance;
+		glm::vec3 world_point = (action->min + action->max)*0.5f;
+		grab_offset = last_view->position - world_point;
+		last_grab_time = last_view->time;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
+	}
+	else if (signal == PosedGrab::RELEASED) {
+		action->active_item = nullptr;
+		action->next_held = -1;
+		//printf("released: %lld\n", last_view->id) ;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
+	}
+	else if (signal == PosedGrab::UPDATED) {
+		//printf("updating: %lld\n", last_view->id);
+
+		glm::vec3 world_point = (action->min + action->max) * 0.5f;
+		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
+		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
+
+		double dt = last_view->time - last_grab_time;
+
+		if (dt > 1e-4f) {
+
+			glm::vec3 v = (world_point - last_view->position) / dt;
+			float speed = glm::length(v);
+			if (speed > max_grab_velocity) {
+				v *= max_grab_velocity / speed;
+				world_point = last_view->position + v * dt;
+			}
+			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, last_view->orientation, glm::vec3(0, 0, 0));
+			last_grab_time = last_view->time;
+		}
+	}
+}
+
 //Update the constraint target based on information at the start of the frame
 void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	//lever arms for torque

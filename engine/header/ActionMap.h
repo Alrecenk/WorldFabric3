@@ -53,7 +53,7 @@ public:
 //This is the class you want to override for your recievers and the template is the action you want to be able to receive
 //You can override this multiple times with different templates to get multiple action types
 template <typename T>
-class ActionReceiver : public BaseActionReceiver {
+class ActionReceiver : public virtual BaseActionReceiver {
 	//static_assert(std::is_base_of<WorldObject, T>::value, "View template must inherit from WorldObject.");
 
 public:

@@ -33,22 +33,10 @@ void NetPhysicsApp2::enter(std::shared_ptr<MachineState> from) {
 	if (!SteamworksPlugin::enabled) {
 		worlds->connect("127.0.0.1", port, version);
 	}
-	//host();
-	//connect_time = now();
-
-
-	/*
-	transform = glm::scale(glm::mat4(1.0f), glm::vec3(mouse_size, mouse_size, mouse_size));
-	std::shared_ptr<NetPhysics::Sphere> mouse_shape = std::make_shared<NetPhysics::Sphere>(mouse_size);
-	int mouse_type = cell->addType(mouse_shape, BALL_MODEL, transform, 0.0f, 0.0f);
-	mouse_body = cell->add(mouse_type, mid);
-
-	for (auto& [id, body] : cell->bodies) {
-		cell->disableCollision(id, mouse_body);
-	}
-	*/
 
 	mouse_action->world = WORLD;
+	posed_action_left->world = WORLD;
+	posed_action_right->world = WORLD;
 }
 
 //Called every frame while the state is active
@@ -85,10 +73,17 @@ void NetPhysicsApp2::run() {
 	mouse_action->performAction(ray_origin, ray_direction, grabbing);
 
 
-	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth;
+	if (OpenXRPlugin::ENABLED) {
+		OpenXRPlugin* controls = getTool<OpenXRPlugin>();
+		//TODO switch to JSON bindable action instead of direct
+		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
+		bool grabbing_left = controls->getBoolean("/actions/general/in/press_x") ;
+		posed_action_left->performAction(current_left_hand_pose,grabbing_left);
 
-	glm::mat4 mouse_pose = glm::mat4(1.0f);
-	mouse_pose = glm::translate(mouse_pose, mouse_position);
+		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
+		bool grabbing_right = controls->getBoolean("/actions/general/in/press_a");
+		posed_action_right->performAction(current_right_hand_pose, grabbing_right);
+	}
 
 
 	updateCamera();

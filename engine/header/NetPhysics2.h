@@ -130,7 +130,7 @@ auto static getStructure(RigidBody& o) {
 	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.last_active_frame) ;
 }
 
-class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
+class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {
 public:
 
 
@@ -168,6 +168,9 @@ public:
 	void receiveAction(RayGrab* action, ActionTrigger* trigger) override;
 	void receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) override;
 
+
+	void receiveAction(PosedGrab* action, ActionTrigger* trigger) override;
+	void receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) override;
 
 };
 

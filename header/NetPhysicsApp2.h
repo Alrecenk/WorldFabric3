@@ -55,6 +55,8 @@ private:
 	float mouse_size = 0.1f;
 	int mouse_particle_id = -1;
 	std::shared_ptr<RayGrab> mouse_action = std::make_shared<RayGrab>();
+	std::shared_ptr<PosedGrab> posed_action_left = std::make_shared<PosedGrab>(0.05f);
+	std::shared_ptr<PosedGrab> posed_action_right = std::make_shared<PosedGrab>(0.05f);
 	bool space_down = false;
 
 	std::chrono::high_resolution_clock::time_point last_run_time;

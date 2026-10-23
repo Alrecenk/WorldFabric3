@@ -421,8 +421,8 @@ void setupGameStates() {
 	//app->add(BallThrowApp::state_name, std::shared_ptr<BallThrowApp>(new BallThrowApp()));
 	//app->setState(BallThrowApp::state_name);
 
-	//app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
-	//app->setState(MirrorApp::state_name);
+	app->add(MirrorApp::state_name, std::shared_ptr<MirrorApp>(new MirrorApp()));
+	app->setState(MirrorApp::state_name);
 
 	//app->add(TraceApp::state_name, std::shared_ptr<TraceApp>(new TraceApp()));
 	//app->setState(TraceApp::state_name);
@@ -439,8 +439,8 @@ void setupGameStates() {
 	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
 	//app->setState(NetPhysicsApp::state_name);
 
-	app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
-	app->setState(NetPhysicsApp2::state_name);
+	//app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
+	//app->setState(NetPhysicsApp2::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {
@@ -456,7 +456,7 @@ int exampleMain(int argc, char* argv[]) {
 	printf("Command: %s\n", command_line.c_str());
 
 	SteamworksPlugin::enabled = false; // can turn this on when you've got your own steam app id you want to boot
-	OpenXRPlugin::ENABLED = false; // Enable this for VR support
+	OpenXRPlugin::ENABLED = true; // Enable this for VR support
 	if (SteamworksPlugin::wants_to_exit) {
 		printf("exiting because Steamworks plugin wanted to.\n");
 		return 0;
