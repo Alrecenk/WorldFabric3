@@ -219,7 +219,7 @@ public:
 	int64_t next_held = -1;
 	int64_t hover = -1 ; // The closest object undr the cursor, regardless of action taken
 	float hover_depth = -1 ; // the depth of the hover ray collision origin + direction * hover_depth
-	bool clicked = false; // if the mouse was just pressed down thisframe
+	bool clicked = false; // if the mouse was just pressed down this frame
 	bool released = false; // if the mouse was just released this frame
 	bool pressed = false;
 	int hits = 0 ;
@@ -239,10 +239,10 @@ public:
 		hover = -1 ;
 		hover_depth = FLT_MAX ;
 		
-		//perform action doe the rya cast, alterting everything touched
+		//perform action does the ray cast, potentially altering everything touched
 		hits = getTool<ActionMap>()->performAction(this) ;
 		
-		//If an item sets held and active itme then ti will receive updates regardless of if it is still intersecting
+		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
 		if(active_item != nullptr){
 			ActionReceiver<RayGrab>* receiver = dynamic_cast<ActionReceiver<RayGrab>*>(active_item->action_receiver);
 			if (receiver) {
@@ -255,14 +255,68 @@ public:
 				}
 			}
 		}
-
-
 		held = next_held ;
-		
+	}
+};
 
+
+// A generic pick up and place action from 3D posed entity (lik a VR controller)
+// Held is the item held by the mouse at the beginning of the action, next_held is the item held at the end with -1 assumed to be no item held in eithr slot
+class PosedGrab : public virtual BoxAction {
+public:
+	int64_t held = -1;
+	int64_t next_held = -1;
+	int64_t hover = -1; // The closest object under the cursor, regardless of action taken
+	float hover_distance = -1; // the distance of the hover from the box center
+	bool clicked = false; // if the button was just pressed down this frame
+	bool released = false; // if the button was just released this frame
+	bool pressed = false;
+	int hits = 0;
+	std::string world;
+	glm::mat4 current_pose ;
+	float box_size = 0;
+
+	ActionTrigger* active_item; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
+	static inline int RELEASED = 1;
+	static inline int CLICKED = 2;
+	static inline int UPDATED = 3;
+
+
+	PosedGrab(float size){
+		box_size = size ;
 	}
 
-	
+	void performAction(const glm::mat4 pose, bool button_down) {
+		glm::vec3 center = pose * glm::vec4(0,0,0,1);
+		glm::vec3 corner = glm::vec3(box_size,box_size,box_size) ;
+		this->min = center - corner ;
+		this->max = center + corner ;
+		clicked = button_down && !pressed;
+		released = !button_down && pressed;
+		pressed = button_down;
+		hover = -1;
+		hover_distance = FLT_MAX;
+
+		//perform action does the box intersect, potentially altering everything touched
+		hits = getTool<ActionMap>()->performAction(this);
+
+		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
+		if (active_item != nullptr) {
+			ActionReceiver<PosedGrab>* receiver = dynamic_cast<ActionReceiver<PosedGrab>*>(active_item->action_receiver);
+			if (receiver) {
+				if (released) {
+					receiver->receiveSignal(RELEASED, this, active_item);
+				}
+				else if (clicked) {
+					receiver->receiveSignal(CLICKED, this, active_item);
+				}
+				else {
+					receiver->receiveSignal(UPDATED, this, active_item);
+				}
+			}
+		}
+		held = next_held;
+	}
 };
 
 #endif // #ifndef _ACTION_MAP_H_
