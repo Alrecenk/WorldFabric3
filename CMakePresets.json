@@ -30,6 +30,14 @@
       }
     },
     {
+      "name": "relwithdebinfo",
+      "displayName": "Clang (llvm-mingw) Profile",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
       "name": "release",
       "displayName": "Clang (llvm-mingw) Release",
       "inherits": "base",
@@ -40,11 +48,15 @@
   ],
   "buildPresets": [
     {
-      "name": "debug",
+      "name": "Debug",
       "configurePreset": "debug"
     },
     {
-      "name": "release",
+      "name": "Profile",
+      "configurePreset": "relwithdebinfo"
+    },
+    {
+      "name": "Release",
       "configurePreset": "release"
     }
   ]
