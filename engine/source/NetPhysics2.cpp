@@ -435,6 +435,7 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 		grab_distance = action->hover_distance;
 		glm::vec3 world_point = (action->min + action->max)*0.5f;
 		grab_offset = last_view->position - world_point;
+		grab_orientation_offset = glm::inverse(glm::quat_cast(action->current_pose)) * last_view->orientation;
 		last_grab_time = last_view->time;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
 	}
@@ -461,7 +462,7 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 				v *= max_grab_velocity / speed;
 				world_point = last_view->position + v * dt;
 			}
-			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, last_view->orientation, glm::vec3(0, 0, 0));
+			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, glm::quat_cast(action->current_pose) * grab_orientation_offset, glm::vec3(0, 0, 0));
 			last_grab_time = last_view->time;
 		}
 	}
@@ -786,7 +787,7 @@ void Cell::runPhysics(){
 	// If this function is off step then it's probably new (or maybe backed up)
 	if (fabs(time - target_time) > frame_length * 0.1) {
 		//printf("Miss-step, target: %lf\n", target_time) ;
-		queue(id, target_time + frame_length, &RigidBody::runPhysics); // requeue on the step
+		queue(id, target_time + frame_length, &Cell::runPhysics); // requeue on the step
 		return; // take no other action at this time
 	}
 

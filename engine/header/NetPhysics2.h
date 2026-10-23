@@ -140,6 +140,7 @@ public:
 	std::shared_ptr<const RigidBody> last_view;
 
 	glm::vec3 grab_offset;
+	glm::quat grab_orientation_offset ;
 	double last_grab_time = 0;
 	float grab_distance = 0;
 	float max_grab_velocity = 5.0f;

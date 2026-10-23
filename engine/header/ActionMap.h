@@ -293,7 +293,7 @@ public:
 		//Variant(current_pose).printFormatted() ;
 		//printf("Button down: %d\n", button_down) ;
 		glm::vec3 center = pose * glm::vec4(0,0,0,1);
-		printf("action center:%f,%f,%f\n", center.x, center.y, center.z);
+		//printf("action center:%f,%f,%f\n", center.x, center.y, center.z);
 		glm::vec3 corner = glm::vec3(box_size,box_size,box_size) ;
 		this->min = center - corner ;
 		this->max = center + corner ;
