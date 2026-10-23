@@ -185,7 +185,7 @@ public:
 
 //Box action perform an AABB
 //You can override this to add more meta-data to be passed along or to gate who recieves the object by type
-//Useful primarily for mouse clicks and hovers, but could be useful for hit-scan weapons or other types of pointers
+//Useful for general localized context, like performaning an action near an object
 class BoxAction : public Action {
 public:
 	glm::vec3 min;
@@ -203,7 +203,9 @@ public:
 		glm::vec3 action_pos = (min+max)*0.5f ;
 		for (auto& [id, trigger] : action_map->triggers) {
 			if (trigger->context == action->context && boundingBoxCollision(min,max, trigger->min,trigger->max)) {
-				hits.push({glm::distance(action_pos,(trigger->min + trigger->max)*0.5f),trigger});// TODO remove sqrt
+				float distance_squared = glm::distance2(action_pos, (trigger->min + trigger->max) * 0.5f) ;
+				//printf("Box colliding with distance : %f\n", sqrtf(distance_squared)) ;
+				hits.push({distance_squared,trigger});
 			}
 		}
 		return hits;
@@ -225,7 +227,7 @@ public:
 	int hits = 0 ;
 	std::string world ;
 
-	ActionTrigger* active_item; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
+	ActionTrigger* active_item = nullptr; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
 	static inline int RELEASED = 1 ;
 	static inline int CLICKED = 2;
 	static inline int UPDATED = 3 ;
@@ -276,7 +278,7 @@ public:
 	glm::mat4 current_pose ;
 	float box_size = 0;
 
-	ActionTrigger* active_item; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
+	ActionTrigger* active_item = nullptr; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
 	static inline int RELEASED = 1;
 	static inline int CLICKED = 2;
 	static inline int UPDATED = 3;
@@ -286,8 +288,12 @@ public:
 		box_size = size ;
 	}
 
-	void performAction(const glm::mat4 pose, bool button_down) {
+	void performAction(const glm::mat4& pose, bool button_down) {
+		current_pose = pose ;
+		//Variant(current_pose).printFormatted() ;
+		//printf("Button down: %d\n", button_down) ;
 		glm::vec3 center = pose * glm::vec4(0,0,0,1);
+		printf("action center:%f,%f,%f\n", center.x, center.y, center.z);
 		glm::vec3 corner = glm::vec3(box_size,box_size,box_size) ;
 		this->min = center - corner ;
 		this->max = center + corner ;

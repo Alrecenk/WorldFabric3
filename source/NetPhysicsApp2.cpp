@@ -37,6 +37,8 @@ void NetPhysicsApp2::enter(std::shared_ptr<MachineState> from) {
 	mouse_action->world = WORLD;
 	posed_action_left->world = WORLD;
 	posed_action_right->world = WORLD;
+
+	
 }
 
 //Called every frame while the state is active
@@ -80,9 +82,23 @@ void NetPhysicsApp2::run() {
 		bool grabbing_left = controls->getBoolean("/actions/general/in/press_x") ;
 		posed_action_left->performAction(current_left_hand_pose,grabbing_left);
 
+
 		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
 		bool grabbing_right = controls->getBoolean("/actions/general/in/press_a");
 		posed_action_right->performAction(current_right_hand_pose, grabbing_right);
+
+		if(cursor_instance_left == -1){
+			scene->createModelSet(CURSOR_MODEL, CURSOR_MODEL, false);
+			cursor_adjust = glm::mat4(1.0f);
+			cursor_adjust = glm::scale(cursor_adjust, glm::vec3(0.01f, 0.01f,0.01f)) ;
+			cursor_adjust = glm::rotate(cursor_adjust, 3.14159f,glm::vec3(0.00f, 1.0f, 0.0f));
+			cursor_instance_left = scene->createInstance(CURSOR_MODEL, current_left_hand_pose * cursor_adjust);
+			cursor_instance_right = scene->createInstance(CURSOR_MODEL, current_right_hand_pose * cursor_adjust);
+		}
+		scene->setPose(cursor_instance_left, current_left_hand_pose * cursor_adjust) ;
+		scene->setPose(cursor_instance_right, current_right_hand_pose * cursor_adjust);
+
+		
 	}
 
 
@@ -269,7 +285,7 @@ void NetPhysicsApp2::createViewTypes() {
 void NetPhysicsApp2::host() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->clearWorlds();
-	worlds->createWorld(WORLD, 1E4f, 1E-5f, 10);
+	worlds->createWorld(WORLD, 1E4f, 1E-4f, 10);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 

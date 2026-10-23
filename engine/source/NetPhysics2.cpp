@@ -277,8 +277,9 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
 	pose = pose * glm::mat4_cast(body->orientation);
 	pose = pose * RigidBody::types[body->type].render_transform;
 	scene_id = scene->createInstance(RigidBody::types[body->type].model, pose);
-	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
-	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1), this));
+	float r = RigidBody::types[body->type].bounding_radius ;
+	glm::vec3 corner(r,r,r);
+	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, body->position-corner, body->position+corner, this));
 	trigger_id = action_map->addTrigger(trigger);
 }
 
@@ -328,8 +329,10 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 	last_view = body;
 
 	scene->setPose(scene_id, pose);
-	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
-	action_map->moveTrigger(trigger_id, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1));
+	//std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
+	float r = RigidBody::types[body->type].bounding_radius;
+	glm::vec3 corner(r, r, r);
+	action_map->moveTrigger(trigger_id, body->position - corner, body->position + corner);
 }
 
 //Destroyed is called when an observation that was present in the last observation is no longer observed
@@ -404,24 +407,28 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 
 
 void RigidBodyView::receiveAction(PosedGrab* action, ActionTrigger* trigger) {
+	//printf("Received pose action\n");
 	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
 		ScenePlugin* scene = getTool<ScenePlugin>();
 		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
 
 		glm::vec3 world_point = (action->min + action->max) * 0.5f;
-		float distance = glm::distance(world_point, last_position) ;
+		float distance = glm::distance(world_point, last_position) ;//TODO avoid sqrt
 		if (distance < action->hover_distance) {// Only act if the actual model was hit and the closest
+			//printf("Hovered Distance: %f\n", distance);
 			action->hover = last_view->id;
 			action->hover_distance = distance;
 			if (action->clicked) {
 				action->next_held = last_view->id;
 				action->active_item = trigger;
+				//printf("grabbed in receive! %lld  distance: %f\n", last_view->id, distance);
 			}
 		}
 	}
 }
 
 void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) {
+	//printf("Received pose signal\n");
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	if (signal == PosedGrab::CLICKED) {
 		//printf("grabbed: %lld\n", last_view->id);
@@ -440,7 +447,7 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 	else if (signal == PosedGrab::UPDATED) {
 		//printf("updating: %lld\n", last_view->id);
 
-		glm::vec3 world_point = (action->min + action->max) * 0.5f;
+		glm::vec3 world_point = grab_offset+(action->min + action->max) * 0.5f;
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
 		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
 
