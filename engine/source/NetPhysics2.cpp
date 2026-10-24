@@ -324,11 +324,11 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 	pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, last_position);
 	pose = pose * glm::mat4_cast(last_orientation);
-	pose = pose * RigidBody::types[body->type].render_transform;
+	//pose = pose * RigidBody::types[body->type].render_transform;
 
 	last_view = body;
 
-	scene->setPose(scene_id, pose);
+	scene->setPose(scene_id, pose * RigidBody::types[body->type].render_transform);
 	//std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
 	float r = RigidBody::types[body->type].bounding_radius;
 	glm::vec3 corner(r, r, r);
