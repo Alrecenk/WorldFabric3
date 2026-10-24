@@ -277,8 +277,9 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
 	pose = pose * glm::mat4_cast(body->orientation);
 	pose = pose * RigidBody::types[body->type].render_transform;
 	scene_id = scene->createInstance(RigidBody::types[body->type].model, pose);
-	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
-	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1), this));
+	float r = RigidBody::types[body->type].bounding_radius ;
+	glm::vec3 corner(r,r,r);
+	std::shared_ptr<ActionTrigger> trigger = std::shared_ptr<ActionTrigger>(new ActionTrigger(0, body->position-corner, body->position+corner, this));
 	trigger_id = action_map->addTrigger(trigger);
 }
 
@@ -323,13 +324,15 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 	pose = glm::mat4(1.0f);
 	pose = glm::translate(pose, last_position);
 	pose = pose * glm::mat4_cast(last_orientation);
-	pose = pose * RigidBody::types[body->type].render_transform;
+	//pose = pose * RigidBody::types[body->type].render_transform;
 
 	last_view = body;
 
-	scene->setPose(scene_id, pose);
-	std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
-	action_map->moveTrigger(trigger_id, pose * glm::vec4(model->min, 1), pose * glm::vec4(model->max, 1));
+	scene->setPose(scene_id, pose * RigidBody::types[body->type].render_transform);
+	//std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[body->type].model);
+	float r = RigidBody::types[body->type].bounding_radius;
+	glm::vec3 corner(r, r, r);
+	action_map->moveTrigger(trigger_id, body->position - corner, body->position + corner);
 }
 
 //Destroyed is called when an observation that was present in the last observation is no longer observed
@@ -347,7 +350,7 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 		ScenePlugin* scene = getTool<ScenePlugin>();
 		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
 
-		glm::mat4 scene_to_model_space = glm::inverse(pose);
+		glm::mat4 scene_to_model_space = glm::inverse(pose * RigidBody::types[last_view->type].render_transform);
 		glm::vec3 model_origin = scene_to_model_space * glm::vec4(action->origin, 1); // positions have 1 in slot 4 to include translation
 		glm::vec3 model_direction = scene_to_model_space * glm::vec4(action->direction, 0);
 
@@ -402,6 +405,82 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 	}
 }
 
+
+void RigidBodyView::receiveAction(PosedGrab* action, ActionTrigger* trigger) {
+	//printf("Received pose action\n");
+	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
+		ScenePlugin* scene = getTool<ScenePlugin>();
+		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
+
+		glm::vec3 world_point = (action->min + action->max) * 0.5f;
+		float distance = glm::distance(world_point, last_position) ;//TODO avoid sqrt
+		if (distance < action->hover_distance) {// Only act if the actual model was hit and the closest
+			//printf("Hovered Distance: %f\n", distance);
+			action->hover = last_view->id;
+			action->hover_distance = distance;
+			if (action->clicked) {
+				action->next_held = last_view->id;
+				action->active_item = trigger;
+				//printf("grabbed in receive! %lld  distance: %f\n", last_view->id, distance);
+			}
+		}
+	}
+}
+
+void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) {
+	//printf("Received pose signal\n");
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	if (signal == PosedGrab::CLICKED) {
+		//printf("grabbed: %lld\n", last_view->id);
+		grab_distance = action->hover_distance;
+		glm::vec3 world_point = (action->min + action->max)*0.5f;
+		grab_pose_offset = glm::inverse(action->current_pose) * pose ;
+		last_grab_time = last_view->time;
+		last_action_rot = glm::normalize(glm::quat_cast(pose));
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
+	}
+	else if (signal == PosedGrab::RELEASED) {
+		action->active_item = nullptr;
+		action->next_held = -1;
+		//printf("released: %lld\n", last_view->id) ;
+		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
+	}
+	else if (signal == PosedGrab::UPDATED) {
+		//printf("updating: %lld\n", last_view->id);
+		glm::mat4 held_pose = action->current_pose * grab_pose_offset ;
+		glm::vec3 world_point = held_pose*glm::vec4(0,0,0,1);
+		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
+		world_point = cell->nearestValidPosition(action->world, last_view, world_point, true);
+
+		double dt = last_view->time - last_grab_time;
+
+		if (dt > 1e-4f) {
+
+			glm::vec3 v = (world_point - last_view->position) / dt;
+			float speed = glm::length(v);
+			if (speed > max_grab_velocity) {
+				v *= max_grab_velocity / speed;
+				world_point = last_view->position + v * dt;
+			}
+
+			glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
+			glm::quat action_rot = glm::normalize(glm::quat_cast(held_pose));
+			glm::quat relative_rot = glm::normalize(action_rot * glm::inverse(last_action_rot));
+			float angle = glm::angle(relative_rot);
+			if(angle > 1e-3f){
+				glm::vec3 axis = glm::axis(relative_rot);
+				angular_velocity = (angle * axis) / dt ;
+				float angular_speed = glm::length(angular_velocity) ;
+				if(angular_speed > max_grab_angular_velocity){
+					angular_velocity *= max_grab_angular_velocity / angular_speed;
+				}
+			}
+			last_action_rot = action_rot ;
+			worlds->queue(action->world, last_view->id, &RigidBody::setState, world_point, v, action_rot , angular_velocity);
+			last_grab_time = last_view->time;
+		}
+	}
+}
 
 //Update the constraint target based on information at the start of the frame
 void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
@@ -722,7 +801,7 @@ void Cell::runPhysics(){
 	// If this function is off step then it's probably new (or maybe backed up)
 	if (fabs(time - target_time) > frame_length * 0.1) {
 		//printf("Miss-step, target: %lf\n", target_time) ;
-		queue(id, target_time + frame_length, &RigidBody::runPhysics); // requeue on the step
+		queue(id, target_time + frame_length, &Cell::runPhysics); // requeue on the step
 		return; // take no other action at this time
 	}
 
@@ -779,7 +858,7 @@ void Cell::runPhysics(){
 			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
 		){
 			asleep = false;
-			queue(body_id,time, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
+			queue(body_id,time+ random() * frame_length * 0.05, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
 		}else if(!body.body->asleep){
 			asleep = false;
 		}

@@ -55,6 +55,14 @@ private:
 	float mouse_size = 0.1f;
 	int mouse_particle_id = -1;
 	std::shared_ptr<RayGrab> mouse_action = std::make_shared<RayGrab>();
+	std::shared_ptr<PosedGrab> posed_action_left = std::make_shared<PosedGrab>(0.025f);
+	std::shared_ptr<PosedGrab> posed_action_right = std::make_shared<PosedGrab>(0.025f);
+	int cursor_instance_left = -1;
+	int cursor_instance_right = -1;
+	glm::mat4 cursor_adjust ;
+	float cursor_angle_1 = 3.1415926f;
+	float cursor_angle_2 = (float)(3.1415936*0.25) ;
+
 	bool space_down = false;
 
 	std::chrono::high_resolution_clock::time_point last_run_time;
@@ -66,8 +74,8 @@ private:
 	int64_t root_id = -1;
 
 
-	glm::vec3 min = { -1,0.5,-1 };
-	glm::vec3 max = { 1,2.5,1 };
+	glm::vec3 min = { -0.75,0.5,-0.75 };
+	glm::vec3 max = { 0.75,2.5,0.75 };
 	float cell_size = 2.0f ;
 	float wall_size = 2.0f;
 
@@ -93,6 +101,7 @@ private:
 	float light_thi = 1.5f;
 	float mouse_wheel_y_previous = 0.0f;
 
+
 	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
 	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
 	static inline const std::string FOX_MODEL = "./assets/Fox2_base.glb";
@@ -100,6 +109,7 @@ private:
 	static inline const std::string BUNNY_VISUAL_MODEL = "./assets/uncut_bunny.glb";
 	static inline const std::string CHAIN_MODEL = "./assets/chain_link.glb";
 	static inline const std::string CHAIN_MODEL_CUT = "./assets/chain_link_cut.glb";
+	static inline const std::string CURSOR_MODEL = "./assets/cursor.glb";
 
 	int box_type = -1;
 	int ball_type = -1;

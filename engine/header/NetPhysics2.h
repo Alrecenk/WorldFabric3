@@ -130,7 +130,7 @@ auto static getStructure(RigidBody& o) {
 	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.last_active_frame) ;
 }
 
-class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab> {
+class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {
 public:
 
 
@@ -140,9 +140,12 @@ public:
 	std::shared_ptr<const RigidBody> last_view;
 
 	glm::vec3 grab_offset;
+	glm::mat4 grab_pose_offset ;
+	glm::quat last_action_rot ;
 	double last_grab_time = 0;
 	float grab_distance = 0;
 	float max_grab_velocity = 5.0f;
+	float max_grab_angular_velocity = 15.0f;
 
 	//Max speed = base + mult * max(speed last frame, speed this frame)
 	static inline float max_speed_base = 0.3f;
@@ -168,6 +171,9 @@ public:
 	void receiveAction(RayGrab* action, ActionTrigger* trigger) override;
 	void receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) override;
 
+
+	void receiveAction(PosedGrab* action, ActionTrigger* trigger) override;
+	void receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) override;
 
 };
 
@@ -225,9 +231,9 @@ public:
 	float target = 0;
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 0.3f;
+	static inline float penetration_spring_coefficient = 10.0f;
 	static inline float allowed_collision_depth = 0.005f;
-	static inline float min_velocity_for_elastic = 0.02f;
+	static inline float min_velocity_for_elastic = 0.05f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
@@ -360,10 +366,10 @@ auto static getStructure(Cell& o) {
 class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
-	//std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+	
 	std::map<glm::ivec3, int64_t> cells ;
 
-	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
+	glm::vec3 acceleration = glm::vec3(0, -3.0, 0);
 
 	static inline int ticks_per_second = 120;
 	static inline int constraint_iterations = 8;
