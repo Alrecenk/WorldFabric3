@@ -231,9 +231,9 @@ public:
 	float target = 0;
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 0.3f;
-	static inline float allowed_collision_depth = 0.005f;
-	static inline float min_velocity_for_elastic = 0.02f;
+	static inline float penetration_spring_coefficient = 1.0f;
+	static inline float allowed_collision_depth = 0.01f;
+	static inline float min_velocity_for_elastic = 0.05f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
 	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
@@ -366,10 +366,10 @@ auto static getStructure(Cell& o) {
 class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
-	//std::vector<int64_t> cells ; // TODO make some sort of map for quicker lookups
+	
 	std::map<glm::ivec3, int64_t> cells ;
 
-	glm::vec3 acceleration = glm::vec3(0, -2.0, 0);
+	glm::vec3 acceleration = glm::vec3(0, -3.0, 0);
 
 	static inline int ticks_per_second = 120;
 	static inline int constraint_iterations = 8;

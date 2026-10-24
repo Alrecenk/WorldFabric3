@@ -350,7 +350,7 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 		ScenePlugin* scene = getTool<ScenePlugin>();
 		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
 
-		glm::mat4 scene_to_model_space = glm::inverse(pose);
+		glm::mat4 scene_to_model_space = glm::inverse(pose * RigidBody::types[last_view->type].render_transform);
 		glm::vec3 model_origin = scene_to_model_space * glm::vec4(action->origin, 1); // positions have 1 in slot 4 to include translation
 		glm::vec3 model_direction = scene_to_model_space * glm::vec4(action->direction, 0);
 
