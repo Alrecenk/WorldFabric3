@@ -231,8 +231,8 @@ public:
 	float target = 0;
 
 	static inline const int CONSTRAINT_TYPE = 1;
-	static inline float penetration_spring_coefficient = 1.0f;
-	static inline float allowed_collision_depth = 0.01f;
+	static inline float penetration_spring_coefficient = 10.0f;
+	static inline float allowed_collision_depth = 0.005f;
 	static inline float min_velocity_for_elastic = 0.05f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 

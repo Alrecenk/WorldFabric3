@@ -12,6 +12,7 @@ void NetPhysicsApp2::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
+	
 
 	NetPhysics2::registerPhysics();
 
@@ -48,7 +49,7 @@ void NetPhysicsApp2::run() {
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	InputPlugin* input = getTool<InputPlugin>();
-
+	OpenXRPlugin* controls = getTool<OpenXRPlugin>();
 
 	if (!worlds->amHosting() && !worlds->connected()) {
 		if (!worlds->connectionPending()) {
@@ -76,7 +77,7 @@ void NetPhysicsApp2::run() {
 
 
 	if (OpenXRPlugin::ENABLED) {
-		OpenXRPlugin* controls = getTool<OpenXRPlugin>();
+		
 		//TODO switch to JSON bindable action instead of direct
 		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
 		bool grabbing_left = controls->getBoolean("/actions/general/in/press_x") ;
@@ -89,12 +90,16 @@ void NetPhysicsApp2::run() {
 
 		if(cursor_instance_left == -1){
 			scene->createModelSet(CURSOR_MODEL, CURSOR_MODEL, false);
-			cursor_adjust = glm::mat4(1.0f);
-			cursor_adjust = glm::scale(cursor_adjust, glm::vec3(0.01f, 0.01f,0.01f)) ;
-			cursor_adjust = glm::rotate(cursor_adjust, 3.14159f,glm::vec3(0.00f, 1.0f, 0.0f));
+			
 			cursor_instance_left = scene->createInstance(CURSOR_MODEL, current_left_hand_pose * cursor_adjust);
 			cursor_instance_right = scene->createInstance(CURSOR_MODEL, current_right_hand_pose * cursor_adjust);
 		}
+
+		cursor_adjust = glm::mat4(1.0f);
+		cursor_adjust = glm::scale(cursor_adjust, glm::vec3(0.01f, 0.01f, 0.01f));
+		cursor_adjust = glm::rotate(cursor_adjust, cursor_angle_1, glm::vec3(0.00f, 1.0f, 0.0f));
+		cursor_adjust = glm::rotate(cursor_adjust, cursor_angle_2, glm::vec3(1.00f, 0.0f, 0.0f));
+
 		scene->setPose(cursor_instance_left, current_left_hand_pose * cursor_adjust) ;
 		scene->setPose(cursor_instance_right, current_right_hand_pose * cursor_adjust);
 
@@ -141,18 +146,31 @@ void NetPhysicsApp2::run() {
 
 
 	// Check if escape pressed to exit
+	
 	if (input->getPressed("exit")) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
 
-	int forward = input->getActionID("forward");
-	if (input->getPressed(forward)) {
-		printf("pressed forward!\n");
+	if (input->getPressed(input->getActionID("forward"))) {
+		cursor_angle_1+=0.05f ;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
 	}
 
-	if (input->getReleased(forward)) {
-		printf("released forward!\n");
+	if (input->getPressed(input->getActionID("backward"))) {
+		cursor_angle_1 -= 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
 	}
+
+	if (input->getPressed(input->getActionID("left"))) {
+		cursor_angle_2 -= 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
+	}
+
+	if (input->getPressed(input->getActionID("right"))) {
+		cursor_angle_2 += 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
+	}
+
 
 }
 
@@ -268,7 +286,7 @@ void NetPhysicsApp2::createViewTypes() {
 	scene->createModelSet(BUNNY_VISUAL_MODEL, BUNNY_VISUAL_MODEL, true);
 	bunny_type = NetPhysics2::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
-
+	/*
 	float chain_scale = 0.1f;
 	float chain_mass = 0.5f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(chain_scale, chain_scale, chain_scale));
@@ -278,7 +296,7 @@ void NetPhysicsApp2::createViewTypes() {
 	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
 	chain_type = NetPhysics2::RigidBody::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
-
+*/
 }
 
 
@@ -294,25 +312,25 @@ void NetPhysicsApp2::host() {
 
 	glm::vec3 mid = (min + max) * 0.5f;
 	/*
-		glm::vec3 chain_pos = mid;
-		float chain_angle = 0;
-		float y_step = 0.1f;
-		float angle_step = 1.5f;
-		int num_links = 5;
-		for (int k = 1; k <= num_links; k++) {
-			std::shared_ptr<NetPhysics2::RigidBody> link = std::make_shared<NetPhysics2::RigidBody>(root_id,chain_type, chain_pos);
-			link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
-			if (k == num_links) { // Fix the top link in place
-				link->receives_impulse = false;
-			}
-			int64_t link_id = worlds->create(WORLD, link);
-			worlds->queue(WORLD, link_id, &NetPhysics2::RigidBody::runPhysics);
-
-			chain_angle += angle_step;
-			chain_pos.y += y_step;
-			//glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
-			//chain_pos += off;
+	glm::vec3 chain_pos = mid;
+	float chain_angle = 0;
+	float y_step = 0.1f;
+	float angle_step = 1.5f;
+	int num_links = 5;
+	for (int k = 1; k <= num_links; k++) {
+		std::shared_ptr<NetPhysics2::RigidBody> link = std::make_shared<NetPhysics2::RigidBody>(root_id,chain_type, chain_pos);
+		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
+		if (k == num_links) { // Fix the top link in place
+			link->receives_impulse = false;
 		}
+		int64_t link_id = worlds->create(WORLD, link);
+		worlds->queue(WORLD, link_id, &NetPhysics2::RigidBody::runPhysics);
+
+		chain_angle += angle_step;
+		chain_pos.y += y_step;
+		//glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
+		//chain_pos += off;
+	}
 	*/
 	int64_t body_id;
 	// Add the container blocks
@@ -332,7 +350,7 @@ void NetPhysicsApp2::host() {
 
 
 	//Add some random stuff
-	int amount = 20;
+	int amount = 50;
 	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.6f + randomFloat() * 0.4f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };

@@ -55,11 +55,13 @@ private:
 	float mouse_size = 0.1f;
 	int mouse_particle_id = -1;
 	std::shared_ptr<RayGrab> mouse_action = std::make_shared<RayGrab>();
-	std::shared_ptr<PosedGrab> posed_action_left = std::make_shared<PosedGrab>(0.5f);
-	std::shared_ptr<PosedGrab> posed_action_right = std::make_shared<PosedGrab>(0.5f);
+	std::shared_ptr<PosedGrab> posed_action_left = std::make_shared<PosedGrab>(0.025f);
+	std::shared_ptr<PosedGrab> posed_action_right = std::make_shared<PosedGrab>(0.025f);
 	int cursor_instance_left = -1;
 	int cursor_instance_right = -1;
 	glm::mat4 cursor_adjust ;
+	float cursor_angle_1 = 3.1415926f;
+	float cursor_angle_2 = (float)(3.1415936*0.25) ;
 
 	bool space_down = false;
 
@@ -72,8 +74,8 @@ private:
 	int64_t root_id = -1;
 
 
-	glm::vec3 min = { -1,0.5,-1 };
-	glm::vec3 max = { 1,2.5,1 };
+	glm::vec3 min = { -0.75,0.5,-0.75 };
+	glm::vec3 max = { 0.75,2.5,0.75 };
 	float cell_size = 2.0f ;
 	float wall_size = 2.0f;
 

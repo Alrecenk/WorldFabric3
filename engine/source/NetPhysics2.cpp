@@ -858,7 +858,7 @@ void Cell::runPhysics(){
 			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
 		){
 			asleep = false;
-			queue(body_id,time, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
+			queue(body_id,time+ random() * frame_length * 0.05, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
 		}else if(!body.body->asleep){
 			asleep = false;
 		}
