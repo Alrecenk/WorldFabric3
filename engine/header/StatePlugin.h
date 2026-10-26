@@ -2,7 +2,7 @@
 #define _STATE_PLUGIN_H_ 1
 
 #include "AsyncPlugin.h"
-#include "stateMachine.h"
+#include "StateMachine.h"
 
 class StatePlugin: public AsyncPlugin {
 

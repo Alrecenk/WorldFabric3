@@ -77,7 +77,7 @@ public:
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
-	int getTypeId(Registry* r) const {
+	int getTypeId(Registry* r) const override {
 		return r->getIdForType<Narwhal>();
 	}
 

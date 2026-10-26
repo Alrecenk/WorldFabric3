@@ -227,7 +227,7 @@ public:
 			model->setTextures({ texture});
 		}
 
-		void setPushConstants(const std::any element_push_constants) {
+		void setPushConstants(const std::any element_push_constants) override{
 			push_constants = any_cast<const PanelElementPushConstants>(element_push_constants);
 			model->setPushConstants(push_constants);
 		}
@@ -241,7 +241,7 @@ public:
 			return std::any(this->instance) ;
 		}
 
-		glm::ivec2 getTextureDimensions(){
+		glm::ivec2 getTextureDimensions() override{
 			if(model && model->textures.size() > 0 ){
 				return glm::ivec2(model->textures[0]->getWidth(), model->textures[0]->getHeight()) ;
 			}else{
@@ -249,17 +249,17 @@ public:
 			}
 		}
 
-		void setInstance(const std::any element_instance) {
+		void setInstance(const std::any element_instance) override{
 			instance = any_cast<const PanelElementInstance>(element_instance);
 			model->setInstances({ instance });
 		}
 
-		void addKeyFrame(double time, const std::any element_instance){
+		void addKeyFrame(double time, const std::any element_instance) override{
 			PanelElementInstance frame = any_cast<const PanelElementInstance>(element_instance);
 			key_frames[time] = frame ;
 		}
 
-		void animate(double time){
+		void animate(double time) override{
 			if (key_frames.size() == 0) {
 				return;
 			}
@@ -422,7 +422,6 @@ public:
 
 		void setInstance(const std::any panel_instance) {
 			instance = any_cast<const PanelInstance>(panel_instance);
-			this->instance = instance;
 			model->setInstances({instance}) ;
 		}
 

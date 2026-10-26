@@ -197,7 +197,7 @@ public:
 
 		}
 
-		void setMorphModels(std::shared_ptr<GLTF> gltf_model, VulkanPlugin* renderer, std::vector<float>& weights){
+		void setMorphModels(std::shared_ptr<GLTF> gltf_model, VulkanPlugin* renderer, std::vector<float>& weights) override{
 			std::vector< std::shared_ptr<GLTF::RenderModel>> morphs = gltf_model->getMorphedRenderBuffers(weights, false);
 			int j = 0 ;
 			//Shader set has renderables for each shader, so we need to push the morphs to all of them ever loaded

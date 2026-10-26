@@ -171,7 +171,7 @@ public:
 
 		double getRunTime(Timeline* timeline, const glm::vec3& vantage) override;
 
-		void print();
+		void print() override;
 
 		~VoidEvent() = default;
 	};
@@ -193,7 +193,7 @@ public:
 		}
 
 		double getRunTime(Timeline* timeline, const glm::vec3& vantage) override;
-		void print();
+		void print() override;
 
 		~CreateEvent() = default;
 	};
