@@ -283,7 +283,7 @@ void FirstPersonApp::createViewTypes() {
 	bunny_type = NetPhysics2::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
 
-	float ruin_scale = 0.5f;
+	float ruin_scale = 0.9f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(ruin_scale, ruin_scale, ruin_scale));
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
 	scene->createModelSet(RUIN_MODEL, RUIN_MODEL, false);
