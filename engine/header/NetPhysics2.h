@@ -93,6 +93,11 @@ public:
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
 
+	
+	void destroy(){
+		destroyed = true ;
+	}
+
 	//Wake upa body that has been asleep
 	void wakeUp();
 

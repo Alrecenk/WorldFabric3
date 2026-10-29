@@ -40,7 +40,7 @@
       "binding": [
         {
           "source": "SDL_KEY",
-          "path": "w"
+          "path": "d"
         },
         {
           "source": "SDL_KEY",

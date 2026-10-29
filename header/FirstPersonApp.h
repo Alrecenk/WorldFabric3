@@ -8,6 +8,55 @@
 #include "PanelPlugin.h"
 #include "SteamworksPlugin.h"
 
+
+class PlayerCharacter : public WorldObject {
+public:
+	int64_t root_id = -1;
+	int64_t body_id = -1;
+	glm::vec3 velocity = glm::vec3(0,0,0);
+	glm::vec3 control = glm::vec3(0, 0, 0);
+	double last_control_time ;
+
+	static inline float max_speed = 1.0f ;
+	static inline float acceleration = 4.0f;
+	static inline float drag = 2.0f;
+	static inline double time_out_time = 3.0 ;
+	static inline double interframe_time = 0.2 ;
+	
+
+
+	PlayerCharacter(){};
+
+	PlayerCharacter(int64_t root, const glm::vec3& pos) ;
+
+	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
+		// Just change the template parameter to match your class
+	int getTypeId(Registry* r) const override {
+		return r->getIdForType<PlayerCharacter>();
+	}
+
+	std::shared_ptr<WorldObject> deepCopy() const override {
+		return std::make_shared<PlayerCharacter>(*this);
+	}
+
+	//Functions used on observables or on read objects need to be const
+	void print() const override {
+		printf("FirstPersonPlayerCharacter");
+	}
+
+
+	void update();
+
+	void setPosition(const glm::vec3& new_cposition);
+
+	void setControl(const glm::vec3& new_control);
+
+};
+
+auto static getStructure(PlayerCharacter& o) {
+	return std::tie(o.position,o.root_id, o.body_id, o.velocity, o.control, o.last_control_time);
+}
+
 class FirstPersonApp : public MachineState, public SteamworksPlugin::SteamEventReceiver {
 
 public:
@@ -48,7 +97,30 @@ public:
 
 	void startSteamHosting();
 
+
+	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
+	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
+	static inline const std::string RUIN_MODEL = "./assets/TowerRuinCollision.glb";
+	static inline const std::string RUIN_VISUAL_MODEL = "./assets/TowerRuinVisual.glb";
+	static inline const std::string BUNNY_MODEL = "./assets/cut_bunny.glb";
+	static inline const std::string BUNNY_VISUAL_MODEL = "./assets/uncut_bunny.glb";
+	static inline const std::string CURSOR_MODEL = "./assets/cursor.glb";
+
+	static inline int box_type = -1;
+	static inline int ball_type = -1;
+	static inline int wall_type = -1;
+	static inline int rod_type = -1;
+	static inline int jar_type = -1;
+	static inline int bunny_type = -1;
+	static inline int ruin_type = -1;
+	static inline int player_type  = -1 ;
+
 private:
+
+	int64_t my_player_id = -1 ;
+	glm::vec3 last_control = glm::vec3(0,0,0);
+	glm::vec3 look_direction = glm::vec3(0,0,1) ;
+	std::chrono::high_resolution_clock::time_point last_input_time = now();
 
 	int light_id = -1; // Scene light
 	float mouse_depth = 11.0f;
@@ -102,20 +174,7 @@ private:
 	float mouse_wheel_y_previous = 0.0f;
 
 
-	static inline const std::string BALL_MODEL = "./Narball/asset/BeachBall.glb";
-	static inline const std::string JAR_MODEL = "./assets/TSP_Jar_01A.glb";
-	static inline const std::string RUIN_MODEL = "./assets/TowerRuinCollision.glb";
-	static inline const std::string RUIN_VISUAL_MODEL = "./assets/TowerRuinVisual.glb";
-	static inline const std::string BUNNY_MODEL = "./assets/cut_bunny.glb";
-	static inline const std::string BUNNY_VISUAL_MODEL = "./assets/uncut_bunny.glb";
-	static inline const std::string CURSOR_MODEL = "./assets/cursor.glb";
+	
 
-	int box_type = -1;
-	int ball_type = -1;
-	int wall_type = -1;
-	int rod_type = -1;
-	int jar_type = -1;
-	int bunny_type = -1;
-	int ruin_type = -1;
 };
 #endif // #ifndef _FIRST_PERSON_APP_H_

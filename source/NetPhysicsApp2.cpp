@@ -138,7 +138,7 @@ void NetPhysicsApp2::run() {
 		}
 
 		if (root_id != -1) {
-			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
 			worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 		}
 	}
@@ -369,7 +369,7 @@ void NetPhysicsApp2::host() {
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::vec3(0, 0, 0), vel));
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
 		worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	}
 

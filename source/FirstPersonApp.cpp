@@ -15,6 +15,10 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 
 
 	NetPhysics2::registerPhysics();
+	worlds->registerClass<PlayerCharacter>("FirstPersonPlayer");
+	worlds->registerMethod(&PlayerCharacter::update, "PlayerCharacter::update") ;
+	worlds->registerMethod(&PlayerCharacter::setPosition, "PlayerCharacter::setPosition");
+	worlds->registerMethod(&PlayerCharacter::setControl, "PlayerCharacter::setControl");
 
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
@@ -138,7 +142,7 @@ void FirstPersonApp::run() {
 		}
 
 		if (root_id != -1) {
-			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
 			worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 		}
 	}
@@ -146,27 +150,44 @@ void FirstPersonApp::run() {
 
 
 	// Check if escape pressed to exit
-
 	if (input->getPressed("exit")) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
 
-	if (input->getPressed(input->getActionID("forward"))) {
+	glm::vec3 new_control;
+	glm::vec3 look = glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));
+	glm::vec3 right = glm::cross(look, glm::vec3(0,1,0) );
 
+	if (input->getBoolean(input->getActionID("forward"))) {
+		new_control += look ;
 	}
 
-	if (input->getPressed(input->getActionID("backward"))) {
-
+	if (input->getBoolean(input->getActionID("backward"))) {
+		new_control -= look ;
 	}
 
-	if (input->getPressed(input->getActionID("left"))) {
-
+	if (input->getBoolean(input->getActionID("left"))) {
+		new_control -= right;
 	}
 
-	if (input->getPressed(input->getActionID("right"))) {
-
+	if (input->getBoolean(input->getActionID("right"))) {
+		new_control += right;
 	}
 
+	float s= glm::length(new_control) ;
+	if(s > 0){
+		new_control *= PlayerCharacter::acceleration /s ;
+	}
+	
+	if(new_control != last_control || millisBetween(last_input_time, now()) > PlayerCharacter::time_out_time * 500){
+		if(my_player_id == -1 && new_control != last_control){
+			
+			my_player_id = worlds->create(WORLD, std::make_shared<PlayerCharacter>(root_id, glm::vec3(0,0,0))) ;
+			worlds->queue(WORLD, my_player_id, &PlayerCharacter::update) ;
+		}else if(my_player_id != -1 ) {
+			worlds->queue(WORLD, my_player_id,&PlayerCharacter::setControl,new_control) ;
+		}
+	}
 
 }
 
@@ -189,7 +210,7 @@ void FirstPersonApp::updateCamera() {
 		mouse_down_right = true;
 		camera_theta = camera_down_theta + camera_x_speed * (mouse_position.x - mouse_down_position_right.x);
 		camera_thi = camera_down_thi + camera_y_speed * (mouse_position.y - mouse_down_position_right.y);
-		camera_thi = fmax(fmin(camera_thi, 3.14159f * 0.5f), 0.0f);
+		camera_thi = fmax(fmin(camera_thi, 3.14159f * 0.5f), -3.14159f);
 		mouse_down_position_right = window->getMousePosition();
 		camera_down_thi = camera_thi;
 		camera_down_theta = camera_theta;
@@ -209,13 +230,24 @@ void FirstPersonApp::updateCamera() {
 	}
 	mouse_wheel_y_previous = window->getMouseWheelPosition().y;
 
-	glm::vec3 camera_position = glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi)) * zoom;
-	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
-
 	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
 
 	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 35);
 
+
+
+	glm::vec3 camera_position = glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi)) * zoom;
+
+	if (my_player_id != -1) { // First person mode
+		WorldPlugin* worlds = getTool<WorldPlugin>();
+		std::shared_ptr<const PlayerCharacter> player = worlds->observe<PlayerCharacter>(WORLD,my_player_id) ;
+		camera_position = player->position ;
+		look_at = camera_position + glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));
+	}
+
+	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
+
+	
 	updateDebugPanel();
 
 }
@@ -250,6 +282,7 @@ void FirstPersonApp::createViewTypes() {
 
 	float rod_mass = 2.0f;
 	float rod_scale = 0.12f;
+	transform = glm::mat4(1.0f);
 	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, rod_scale), glm::vec3(0, 0, -rod_scale), rod_scale * 0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
@@ -268,9 +301,6 @@ void FirstPersonApp::createViewTypes() {
 	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
 	//scene->createModelSet("jar", model2, false, true);
 	jar_type = NetPhysics2::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
-
-
-
 
 	float bunny_scale = 0.25f;
 	float bunny_mass = 8.0f;
@@ -292,6 +322,20 @@ void FirstPersonApp::createViewTypes() {
 	scene->createModelSet(RUIN_VISUAL_MODEL, RUIN_VISUAL_MODEL, false);
 	ruin_type = NetPhysics2::RigidBody::addType(ruin_parts, RUIN_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
+
+
+	float player_radius = 0.2f ;
+	float player_height = 1.5;
+	transform = glm::mat4(1.0f) ;
+	std::shared_ptr<Physics::ConvexPolyhedron> player_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(
+		glm::vec3(0, -player_height *0.75f, 0), 
+		glm::vec3(0, player_height*0.25f, 0),
+		player_radius,
+		8));
+	std::shared_ptr<GLTF> player_model = std::make_shared<GLTF>();
+	player_model->setPolyhedronModel(player_shape->vertex, player_shape->face, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
+	scene->createModelSet("player", player_model, false, false);
+	player_type = NetPhysics2::RigidBody::addType(player_shape, "player", transform, 0.4f, 0.2f);
 }
 
 
@@ -306,27 +350,7 @@ void FirstPersonApp::host() {
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
-	/*
-	glm::vec3 chain_pos = mid;
-	float chain_angle = 0;
-	float y_step = 0.1f;
-	float angle_step = 1.5f;
-	int num_links = 5;
-	for (int k = 1; k <= num_links; k++) {
-		std::shared_ptr<NetPhysics2::RigidBody> link = std::make_shared<NetPhysics2::RigidBody>(root_id,chain_type, chain_pos);
-		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
-		if (k == num_links) { // Fix the top link in place
-			link->receives_impulse = false;
-		}
-		int64_t link_id = worlds->create(WORLD, link);
-		worlds->queue(WORLD, link_id, &NetPhysics2::RigidBody::runPhysics);
-
-		chain_angle += angle_step;
-		chain_pos.y += y_step;
-		//glm::vec3 off((randomFloat() - 0.5f) * 0.3f, (randomFloat() - 0.3f) * 0.1f, (randomFloat() - 0.3f) * 0.1f);
-		//chain_pos += off;
-	}
-	*/
+	
 	int64_t body_id;
 	// Add the container blocks
 	/*
@@ -368,7 +392,7 @@ void FirstPersonApp::host() {
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::vec3(0, 0, 0), vel));
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
 		worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	}
 
@@ -427,7 +451,6 @@ void FirstPersonApp::updateDebugPanel() {
 
 	}
 	else {
-
 		total_dt += worlds->getTimeStep();
 		debug_frames++;
 		if (total_dt > 1.0) {
@@ -441,7 +464,6 @@ void FirstPersonApp::updateDebugPanel() {
 			}
 			//printf("%s\n", d.c_str()) ;
 			debug_label->setText(d);
-
 		}
 	}
 
@@ -472,4 +494,56 @@ void FirstPersonApp::onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::S
 	world->disconnect();
 	world->connect(socket, "1");
 
+}
+
+PlayerCharacter::PlayerCharacter(int64_t root, const glm::vec3& pos){
+	root_id = root ;
+	position = pos ;
+}
+
+void PlayerCharacter::update() {
+	double frame_length = 1.0 / NetPhysics2::Root::ticks_per_second;
+	int frame = (int)(time * NetPhysics2::Root::ticks_per_second);
+	double target_time = (frame + interframe_time) * frame_length;
+
+	if(body_id == -1){
+		body_id = create(std::make_shared<NetPhysics2::RigidBody>(root_id, FirstPersonApp::player_type, position), time);
+		queue(body_id,time+0.001, &NetPhysics2::RigidBody::runPhysics);
+		last_control_time = time;
+	}else{
+		
+		velocity+=control*frame_length;
+		float initial_speed = glm::length(velocity) ;
+		float speed = fmin(initial_speed-drag*frame_length,max_speed) ;
+		if(speed <= 0){
+			velocity = glm::vec3(0,0,0) ;
+		}else{
+			velocity *= speed/initial_speed ;
+		}
+		position += velocity*frame_length ;
+		
+		//TODO check collision
+
+		queue(body_id,target_time,&NetPhysics2::RigidBody::setState,position,velocity, glm::quat(1,0,0,0),glm::vec3(0,0,0)) ;
+
+		if(time - last_control_time > time_out_time){
+			queue(body_id,time, &NetPhysics2::RigidBody::destroy) ;
+			destroyed= true ;
+		}
+		
+	}
+	if(!destroyed){
+		queue(id,target_time + frame_length, &PlayerCharacter::update) ;
+	}
+}
+
+void PlayerCharacter::setControl(const glm::vec3& new_control) {
+	control = new_control;
+	last_control_time = time;
+}
+
+void PlayerCharacter::setPosition(const glm::vec3& new_pos) {
+	position = new_pos ;
+	velocity = glm::vec3(0,0,0) ;
+	last_control_time = time;
 }

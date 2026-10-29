@@ -1010,6 +1010,7 @@ void registerPhysics(){
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
 	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
+	worlds->registerMethod(&RigidBody::destroy, "RigidBody::destroy");
 
 	worlds->registerClass<Cell>("Cell");
 	worlds->registerMethod(&Cell::addBody, "addBody");
