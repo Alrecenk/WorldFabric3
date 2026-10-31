@@ -68,7 +68,7 @@ public:
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline int frames_to_sleep = 5 ; //if I body doesn't move for this many frames it will go to sleep
-	static inline float world_radius = 9.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
+	static inline float world_radius = 14.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
 	static inline float max_sleep_speed = 1e-2f; // if both speed and angular speed are below these threshold a body will want to sleep
 	static inline float max_sleep_angular_speed = 1e-2f ;
 

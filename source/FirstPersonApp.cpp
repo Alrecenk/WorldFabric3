@@ -320,7 +320,7 @@ void FirstPersonApp::createViewTypes() {
 void FirstPersonApp::host() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->clearWorlds();
-	worlds->createWorld(WORLD, 1E4f, 1E-4f, 10);
+	worlds->createWorld(WORLD, 1E4f, 1E-4f, 15);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
@@ -347,6 +347,9 @@ void FirstPersonApp::host() {
 	*/
 
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, ruin_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, ruin_type, glm::vec3(mid.x-6, min.y - wall_size * 0.5f, mid.z+0.25f),glm::quat(0,0,1,0)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
 	
 
