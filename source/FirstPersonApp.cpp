@@ -22,15 +22,12 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
-	glm::vec3 light_position = glm::vec3(15, 0.5, -0.5);
-	glm::vec3 look_at = glm::vec3(0, 0, 0);
 	lc.light_color = glm::vec4(0.5, 0.5, 0.5, 1);
-	light_id = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_position, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 2048, 0, lc);
+	light_id = scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_position, light_look_at, glm::vec3(0, 1, 0), 0.7, 35, 2048, 0, lc);
 
 	// Place the camera
-	glm::vec3 camera_position = { 0,20,-3 };
 	float fov = 0.7f;
-	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
+	window->window_target->setCamera({ 0,0,0 }, { 0,0,1}, fov, glm::vec3(0, 1, 0));
 
 
 	createViewTypes();
@@ -42,6 +39,15 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 	mouse_action->world = WORLD;
 	posed_action_left->world = WORLD;
 	posed_action_right->world = WORLD;
+
+	window->setRelativeMouseMode(true) ;
+
+
+
+
+	
+
+	//scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), 0.7, 35);
 
 
 }
@@ -75,7 +81,7 @@ void FirstPersonApp::run() {
 	last_run_time = current_time;
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
-	glm::vec3 ray_direction = window->getMouseRay();
+	glm::vec3 ray_direction = window->getPixelRay(window->window_target->width*0.5f, window->window_target->height * 0.5f) ;
 	bool grabbing = input->getBoolean("grab");
 	mouse_action->performAction(ray_origin, ray_direction, grabbing);
 
@@ -200,54 +206,22 @@ void FirstPersonApp::exit(std::shared_ptr<MachineState> to) {
 void FirstPersonApp::updateCamera() {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
-	if (window->mouseDown(3)) { // right mouse button
-		if (!mouse_down_right) {
-			mouse_down_position_right = window->getMousePosition();
-			camera_down_thi = camera_thi;
-			camera_down_theta = camera_theta;
-		}
-		glm::vec2 mouse_position = window->getMousePosition();
-		mouse_down_right = true;
-		camera_theta = camera_down_theta + camera_x_speed * (mouse_position.x - mouse_down_position_right.x);
-		camera_thi = camera_down_thi + camera_y_speed * (mouse_position.y - mouse_down_position_right.y);
-		camera_thi = fmax(fmin(camera_thi, 3.14159f * 0.5f), -3.14159f);
-		mouse_down_position_right = window->getMousePosition();
-		camera_down_thi = camera_thi;
-		camera_down_theta = camera_theta;
-	}
-	else {
-		mouse_down_right = false;
-	}
-
-	if (mouse_wheel_y_previous < window->getMouseWheelPosition().y) {
-		zoom *= 0.95f;
-	}
-	else if (mouse_wheel_y_previous > window->getMouseWheelPosition().y) {
-		zoom /= 0.95f;
-	}
-	if (zoom < 1.0f) {
-		zoom = 1.0f;
-	}
-	mouse_wheel_y_previous = window->getMouseWheelPosition().y;
-
-	glm::vec3 light_position = glm::vec3(cosf(light_theta) * cosf(light_thi), sinf(light_thi), sinf(light_theta) * cosf(light_thi)) * light_zoom;
-
-	scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), light_fov, 35);
-
-
-
-	glm::vec3 camera_position = glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi)) * zoom;
-
-	if (my_player_id != -1) { // First person mode
-		WorldPlugin* worlds = getTool<WorldPlugin>();
-		std::shared_ptr<const PlayerCharacter> player = worlds->observe<PlayerCharacter>(WORLD,my_player_id) ;
-		camera_position = player->position ;
-		look_at = camera_position + glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));
-	}
-
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	
+	glm::vec2 mouse_delta = window->getMouseMovement();
+	window->consumeMouseMovement();
+	
+	camera_theta += camera_x_speed * mouse_delta.x;
+	camera_thi += camera_y_speed * mouse_delta.y;
+	camera_thi = fmax(fmin(camera_thi, 3.1415f * 0.5f), -3.1415f*0.5f);
+	
+	std::shared_ptr<const PlayerCharacter> player = worlds->observe<PlayerCharacter>(WORLD,my_player_id) ;
+		
+	glm::vec3 camera_position = player ? player->position : glm::vec3(0, 0, 0);
+	glm::vec3 look_at = camera_position + glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));
+	
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
 
-	
 	updateDebugPanel();
 
 }

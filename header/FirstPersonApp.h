@@ -151,29 +151,20 @@ private:
 	float cell_size = 2.0f;
 	float wall_size = 2.0f;
 
-
-	// Camera control stuff
-	glm::vec3 look_at = glm::vec3(0, 0.5, 0);
-	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
-	float fov = 1.0f;
-	float camera_theta = 0.5f;
-	float camera_thi = 0.8f;
 	bool mouse_down_left = false;
 	glm::vec2 mouse_down_position_left;
 	bool mouse_down_right = false;
 	glm::vec2 mouse_down_position_right;
-	float camera_down_theta = 0.0f;
-	float camera_down_thi = 0.0f;
-	float camera_x_speed = 0.002f;
-	float camera_y_speed = 0.002f;
-	float zoom = 1.0f;
-	float light_zoom = 8.0f;
-	float light_fov = 0.7f;
-	float light_theta = 0.4f;
-	float light_thi = 1.5f;
 	float mouse_wheel_y_previous = 0.0f;
 
-
+	// Camera control stuff
+	glm::vec3 light_position = glm::vec3(0.5f,8.0f,0.5f) ;
+	glm::vec3 light_look_at = glm::vec3(0, 0, 0);
+	float fov = 1.0f;
+	float camera_theta = 0.5f;
+	float camera_thi = 0.8f;
+	float camera_x_speed = 0.002f;
+	float camera_y_speed = -0.002f;
 	
 
 };
