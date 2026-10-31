@@ -343,8 +343,12 @@ public:
 	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
 	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
+	glm::vec3 nearestValidPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
 
+	//Returns the nearest position to the target that the given body could be placed without colliding
+	//with the contents of this cell from the perspective of the calling world object (TODO check this is true)
+	//Note: This is for user controls that move bodies and is for use only INSIDE world events (like from a player controller handling a rigid body)
+	glm::vec3 nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const;
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class

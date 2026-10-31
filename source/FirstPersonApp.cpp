@@ -225,7 +225,7 @@ void FirstPersonApp::updateCamera() {
 	glm::vec3 look_at = camera_position + glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));
 	
 	window->window_target->setCamera(camera_position, look_at, fov, glm::vec3(0, 1, 0));
-
+	worlds->setVantagePoint(WORLD, camera_position) ;
 	updateDebugPanel();
 
 }
@@ -500,7 +500,16 @@ void PlayerCharacter::update() {
 		}
 		position += velocity*frame_length ;
 		
-		//TODO check collision
+		//check collision
+		std::shared_ptr<const NetPhysics2::RigidBody> my_body = read<NetPhysics2::RigidBody>(body_id) ;
+		if(my_body){
+			for(const int64_t& cell_id : my_body->cells){
+				std::shared_ptr<const NetPhysics2::Cell> cell = read< NetPhysics2::Cell>(cell_id);
+				if(cell){
+					position = cell->nearestValidPositionInternal(my_body,position,true) ;
+				}
+			}
+		}
 
 		queue(body_id,target_time,&NetPhysics2::RigidBody::setState,position,velocity, glm::quat(1,0,0,0),glm::vec3(0,0,0)) ;
 

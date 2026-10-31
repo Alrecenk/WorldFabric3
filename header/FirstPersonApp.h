@@ -17,8 +17,8 @@ public:
 	glm::vec3 control = glm::vec3(0, 0, 0);
 	double last_control_time ;
 
-	static inline float max_speed = 1.0f ;
-	static inline float acceleration = 4.0f;
+	static inline float max_speed = 2.0f ;
+	static inline float acceleration = 6.0f;
 	static inline float drag = 2.0f;
 	static inline double time_out_time = 3.0 ;
 	static inline double interframe_time = 0.2 ;
