@@ -79,6 +79,10 @@ void FirstPersonApp::run() {
 	}
 
 	last_run_time = current_time;
+
+
+	updateCamera();
+
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getPixelRay(window->window_target->width*0.5f, window->window_target->height * 0.5f) ;
@@ -116,8 +120,13 @@ void FirstPersonApp::run() {
 
 	}
 
-
-	updateCamera();
+	if (root_id == -1) {
+		std::shared_ptr<const NetPhysics2::Root> root = worlds->observeNearest<NetPhysics2::Root>(WORLD);
+		if (root) {
+			root_id = root->id;
+		}
+	}
+	
 
 	if (input->getPressed("create")) {
 		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),2.0f,min.z + 0.1f };
@@ -140,12 +149,7 @@ void FirstPersonApp::run() {
 			type = jar_type;
 		}
 
-		if (root_id == -1) {
-			std::shared_ptr<const NetPhysics2::Root> root = worlds->observeNearest<NetPhysics2::Root>(WORLD);
-			if (root) {
-				root_id = root->id;
-			}
-		}
+		
 
 		if (root_id != -1) {
 			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
@@ -298,7 +302,7 @@ void FirstPersonApp::createViewTypes() {
 
 
 
-	float player_radius = 0.2f ;
+	float player_radius = 0.3f ;
 	float player_height = 1.5;
 	transform = glm::mat4(1.0f) ;
 	std::shared_ptr<Physics::ConvexPolyhedron> player_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(
