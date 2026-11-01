@@ -329,7 +329,7 @@ public:
 	std::thread SDL_thread ;
 	bool sdl_ready  = false;
 	static inline int last_sdl_input_num = -1 ; // version user inputs so input latency can be measured
-	
+	bool relative_mouse_mode = false; 
 
 	// Creates a window and connects to controllers and other hardware
 	VulkanPlugin(const std::string& title, bool vsync, bool fullscreen);
@@ -368,6 +368,16 @@ public:
 	
 	//Unhide the mouse in the window
 	void showMouse();
+
+	//Enable or Disable relative mouse mode
+	//Hides the mouse, locks the mouse othe window, and switches to relative movement rarher thanwindow position
+	void setRelativeMouseMode(bool enabled);
+
+	//Get all mouse movement since the last time consumeMouseMovement was called
+	glm::vec2 getMouseMovement();
+
+	// Sets the accumulated relative mouse movement to zero
+	void consumeMouseMovement();
 
 	float getGamepadAxis(Uint32 gamepad_id, Uint32 axis_id);
 
@@ -560,6 +570,7 @@ private:
 	glm::vec2 mouse_position ;
 	glm::vec2 mouse_down_position;
 	glm::vec2 mouse_wheel_position;
+	glm::vec2 mouse_movement =glm::vec2(0,0) ;;
 	std::map<int, bool> mouse_down ;
 	bool mouse_hidden = false;
 	bool last_mouse_hidden = false; 

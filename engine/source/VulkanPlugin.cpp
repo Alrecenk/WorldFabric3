@@ -213,6 +213,30 @@ void VulkanPlugin::showMouse(){
 	mouse_hidden = false ;
 }
 
+//Enable or Disable relative mouse mode
+	//Hides the mouse, locks the mouse othe window, and switches to relative movement rarher thanwindow position
+void VulkanPlugin::setRelativeMouseMode(bool enabled){
+	if(relative_mouse_mode == enabled){
+		return ; // Not actually changing it
+	}
+	relative_mouse_mode = enabled ;
+	if(relative_mouse_mode){
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+	}else{
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+	}
+}
+
+//Get all mouse movement since the last time consumeMouseMovement was called
+glm::vec2 VulkanPlugin::getMouseMovement(){
+	return mouse_movement ;
+}
+
+// Sets the accumulated relative mouse movement to zero
+void VulkanPlugin::consumeMouseMovement(){
+	mouse_movement = glm::vec2(0,0) ;
+}
+
 float VulkanPlugin::getGamepadAxis(Uint32 gamepad_id, Uint32 axis_id){
 	auto which_axis = std::pair<Uint32, Uint32>(gamepad_id, axis_id);
 	auto found = gamepad_axis.find(which_axis);
@@ -655,7 +679,11 @@ void VulkanPlugin::processInput(){
 			mouse_down[event.button.button] = false;
 		}
 		else if (event.type == SDL_EVENT_MOUSE_MOTION) {
-			mouse_position = { event.motion.x,event.motion.y };
+			if(relative_mouse_mode){
+				mouse_movement += glm::vec2(event.motion.xrel,event.motion.yrel) ;
+			}else{
+				mouse_position = { event.motion.x,event.motion.y };
+			}
 		}
 		else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
 			mouse_wheel_position += glm::vec2({ event.wheel.x, event.wheel.y });

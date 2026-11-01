@@ -71,7 +71,7 @@ public:
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template paramter to match your class
-		int getTypeId(Registry* r) const {
+		int getTypeId(Registry* r) const override{
 			return r->getIdForType<Ball>();
 		}
 
@@ -107,7 +107,7 @@ public:
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template paramter to match your class
-		int getTypeId(Registry* r) const{
+		int getTypeId(Registry* r) const override{
 			return r->getIdForType<Cell>();
 		}
 		//ids for functons generated when they get registered
@@ -146,7 +146,7 @@ public:
 
 		//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 		// Just change the template paramter to match your class
-		int getTypeId(Registry* r) const {
+		int getTypeId(Registry* r) const override{
 			return r->getIdForType<Grid>();
 		}
 		//ids for functons generated when they get registered

@@ -68,7 +68,7 @@ public:
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline int frames_to_sleep = 5 ; //if I body doesn't move for this many frames it will go to sleep
-	static inline float world_radius = 9.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
+	static inline float world_radius = 14.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
 	static inline float max_sleep_speed = 1e-2f; // if both speed and angular speed are below these threshold a body will want to sleep
 	static inline float max_sleep_angular_speed = 1e-2f ;
 
@@ -93,12 +93,17 @@ public:
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
 
+	
+	void destroy(){
+		destroyed = true ;
+	}
+
 	//Wake upa body that has been asleep
 	void wakeUp();
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
-	int getTypeId(Registry* r) const {
+	int getTypeId(Registry* r) const override{
 		return r->getIdForType<RigidBody>();
 	}
 
@@ -338,12 +343,16 @@ public:
 	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
 	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-	glm::vec3 nearestValidPosition(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
+	glm::vec3 nearestValidPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
 
+	//Returns the nearest position to the target that the given body could be placed without colliding
+	//with the contents of this cell from the perspective of the calling world object (TODO check this is true)
+	//Note: This is for user controls that move bodies and is for use only INSIDE world events (like from a player controller handling a rigid body)
+	glm::vec3 nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const;
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
-	int getTypeId(Registry* r) const {
+	int getTypeId(Registry* r) const override{
 		return r->getIdForType<Cell>();
 	}
 
@@ -369,10 +378,10 @@ public:
 	
 	std::map<glm::ivec3, int64_t> cells ;
 
-	glm::vec3 acceleration = glm::vec3(0, -3.0, 0);
+	glm::vec3 acceleration = glm::vec3(0, -4.0, 0);
 
-	static inline int ticks_per_second = 120;
-	static inline int constraint_iterations = 8;
+	static inline int ticks_per_second = 90;
+	static inline int constraint_iterations = 6;
 
 
 	Root(){};
@@ -395,7 +404,7 @@ public:
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
-	int getTypeId(Registry* r) const {
+	int getTypeId(Registry* r) const override {
 		return r->getIdForType<Root>();
 	}
 
