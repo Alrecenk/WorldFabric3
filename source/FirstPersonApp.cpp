@@ -184,9 +184,10 @@ void FirstPersonApp::run() {
 		new_control += right;
 	}
 
+	new_control.y = 0 ;
 	float s= glm::length(new_control) ;
 	if(s > 0){
-		new_control *= PlayerCharacter::acceleration /s ;
+		new_control *= PlayerCharacter::player_acceleration /s ;
 	}
 	
 	if(new_control != last_control || millisBetween(last_input_time, now()) > PlayerCharacter::time_out_time * 500){
@@ -195,7 +196,7 @@ void FirstPersonApp::run() {
 			my_player_id = worlds->create(WORLD, std::make_shared<PlayerCharacter>(root_id, glm::vec3(0,0,0))) ;
 			worlds->queue(WORLD, my_player_id, &PlayerCharacter::update) ;
 		}else if(my_player_id != -1 ) {
-			worlds->queue(WORLD, my_player_id,&PlayerCharacter::setControl,new_control) ;
+			worlds->queue(WORLD, my_player_id,&PlayerCharacter::setControl,new_control, input->getBoolean(input->getActionID("jump"))) ;
 		}
 	}
 
@@ -493,7 +494,14 @@ void PlayerCharacter::update() {
 		last_control_time = time;
 	}else{
 		
-		velocity+=control*frame_length;
+		if(glm::dot(velocity,glm::normalize(control)) < max_control_speed){
+			velocity += control * frame_length;
+		}
+		velocity.y += gravity * frame_length ;
+		if(jump_time > 0){
+			jump_time -= frame_length ;
+			velocity.y += jump_force * frame_length;
+		}
 		float initial_speed = glm::length(velocity) ;
 		float speed = fmin(initial_speed-drag*frame_length,max_speed) ;
 		if(speed <= 0){
@@ -505,6 +513,7 @@ void PlayerCharacter::update() {
 		
 		//check collision
 		std::shared_ptr<const NetPhysics2::RigidBody> my_body = read<NetPhysics2::RigidBody>(body_id) ;
+		glm::vec3 initial = position ;
 		if(my_body){
 			for(const int64_t& cell_id : my_body->cells){
 				std::shared_ptr<const NetPhysics2::Cell> cell = read< NetPhysics2::Cell>(cell_id);
@@ -513,6 +522,24 @@ void PlayerCharacter::update() {
 				}
 			}
 		}
+
+		glm::vec3 projection = position - initial ;
+
+		grounded = projection.y > 0.0f ;
+		if(grounded){
+			velocity.y = 0 ;
+			//projection.y = 0;
+		};
+	
+		if(fabs(projection.y)*2.0f  < sqrtf(projection.z*projection.z + projection.x*projection.x)){
+			// Remove velocity in direction of obstacle
+			float p_move = glm::length2(projection) ;
+			float dot = glm::dot(velocity, projection) ;
+			if(p_move > 1e-7f){
+				velocity -= projection * dot/p_move ;
+			}
+		}
+
 
 		queue(body_id,target_time,&NetPhysics2::RigidBody::setState,position,velocity, glm::quat(1,0,0,0),glm::vec3(0,0,0)) ;
 
@@ -527,9 +554,16 @@ void PlayerCharacter::update() {
 	}
 }
 
-void PlayerCharacter::setControl(const glm::vec3& new_control) {
+void PlayerCharacter::setControl(const glm::vec3& new_control, const bool& jumping) {
 	control = new_control;
 	last_control_time = time;
+	if(grounded && jumping){
+		jump_time = total_jump_time ;
+		velocity.y = initial_jump_velocity ;
+	}
+	if(!jumping){
+		jump_time = 0 ;
+	}
 }
 
 void PlayerCharacter::setPosition(const glm::vec3& new_pos) {

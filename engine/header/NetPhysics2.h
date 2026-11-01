@@ -378,10 +378,10 @@ public:
 	
 	std::map<glm::ivec3, int64_t> cells ;
 
-	glm::vec3 acceleration = glm::vec3(0, -3.0, 0);
+	glm::vec3 acceleration = glm::vec3(0, -4.0, 0);
 
-	static inline int ticks_per_second = 120;
-	static inline int constraint_iterations = 8;
+	static inline int ticks_per_second = 90;
+	static inline int constraint_iterations = 6;
 
 
 	Root(){};

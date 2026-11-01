@@ -15,13 +15,20 @@ public:
 	int64_t body_id = -1;
 	glm::vec3 velocity = glm::vec3(0,0,0);
 	glm::vec3 control = glm::vec3(0, 0, 0);
+	bool grounded = false;
 	double last_control_time ;
+	float jump_time = 0.0f;
 
-	static inline float max_speed = 2.0f ;
-	static inline float acceleration = 6.0f;
-	static inline float drag = 2.0f;
+	static inline float max_speed = 10.0f ;
+	static inline float max_control_speed = 5.0f ; // Controls can't push faster than this
+	static inline float player_acceleration = 16.0f;
+	static inline float gravity = -8.0f; // incorporates drag
+	static inline float drag = 4.0f;
 	static inline double time_out_time = 3.0 ;
 	static inline double interframe_time = 0.2 ;
+	static inline float total_jump_time = 0.2f ;
+	static inline float jump_force  = 7.0f ;
+	static inline float initial_jump_velocity = 3.0f ;
 	
 
 
@@ -47,14 +54,14 @@ public:
 
 	void update();
 
-	void setPosition(const glm::vec3& new_cposition);
+	void setPosition(const glm::vec3& new_position);
 
-	void setControl(const glm::vec3& new_control);
+	void setControl(const glm::vec3& new_control, const bool& jumping);
 
 };
 
 auto static getStructure(PlayerCharacter& o) {
-	return std::tie(o.position,o.root_id, o.body_id, o.velocity, o.control, o.last_control_time);
+	return std::tie(o.position,o.root_id, o.body_id, o.velocity, o.control, o.last_control_time, o.grounded, o.jump_time);
 }
 
 class FirstPersonApp : public MachineState, public SteamworksPlugin::SteamEventReceiver {
