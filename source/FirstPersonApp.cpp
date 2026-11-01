@@ -236,7 +236,7 @@ void FirstPersonApp::createViewTypes() {
 	glm::vec3 mid = (min + max) * 0.5f;
 
 
-	float ball_radius = 0.1f;
+	float ball_radius = 0.2f;
 	float ball_mass = 1.0f;
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
@@ -244,7 +244,7 @@ void FirstPersonApp::createViewTypes() {
 	ball_type = NetPhysics2::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
 
-	float box_size = 0.15f;
+	float box_size = 0.5f;
 	float box_mass = 2.0f;
 	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
@@ -260,7 +260,7 @@ void FirstPersonApp::createViewTypes() {
 	wall_type = NetPhysics2::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
-	float rod_scale = 0.12f;
+	float rod_scale = 0.25f;
 	transform = glm::mat4(1.0f);
 	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, rod_scale), glm::vec3(0, 0, -rod_scale), rod_scale * 0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
@@ -270,7 +270,7 @@ void FirstPersonApp::createViewTypes() {
 
 
 	float jar_mass = 2.0f;
-	float jar_scale = 0.1f;
+	float jar_scale = 0.16f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(jar_scale, jar_scale, jar_scale));
 	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
 	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
@@ -281,7 +281,7 @@ void FirstPersonApp::createViewTypes() {
 	//scene->createModelSet("jar", model2, false, true);
 	jar_type = NetPhysics2::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
 
-	float bunny_scale = 0.25f;
+	float bunny_scale = 0.5f;
 	float bunny_mass = 8.0f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(bunny_scale, bunny_scale, bunny_scale));
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
@@ -331,21 +331,6 @@ void FirstPersonApp::host() {
 	glm::vec3 mid = (min + max) * 0.5f;
 	
 	int64_t body_id;
-	// Add the container blocks
-	/*
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-
-
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	*/
 
 	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, ruin_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
 	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
@@ -355,7 +340,7 @@ void FirstPersonApp::host() {
 	
 
 	//Add some random stuff
-	int amount = 10;
+	int amount = 20;
 	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.6f + randomFloat() * 0.4f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };

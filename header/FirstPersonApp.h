@@ -20,10 +20,10 @@ public:
 	float jump_time = 0.0f;
 
 	static inline float max_speed = 10.0f ;
-	static inline float max_control_speed = 5.0f ; // Controls can't push faster than this
+	static inline float max_control_speed = 3.0f ; // Controls can't push faster than this
 	static inline float player_acceleration = 16.0f;
-	static inline float gravity = -8.0f; // incorporates drag
-	static inline float drag = 4.0f;
+	static inline float gravity = -9.0f; // incorporates drag
+	static inline float drag = 5.0f;
 	static inline double time_out_time = 3.0 ;
 	static inline double interframe_time = 0.2 ;
 	static inline float total_jump_time = 0.2f ;
