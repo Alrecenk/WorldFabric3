@@ -16,11 +16,16 @@
       "binding": [
         {
           "source": "SDL_KEY",
-          "path": "space"
-        },
+          "path": "c"
+        }
+      ]
+     },{
+      "name": "jump",
+      "type": "boolean",
+      "binding": [
         {
           "source": "SDL_KEY",
-          "path": "c"
+          "path": "space"
         }
       ]
      },
