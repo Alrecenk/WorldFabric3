@@ -66,8 +66,8 @@ else()
     FetchContent_MakeAvailable(vulkan_headers vulkan_utility)
 
     set(WF_VULKAN_INCLUDE_DIRS
-        "${vulkan_headers_SOURCE_DIR}/include"
-        "${vulkan_utility_SOURCE_DIR}/include"
+        "${vulkan_headers_SOURCE_DIR}/engine/include"
+        "${vulkan_utility_SOURCE_DIR}/engine/include"
     )
     message(STATUS "Vulkan: SDK not found; using fetched headers (${WF_VULKAN_HEADERS_TAG})")
 endif()
@@ -93,16 +93,16 @@ file(GLOB WF_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Narball/source/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/glm/detail/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/include/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/include/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/include/glm/detail/*.cpp"
 )
 
 file(GLOB WF_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/engine/header/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/header/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/Narball/header/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/include/*.h"
 )
 
 target_sources(WorldFabric PRIVATE
@@ -116,7 +116,7 @@ target_include_directories(WorldFabric PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/engine/header"
     "${CMAKE_CURRENT_SOURCE_DIR}/header"
     "${CMAKE_CURRENT_SOURCE_DIR}/Narball/header"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/include"
     ${WF_VULKAN_INCLUDE_DIRS}
 )
 
@@ -147,7 +147,7 @@ target_compile_options(WorldFabric PRIVATE
 # Link all prebuilt import libraries in lib/ alongside required system and
 # runtime libraries.
 file(GLOB WF_PREBUILT_LIBS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/lib/*.lib"
 )
 
 target_link_libraries(WorldFabric PRIVATE
@@ -176,9 +176,9 @@ target_link_options(WorldFabric PRIVATE
 # does not support target-dependent generator expressions like $<TARGET_FILE_DIR>.
 get_property(WF_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(WF_IS_MULTI_CONFIG)
-    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIG>")
 else()
-    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+    set(WF_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/bin")
 endif()
 
 set_target_properties(WorldFabric PROPERTIES
@@ -211,7 +211,7 @@ if(WF_COMPILE_SHADERS AND WF_GLSLC)
     foreach(shader IN LISTS WF_SHADER_SOURCES)
         file(RELATIVE_PATH shader_rel "${CMAKE_CURRENT_SOURCE_DIR}" "${shader}")
         set(spv_output "${WF_RUNTIME_DIR}/${shader_rel}.spv")
-        set(depfile    "${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_rel}.d")
+        set(depfile    "${CMAKE_CURRENT_BINARY_DIR}/shader_deps/${shader_rel}.d")
         get_filename_component(depfile_dir "${depfile}" DIRECTORY)
 
         add_custom_command(
@@ -243,9 +243,7 @@ endif()
 # so they do not conflict with outputs produced by the `shaders` target.
 file(GLOB_RECURSE WF_RUNTIME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
-    "${CMAKE_CURRENT_SOURCE_DIR}/shader/*"
     "${CMAKE_CURRENT_SOURCE_DIR}/Narball/asset/*"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Narball/shader/*"
 )
 list(FILTER WF_RUNTIME_SOURCES EXCLUDE REGEX "\\.spv$")
 list(APPEND WF_RUNTIME_SOURCES
@@ -274,7 +272,7 @@ add_dependencies(WorldFabric runtime_files)
 
 # Copy third-party runtime DLLs alongside the built executable after linking.
 file(GLOB WF_RUNTIME_DLLS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/dll/*.dll"
 )
 
 add_custom_command(TARGET WorldFabric POST_BUILD

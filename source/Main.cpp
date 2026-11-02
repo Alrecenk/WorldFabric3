@@ -370,6 +370,7 @@ void setupPlugins(std::vector<std::shared_ptr<AsyncPlugin>>& plugins, const std:
 
 	Variant vertex_shader_file_data = Variant::loadFileBytes("./shader/VulkanParticle.vert.spv");
 	Variant frag_shader_file_data = Variant::loadFileBytes("./shader/VulkanParticle.frag.spv");
+
 	std::shared_ptr<ParticlePlugin> particles(new ParticlePlugin(window.get(), 2000, vertex_shader_file_data, frag_shader_file_data, render_targets));
 	addTool(particles);
 	std::shared_ptr<ScenePlugin> scene(setUpScene(window.get(), openXR.get()));
