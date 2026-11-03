@@ -4,7 +4,7 @@
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
-#include "NetPhysics2.h"
+#include "NetPhysics.h"
 #include "PanelPlugin.h"
 #include "SteamworksPlugin.h"
 

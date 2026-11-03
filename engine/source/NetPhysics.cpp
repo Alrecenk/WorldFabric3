@@ -1,7 +1,7 @@
-#include "NetPhysics2.h"
+#include "NetPhysics.h"
 #include "ScenePlugin.h"
 
-namespace NetPhysics2 {
+namespace NetPhysics {
 
 
 BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){

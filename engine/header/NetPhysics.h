@@ -1,5 +1,5 @@
-#ifndef _NET_PHYSICS2_H_
-#define _NET_PHYSICS2_H_ 1
+#ifndef _NET_PHYSICS_H_
+#define _NET_PHYSICS_H_ 1
 
 #include "Physics.h"
 #include "WorldPlugin.h"
@@ -8,7 +8,7 @@
 #include <map>
 
 
-namespace NetPhysics2 {
+namespace NetPhysics {
 
 
 //Information about a body type stored statically and used by multiple bodies
@@ -426,4 +426,4 @@ void registerPhysics();
 
 } // end namespace 
 
-#endif // #ifndef _NET_PHYSICS2_H_
+#endif // #ifndef _NET_PHYSICS_H_

@@ -1,20 +1,20 @@
-#include "NetPhysicsApp2.h"
+#include "NetPhysicsApp.h"
 #include "ParticlePlugin.h"
 #include "ScenePlugin.h"
 #include "InputPlugin.h"
 #include "FlagSet.h"
 
-NetPhysicsApp2::NetPhysicsApp2() {}
+NetPhysicsApp::NetPhysicsApp() {}
 
 // Called when switching into this state before the first time run is called
-void NetPhysicsApp2::enter(std::shared_ptr<MachineState> from) {
+void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	
 
-	NetPhysics2::registerPhysics();
+	NetPhysics::registerPhysics();
 
 	// Set up a light for the scene
 	ScenePlugin::LightComponent lc;
@@ -43,7 +43,7 @@ void NetPhysicsApp2::enter(std::shared_ptr<MachineState> from) {
 }
 
 //Called every frame while the state is active
-void NetPhysicsApp2::run() {
+void NetPhysicsApp::run() {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
@@ -131,15 +131,15 @@ void NetPhysicsApp2::run() {
 		}
 
 		if (root_id == -1) {
-			std::shared_ptr<const NetPhysics2::Root> root = worlds->observeNearest<NetPhysics2::Root>(WORLD);
+			std::shared_ptr<const NetPhysics::Root> root = worlds->observeNearest<NetPhysics::Root>(WORLD);
 			if (root) {
 				root_id = root->id;
 			}
 		}
 
 		if (root_id != -1) {
-			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
-			worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id,type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 		}
 	}
 	space_down = window->keyDown(SDLK_SPACE);
@@ -175,12 +175,12 @@ void NetPhysicsApp2::run() {
 }
 
 // Called when switching out of this state after the last time run is called
-void NetPhysicsApp2::exit(std::shared_ptr<MachineState> to) {
+void NetPhysicsApp::exit(std::shared_ptr<MachineState> to) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 }
 
-void NetPhysicsApp2::updateCamera() {
+void NetPhysicsApp::updateCamera() {
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	if (window->mouseDown(3)) { // right mouse button
@@ -224,7 +224,7 @@ void NetPhysicsApp2::updateCamera() {
 
 }
 
-void NetPhysicsApp2::createViewTypes() {
+void NetPhysicsApp::createViewTypes() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	glm::vec3 mid = (min + max) * 0.5f;
 
@@ -234,7 +234,7 @@ void NetPhysicsApp2::createViewTypes() {
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
 	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius));
-	ball_type = NetPhysics2::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
+	ball_type = NetPhysics::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
 
 	float box_size = 0.15f;
@@ -244,13 +244,13 @@ void NetPhysicsApp2::createViewTypes() {
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
 	transform = glm::mat4(1.0f);
-	box_type = NetPhysics2::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
+	box_type = NetPhysics::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
 
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(0.7f, 0.7f, 0.8f, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_type = NetPhysics2::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
+	wall_type = NetPhysics::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
 	float rod_scale = 0.12f ;
@@ -258,7 +258,7 @@ void NetPhysicsApp2::createViewTypes() {
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
 	scene->createModelSet("rod", model, false, true);
-	rod_type = NetPhysics2::RigidBody::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
+	rod_type = NetPhysics::RigidBody::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
 
 
 	float jar_mass = 2.0f;
@@ -271,7 +271,7 @@ void NetPhysicsApp2::createViewTypes() {
 	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
 	//scene->createModelSet("jar", model2, false, true);
-	jar_type = NetPhysics2::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
+	jar_type = NetPhysics::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
 
 
 
@@ -284,7 +284,7 @@ void NetPhysicsApp2::createViewTypes() {
 	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
 	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(bunny_model, bunny_mass, 20, 3);
 	scene->createModelSet(BUNNY_VISUAL_MODEL, BUNNY_VISUAL_MODEL, true);
-	bunny_type = NetPhysics2::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
+	bunny_type = NetPhysics::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
 	/*
 	float chain_scale = 0.1f;
@@ -295,19 +295,19 @@ void NetPhysicsApp2::createViewTypes() {
 	std::shared_ptr<GLTF> chain_model = scene->getModelController(CHAIN_MODEL_CUT);
 	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
-	chain_type = NetPhysics2::RigidBody::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
+	chain_type = NetPhysics::RigidBody::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
 */
 }
 
 
-void NetPhysicsApp2::host() {
+void NetPhysicsApp::host() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	worlds->clearWorlds();
 	worlds->createWorld(WORLD, 1E4f, 1E-4f, 10);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
-	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(cell_size));
+	root_id = worlds->create(WORLD, std::make_shared<NetPhysics::Root>(cell_size));
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
@@ -318,13 +318,13 @@ void NetPhysicsApp2::host() {
 	float angle_step = 1.5f;
 	int num_links = 5;
 	for (int k = 1; k <= num_links; k++) {
-		std::shared_ptr<NetPhysics2::RigidBody> link = std::make_shared<NetPhysics2::RigidBody>(root_id,chain_type, chain_pos);
+		std::shared_ptr<NetPhysics::RigidBody> link = std::make_shared<NetPhysics::RigidBody>(root_id,chain_type, chain_pos);
 		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
 		if (k == num_links) { // Fix the top link in place
 			link->receives_impulse = false;
 		}
 		int64_t link_id = worlds->create(WORLD, link);
-		worlds->queue(WORLD, link_id, &NetPhysics2::RigidBody::runPhysics);
+		worlds->queue(WORLD, link_id, &NetPhysics::RigidBody::runPhysics);
 
 		chain_angle += angle_step;
 		chain_pos.y += y_step;
@@ -334,18 +334,18 @@ void NetPhysicsApp2::host() {
 	*/
 	int64_t body_id;
 	// Add the container blocks
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id,wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id,wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 
 
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 
 
 
@@ -369,8 +369,8 @@ void NetPhysicsApp2::host() {
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
-		worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
+		worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 	}
 
 
@@ -384,7 +384,7 @@ void NetPhysicsApp2::host() {
 }
 
 
-void NetPhysicsApp2::startSteamHosting() {
+void NetPhysicsApp::startSteamHosting() {
 	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
 	WorldPlugin* world = getTool<WorldPlugin>();
 	SteamworksPlugin::SteamServerInfo info;
@@ -404,7 +404,7 @@ void NetPhysicsApp2::startSteamHosting() {
 	world->host(steam_socket, info.version);
 }
 
-void NetPhysicsApp2::updateDebugPanel() {
+void NetPhysicsApp::updateDebugPanel() {
 	PanelPlugin* panels = getTool<PanelPlugin>();
 	VulkanPlugin* window = getTool<VulkanPlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
@@ -467,7 +467,7 @@ void NetPhysicsApp2::updateDebugPanel() {
 
 }
 
-void NetPhysicsApp2::onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::SteamSocket> socket, const SteamworksPlugin::SteamServerInfo& server_info) {
+void NetPhysicsApp::onSteamGameExternalJoin(std::shared_ptr<SteamworksPlugin::SteamSocket> socket, const SteamworksPlugin::SteamServerInfo& server_info) {
 	WorldPlugin* world = getTool<WorldPlugin>();
 	SteamworksPlugin* steam = getTool<SteamworksPlugin>();
 	world->disconnect();

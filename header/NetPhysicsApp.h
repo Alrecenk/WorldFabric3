@@ -1,14 +1,14 @@
-#ifndef _NET_PHYSICS_APP2_H_
-#define _NET_PHYSICS_APP2_H_ 1
+#ifndef _NET_PHYSICS_APP_H_
+#define _NET_PHYSICS_APP_H_ 1
 
 #include "AsyncPlugin.h"
 #include "MachineState.h"
 #include "Registry.h"
-#include "NetPhysics2.h"
+#include "NetPhysics.h"
 #include "PanelPlugin.h"
 #include "SteamworksPlugin.h"
 
-class NetPhysicsApp2 : public MachineState, public SteamworksPlugin::SteamEventReceiver {
+class NetPhysicsApp : public MachineState, public SteamworksPlugin::SteamEventReceiver {
 
 public:
 
@@ -17,7 +17,7 @@ public:
 	static inline const std::string state_name = "net_physics_state2";
 	static inline const std::string WORLD = "netphysics";
 
-	NetPhysicsApp2();
+	NetPhysicsApp();
 
 	//Called every frame while the state is active
 	void run() override;
