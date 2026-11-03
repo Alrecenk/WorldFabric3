@@ -14,7 +14,7 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 
 
-	NetPhysics2::registerPhysics();
+	NetPhysics::registerPhysics();
 	worlds->registerClass<PlayerCharacter>("FirstPersonPlayer");
 	worlds->registerMethod(&PlayerCharacter::update, "PlayerCharacter::update") ;
 	worlds->registerMethod(&PlayerCharacter::setPosition, "PlayerCharacter::setPosition");
@@ -121,7 +121,7 @@ void FirstPersonApp::run() {
 	}
 
 	if (root_id == -1) {
-		std::shared_ptr<const NetPhysics2::Root> root = worlds->observeNearest<NetPhysics2::Root>(WORLD);
+		std::shared_ptr<const NetPhysics::Root> root = worlds->observeNearest<NetPhysics::Root>(WORLD);
 		if (root) {
 			root_id = root->id;
 		}
@@ -152,8 +152,8 @@ void FirstPersonApp::run() {
 		
 
 		if (root_id != -1) {
-			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
-			worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 		}
 	}
 	space_down = window->keyDown(SDLK_SPACE);
@@ -241,7 +241,7 @@ void FirstPersonApp::createViewTypes() {
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
 	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius));
-	ball_type = NetPhysics2::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
+	ball_type = NetPhysics::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
 
 	float box_size = 0.5f;
@@ -251,13 +251,13 @@ void FirstPersonApp::createViewTypes() {
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
 	transform = glm::mat4(1.0f);
-	box_type = NetPhysics2::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
+	box_type = NetPhysics::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
 
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(0.7f, 0.7f, 0.8f, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_type = NetPhysics2::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
+	wall_type = NetPhysics::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
 	float rod_scale = 0.25f;
@@ -266,7 +266,7 @@ void FirstPersonApp::createViewTypes() {
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
 	scene->createModelSet("rod", model, false, true);
-	rod_type = NetPhysics2::RigidBody::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
+	rod_type = NetPhysics::RigidBody::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
 
 
 	float jar_mass = 2.0f;
@@ -279,7 +279,7 @@ void FirstPersonApp::createViewTypes() {
 	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
 	//scene->createModelSet("jar", model2, false, true);
-	jar_type = NetPhysics2::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
+	jar_type = NetPhysics::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
 
 	float bunny_scale = 0.5f;
 	float bunny_mass = 8.0f;
@@ -289,7 +289,7 @@ void FirstPersonApp::createViewTypes() {
 	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
 	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(bunny_model, bunny_mass, 20, 3);
 	scene->createModelSet(BUNNY_VISUAL_MODEL, BUNNY_VISUAL_MODEL, true);
-	bunny_type = NetPhysics2::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
+	bunny_type = NetPhysics::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
 
 	float ruin_scale = 0.9f;
@@ -299,7 +299,7 @@ void FirstPersonApp::createViewTypes() {
 	std::shared_ptr<GLTF> ruin_model = scene->getModelController(RUIN_MODEL);
 	std::vector<Physics::ConvexPolyhedron> ruin_parts = Physics::ConvexPolyhedron::collectConvexPiecesByBSP(ruin_model);
 	scene->createModelSet(RUIN_VISUAL_MODEL, RUIN_VISUAL_MODEL, false);
-	ruin_type = NetPhysics2::RigidBody::addType(ruin_parts, RUIN_VISUAL_MODEL, transform, 0.1f, 0.6f);
+	ruin_type = NetPhysics::RigidBody::addType(ruin_parts, RUIN_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
 
 
@@ -314,7 +314,7 @@ void FirstPersonApp::createViewTypes() {
 	std::shared_ptr<GLTF> player_model = std::make_shared<GLTF>();
 	player_model->setPolyhedronModel(player_shape->vertex, player_shape->face, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
 	scene->createModelSet("player", player_model, false, false);
-	player_type = NetPhysics2::RigidBody::addType(player_shape, "player", transform, 0.4f, 0.2f);
+	player_type = NetPhysics::RigidBody::addType(player_shape, "player", transform, 0.4f, 0.2f);
 }
 
 
@@ -325,18 +325,18 @@ void FirstPersonApp::host() {
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
-	root_id = worlds->create(WORLD, std::make_shared<NetPhysics2::Root>(cell_size));
+	root_id = worlds->create(WORLD, std::make_shared<NetPhysics::Root>(cell_size));
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
 	
 	int64_t body_id;
 
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, ruin_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, ruin_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, ruin_type, glm::vec3(mid.x-6, min.y - wall_size * 0.5f, mid.z+0.25f),glm::quat(0,0,1,0)));
-	worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, ruin_type, glm::vec3(mid.x-6, min.y - wall_size * 0.5f, mid.z+0.25f),glm::quat(0,0,1,0)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 	
 
 	//Add some random stuff
@@ -359,8 +359,8 @@ void FirstPersonApp::host() {
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics2::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
-		worlds->queue(WORLD, body_id, &NetPhysics2::RigidBody::runPhysics);
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
+		worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 	}
 
 
@@ -469,13 +469,13 @@ PlayerCharacter::PlayerCharacter(int64_t root, const glm::vec3& pos){
 }
 
 void PlayerCharacter::update() {
-	double frame_length = 1.0 / NetPhysics2::Root::ticks_per_second;
-	int frame = (int)(time * NetPhysics2::Root::ticks_per_second);
+	double frame_length = 1.0 / NetPhysics::Root::ticks_per_second;
+	int frame = (int)(time * NetPhysics::Root::ticks_per_second);
 	double target_time = (frame + interframe_time) * frame_length;
 
 	if(body_id == -1){
-		body_id = create(std::make_shared<NetPhysics2::RigidBody>(root_id, FirstPersonApp::player_type, position), time);
-		queue(body_id,time+0.001, &NetPhysics2::RigidBody::runPhysics);
+		body_id = create(std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position), time);
+		queue(body_id,time+0.001, &NetPhysics::RigidBody::runPhysics);
 		last_control_time = time;
 	}else{
 		
@@ -497,11 +497,11 @@ void PlayerCharacter::update() {
 		position += velocity*frame_length ;
 		
 		//check collision
-		std::shared_ptr<const NetPhysics2::RigidBody> my_body = read<NetPhysics2::RigidBody>(body_id) ;
+		std::shared_ptr<const NetPhysics::RigidBody> my_body = read<NetPhysics::RigidBody>(body_id) ;
 		glm::vec3 initial = position ;
 		if(my_body){
 			for(const int64_t& cell_id : my_body->cells){
-				std::shared_ptr<const NetPhysics2::Cell> cell = read< NetPhysics2::Cell>(cell_id);
+				std::shared_ptr<const NetPhysics::Cell> cell = read< NetPhysics::Cell>(cell_id);
 				if(cell){
 					position = cell->nearestValidPositionInternal(my_body,position,true) ;
 				}
@@ -526,10 +526,10 @@ void PlayerCharacter::update() {
 		}
 
 
-		queue(body_id,target_time,&NetPhysics2::RigidBody::setState,position,velocity, glm::quat(1,0,0,0),glm::vec3(0,0,0)) ;
+		queue(body_id,target_time,&NetPhysics::RigidBody::setState,position,velocity, glm::quat(1,0,0,0),glm::vec3(0,0,0)) ;
 
 		if(time - last_control_time > time_out_time){
-			queue(body_id,time, &NetPhysics2::RigidBody::destroy) ;
+			queue(body_id,time, &NetPhysics::RigidBody::destroy) ;
 			destroyed= true ;
 		}
 		

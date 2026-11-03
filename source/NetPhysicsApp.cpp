@@ -12,6 +12,7 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
+	
 
 	NetPhysics::registerPhysics();
 
@@ -30,25 +31,15 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 
 	createViewTypes();
 	//printf("Attempting to connect to existing simulation...\n");
-	if(!SteamworksPlugin::enabled){
+	if (!SteamworksPlugin::enabled) {
 		worlds->connect("127.0.0.1", port, version);
 	}
-	//host();
-	//connect_time = now();
-	
-	
-	/*
-	transform = glm::scale(glm::mat4(1.0f), glm::vec3(mouse_size, mouse_size, mouse_size));
-	std::shared_ptr<NetPhysics::Sphere> mouse_shape = std::make_shared<NetPhysics::Sphere>(mouse_size);
-	int mouse_type = cell->addType(mouse_shape, BALL_MODEL, transform, 0.0f, 0.0f);
-	mouse_body = cell->add(mouse_type, mid);
 
-	for (auto& [id, body] : cell->bodies) {
-		cell->disableCollision(id, mouse_body);
-	}
-	*/
+	mouse_action->world = WORLD;
+	posed_action_left->world = WORLD;
+	posed_action_right->world = WORLD;
 
-	mouse_action->world = WORLD ;
+	
 }
 
 //Called every frame while the state is active
@@ -58,16 +49,16 @@ void NetPhysicsApp::run() {
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	InputPlugin* input = getTool<InputPlugin>();
+	OpenXRPlugin* controls = getTool<OpenXRPlugin>();
 
-
-	if(!worlds->amHosting() && !worlds->connected()){
-		if(!worlds->connectionPending()){
+	if (!worlds->amHosting() && !worlds->connected()) {
+		if (!worlds->connectionPending()) {
 			printf("Connection attempt timed out. Hosting...\n");
 			host();
 		}
-		return ;
+		return;
 	}
-	
+
 
 	// Get the current time and time slice of the frame
 	current_time = now();
@@ -81,21 +72,46 @@ void NetPhysicsApp::run() {
 	// get the 3D ray from the mouse position on the screen
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getMouseRay();
-	bool grabbing = input->getBoolean("grab") ;
-	mouse_action->performAction(ray_origin, ray_direction, grabbing) ;
+	bool grabbing = input->getBoolean("grab");
+	mouse_action->performAction(ray_origin, ray_direction, grabbing);
 
-	
-	glm::vec3 mouse_position = window->window_target->camera_position + window->getMouseRay() * mouse_depth;
-	
-	glm::mat4 mouse_pose = glm::mat4(1.0f);
-	mouse_pose = glm::translate(mouse_pose, mouse_position);
+
+	if (OpenXRPlugin::ENABLED) {
+		
+		//TODO switch to JSON bindable action instead of direct
+		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
+		bool grabbing_left = controls->getBoolean("/actions/general/in/press_x") ;
+		posed_action_left->performAction(current_left_hand_pose,grabbing_left);
+
+
+		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
+		bool grabbing_right = controls->getBoolean("/actions/general/in/press_a");
+		posed_action_right->performAction(current_right_hand_pose, grabbing_right);
+
+		if(cursor_instance_left == -1){
+			scene->createModelSet(CURSOR_MODEL, CURSOR_MODEL, false);
+			
+			cursor_instance_left = scene->createInstance(CURSOR_MODEL, current_left_hand_pose * cursor_adjust);
+			cursor_instance_right = scene->createInstance(CURSOR_MODEL, current_right_hand_pose * cursor_adjust);
+		}
+
+		cursor_adjust = glm::mat4(1.0f);
+		cursor_adjust = glm::scale(cursor_adjust, glm::vec3(0.01f, 0.01f, 0.01f));
+		cursor_adjust = glm::rotate(cursor_adjust, cursor_angle_1, glm::vec3(0.00f, 1.0f, 0.0f));
+		cursor_adjust = glm::rotate(cursor_adjust, cursor_angle_2, glm::vec3(1.00f, 0.0f, 0.0f));
+
+		scene->setPose(cursor_instance_left, current_left_hand_pose * cursor_adjust) ;
+		scene->setPose(cursor_instance_right, current_right_hand_pose * cursor_adjust);
+
+		
+	}
 
 
 	updateCamera();
-	
+
 	if (input->getPressed("create")) {
-		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),12.0f,min.z + 0.5f };
-		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,1.0f + randomFloat() * 4.0f };
+		glm::vec3 pos = { min.x + (0.4f + randomFloat() * 0.2f) * (max.x - min.x),2.0f,min.z + 0.1f };
+		glm::vec3 vel = { (randomFloat() - 0.5f) * 0.1f,(randomFloat() - 0.5f) * 0.1f,1.0f + randomFloat() * 0.5f };
 		glm::mat4 r = glm::rotate(glm::mat4(1.0f), (float)(timeMilliseconds() * 0.002), glm::vec3(0, 1, 0));
 		pos = r * glm::vec4(pos, 1);
 		vel = r * glm::vec4(vel, 0);
@@ -114,34 +130,47 @@ void NetPhysicsApp::run() {
 			type = jar_type;
 		}
 
-		if (cell_id == -1) {
-			std::shared_ptr<const NetPhysics::Cell> cell = worlds->observeNearest<NetPhysics::Cell>(WORLD);
-			if (cell) {
-				cell_id = cell->id;
+		if (root_id == -1) {
+			std::shared_ptr<const NetPhysics::Root> root = worlds->observeNearest<NetPhysics::Root>(WORLD);
+			if (root) {
+				root_id = root->id;
 			}
 		}
 
-		if(cell_id != -1){
-			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
-			worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
+		if (root_id != -1) {
+			int64_t body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id,type, pos, glm::quat(1, 0, 0, 0), vel, glm::vec3(randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f, randomFloat() * 2.0f - 1.0f)));
+			worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 		}
 	}
 	space_down = window->keyDown(SDLK_SPACE);
-	
+
 
 	// Check if escape pressed to exit
+	
 	if (input->getPressed("exit")) {
 		getTool<FlagSet>()->setInt(AsyncPlugin::SHUTDOWN_FLAG, 1);
 	}
 
-	int forward = input->getActionID("forward") ;
-	if(input->getPressed(forward)){
-		printf("pressed forward!\n");
+	if (input->getPressed(input->getActionID("forward"))) {
+		cursor_angle_1+=0.05f ;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
 	}
 
-	if (input->getReleased(forward)) {
-		printf("released forward!\n");
+	if (input->getPressed(input->getActionID("backward"))) {
+		cursor_angle_1 -= 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
 	}
+
+	if (input->getPressed(input->getActionID("left"))) {
+		cursor_angle_2 -= 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
+	}
+
+	if (input->getPressed(input->getActionID("right"))) {
+		cursor_angle_2 += 0.05f;
+		printf("angles: %f, %f\n", cursor_angle_1, cursor_angle_2);
+	}
+
 
 }
 
@@ -195,45 +224,45 @@ void NetPhysicsApp::updateCamera() {
 
 }
 
-void NetPhysicsApp::createViewTypes(){
+void NetPhysicsApp::createViewTypes() {
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	glm::vec3 mid = (min + max) * 0.5f;
 
 
-	float ball_radius = 0.5f;
+	float ball_radius = 0.1f;
 	float ball_mass = 1.0f;
 	std::shared_ptr<Physics::Sphere> ball_shape = std::make_shared<Physics::Sphere>(ball_radius, ball_mass);
 	scene->createModelSet(BALL_MODEL, BALL_MODEL, true);
 	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(ball_radius, ball_radius, ball_radius));
-	ball_type = NetPhysics::RigidBodyView::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
+	ball_type = NetPhysics::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
 
-	float box_size = 1.0f;
+	float box_size = 0.15f;
 	float box_mass = 2.0f;
 	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
 	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
 	transform = glm::mat4(1.0f);
-	box_type = NetPhysics::RigidBodyView::addType(box_shape, "box", transform, 0.4f, 0.6f);
+	box_type = NetPhysics::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
 
-	float wall_size = 30.0f;
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
 	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(0.7f, 0.7f, 0.8f, 1));
 	scene->createModelSet("wall", wall, false, false);
 	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
-	wall_type = NetPhysics::RigidBodyView::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
+	wall_type = NetPhysics::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
-	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, 1.0f), glm::vec3(0, 0, -1.0f), 0.5f, 16, rod_mass));
+	float rod_scale = 0.12f ;
+	std::shared_ptr<Physics::ConvexPolyhedron> rod_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeCylinder(glm::vec3(0, 0, rod_scale), glm::vec3(0, 0, -rod_scale), rod_scale*0.5f, 16, rod_mass));
 	std::shared_ptr<GLTF> model = std::make_shared<GLTF>();
 	model->setPolyhedronModel(rod_shape->vertex, rod_shape->face, glm::vec4(0.6f, 0.1f, 0.5f, 0.5f));
 	scene->createModelSet("rod", model, false, true);
-	rod_type = NetPhysics::RigidBodyView::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
+	rod_type = NetPhysics::RigidBody::addType(rod_shape, "rod", transform, 0.4f, 0.2f);
 
 
 	float jar_mass = 2.0f;
-	float jar_scale = 0.6f;
+	float jar_scale = 0.1f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(jar_scale, jar_scale, jar_scale));
 	scene->createModelSet(JAR_MODEL, JAR_MODEL, true);
 	std::shared_ptr<GLTF> jar_model = scene->getModelController(JAR_MODEL);
@@ -242,12 +271,12 @@ void NetPhysicsApp::createViewTypes(){
 	//std::shared_ptr<GLTF> model2 = std::make_shared<GLTF>();
 	//model2->setPolyhedronModel(jar_shape->vertex, jar_shape->face, glm::vec4(0.0f, 0.5f, 0.5f, 0.5f));
 	//scene->createModelSet("jar", model2, false, true);
-	jar_type = NetPhysics::RigidBodyView::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
+	jar_type = NetPhysics::RigidBody::addType(jar_shape, JAR_MODEL, transform, 0.1f, 0.6f);
 
 
 
 
-	float bunny_scale = 1.7f;
+	float bunny_scale = 0.25f;
 	float bunny_mass = 8.0f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(bunny_scale, bunny_scale, bunny_scale));
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
@@ -255,10 +284,10 @@ void NetPhysicsApp::createViewTypes(){
 	std::shared_ptr<GLTF> bunny_model = scene->getModelController(BUNNY_MODEL);
 	std::vector<Physics::ConvexPolyhedron> bunny_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(bunny_model, bunny_mass, 20, 3);
 	scene->createModelSet(BUNNY_VISUAL_MODEL, BUNNY_VISUAL_MODEL, true);
-	bunny_type = NetPhysics::RigidBodyView::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
+	bunny_type = NetPhysics::RigidBody::addType(bunny_parts, BUNNY_VISUAL_MODEL, transform, 0.1f, 0.6f);
 
-
-	float chain_scale = 0.7f;
+	/*
+	float chain_scale = 0.1f;
 	float chain_mass = 0.5f;
 	transform = glm::scale(glm::mat4(1.0f), glm::vec3(chain_scale, chain_scale, chain_scale));
 	//transform = glm::rotate(transform, 3.141f,glm::vec3(1,0,0) );
@@ -266,38 +295,36 @@ void NetPhysicsApp::createViewTypes(){
 	std::shared_ptr<GLTF> chain_model = scene->getModelController(CHAIN_MODEL_CUT);
 	std::vector<Physics::ConvexPolyhedron> chain_parts = Physics::ConvexPolyhedron::makeApproximateSurfaceHulls(chain_model, chain_mass, 20, 3);
 	scene->createModelSet(CHAIN_MODEL, CHAIN_MODEL, true);
-	chain_type = NetPhysics::RigidBodyView::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
-
+	chain_type = NetPhysics::RigidBody::addType(chain_parts, CHAIN_MODEL, transform, 0.1f, 0.6f);
+*/
 }
 
 
-void NetPhysicsApp::host(){
+void NetPhysicsApp::host() {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	worlds->clearWorlds() ;
-	worlds->createWorld(WORLD, 1E7f, 1E-8f, 100);
+	worlds->clearWorlds();
+	worlds->createWorld(WORLD, 1E4f, 1E-4f, 10);
 	worlds->setTimeSpeed(WORLD, 1.0f);
 
 
-	cell_id = worlds->create(WORLD,std::make_shared<NetPhysics::Cell>()) ;
-	worlds->queue(WORLD,cell_id,&NetPhysics::Cell::runPhysics) ;
+	root_id = worlds->create(WORLD, std::make_shared<NetPhysics::Root>(cell_size));
 
 
 	glm::vec3 mid = (min + max) * 0.5f;
-/*
+	/*
 	glm::vec3 chain_pos = mid;
 	float chain_angle = 0;
-	float y_step = 0.7f;
+	float y_step = 0.1f;
 	float angle_step = 1.5f;
-	int num_links = 8;
+	int num_links = 5;
 	for (int k = 1; k <= num_links; k++) {
-		std::shared_ptr<NetPhysics::RigidBody> link = std::make_shared<NetPhysics::RigidBody>(chain_type, chain_pos);
+		std::shared_ptr<NetPhysics::RigidBody> link = std::make_shared<NetPhysics::RigidBody>(root_id,chain_type, chain_pos);
 		link->orientation = glm::quat_cast(glm::rotate(glm::mat4(1.0f), chain_angle, glm::vec3(0, 1, 0)));
 		if (k == num_links) { // Fix the top link in place
-			link->inv_mass = 0;
-			link->inv_moment = glm::mat3(0);
+			link->receives_impulse = false;
 		}
 		int64_t link_id = worlds->create(WORLD, link);
-		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, link_id);
+		worlds->queue(WORLD, link_id, &NetPhysics::RigidBody::runPhysics);
 
 		chain_angle += angle_step;
 		chain_pos.y += y_step;
@@ -305,38 +332,29 @@ void NetPhysicsApp::host(){
 		//chain_pos += off;
 	}
 	*/
-	int64_t body_id ;
+	int64_t body_id;
 	// Add the container blocks
-	float wall_size = 30.0f; // TODO share between type creation
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	
-	
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
-	worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id,wall_type, glm::vec3(mid.x, min.y - wall_size * 0.5f, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 
-	
-	for(int y= -3; y < 0; y++){
-		auto box = std::make_shared<NetPhysics::RigidBody>(box_type, glm::vec3(0, y, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)) ;
-		//box->orientation = glm::normalize(glm::quat(0.75,0.5,0.5,0.5)) ;
-		body_id = worlds->create(WORLD,box);
-		worlds->queue(WORLD, cell_id, &NetPhysics::Cell::addBody, body_id);
-	}
 
-	
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(max.x + wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(min.x - wall_size * 0.5f, mid.y, mid.z)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, min.z - wall_size * 0.5f)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+	body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, wall_type, glm::vec3(mid.x, mid.y, max.z + wall_size * 0.5f)));
+	worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
+
+
+
 	//Add some random stuff
-	int amount = 20 ;
+	int amount = 50;
 	for (int k = 0; k < amount; k++) {
-		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.2f + randomFloat() * 0.6f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
+		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.6f + randomFloat() * 0.4f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };
-		float rand = k/(float)amount;
+		float rand = k / (float)amount;
 		//rand = 1.0f ;
 		int type = ball_type;
 		if (rand < 0.2f) {
@@ -351,15 +369,16 @@ void NetPhysicsApp::host(){
 		else if (rand < 0.65) {
 			type = jar_type;
 		}
-		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(type, pos, glm::vec3(0,0,0), vel));
-		worlds->queue(WORLD,cell_id,&NetPhysics::Cell::addBody,body_id) ;
+		body_id = worlds->create(WORLD, std::make_shared<NetPhysics::RigidBody>(root_id, type, pos, glm::quat(1, 0, 0, 0), vel));
+		worlds->queue(WORLD, body_id, &NetPhysics::RigidBody::runPhysics);
 	}
 
 
-	if(SteamworksPlugin::enabled){
+	if (SteamworksPlugin::enabled) {
 		startSteamHosting();
-	}else{
-		worlds->host(port,version) ;
+	}
+	else {
+		worlds->host(port, version);
 	}
 
 }
@@ -433,12 +452,12 @@ void NetPhysicsApp::updateDebugPanel() {
 	float debug_depth = 1.0f;
 	float size = 30.0f;
 
-	glm::vec3 Z = window->getPixelRay(screen_x,screen_y) * debug_depth ;
-	glm::vec3 X = window->getPixelRay(screen_x + size * (debug_label->image_width+200) / debug_label->image_height , screen_y) * debug_depth - Z;
-	glm::vec3 Y = window->getPixelRay(screen_x , screen_y - size) * debug_depth - Z;
-	glm::vec3 origin = window->window_target->camera_position  + Z - X*0.5f - Y*0.5f;
+	glm::vec3 Z = window->getPixelRay(screen_x, screen_y) * debug_depth;
+	glm::vec3 X = window->getPixelRay(screen_x + size * (debug_label->image_width + 200) / debug_label->image_height, screen_y) * debug_depth - Z;
+	glm::vec3 Y = window->getPixelRay(screen_x, screen_y - size) * debug_depth - Z;
+	glm::vec3 origin = window->window_target->camera_position + Z - X * 0.5f - Y * 0.5f;
 	PanelPlugin::DefaultInstance inst = panels->getPanelInstance<PanelPlugin::DefaultInstance>(debug_panel);
-	inst.pose = panels->getPose(origin,X,Y);
+	inst.pose = panels->getPose(origin, X, Y);
 
 
 	panels->setPanelInstance(debug_panel, inst);

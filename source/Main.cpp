@@ -25,7 +25,6 @@
 #include "CollisionTestApp.h"
 #include "PyramidApp.h"
 #include "NetPhysicsApp.h"
-#include "NetPhysicsApp2.h"
 #include "FirstPersonApp.h"
 
 #include "Timeline.h"
@@ -440,9 +439,6 @@ void setupGameStates() {
 
 	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
 	//app->setState(NetPhysicsApp::state_name);
-
-	//app->add(NetPhysicsApp2::state_name, std::make_shared<NetPhysicsApp2>());
-	//app->setState(NetPhysicsApp2::state_name);
 
 	app->add(FirstPersonApp::state_name, std::shared_ptr<FirstPersonApp>(new FirstPersonApp()));
 	app->setState(FirstPersonApp::state_name);
