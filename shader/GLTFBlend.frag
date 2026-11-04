@@ -20,6 +20,8 @@ struct Vertex {
 
 struct Instance {
 	mat4 root;
+	vec2 texture_offset;
+	vec4 color_mult;
 }; 
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer{ 
