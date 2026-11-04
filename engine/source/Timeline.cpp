@@ -248,7 +248,7 @@ void Timeline::VoidEvent::run(std::shared_ptr<WorldEvent> this_event) {
 	if(latest->destroyed){
 		return ;
 	}
-	// make a new instance by copying wit the serializer
+	// make a new instance by copying with the serializer
 	std::shared_ptr<WorldObject> new_latest = latest->deepCopy() ;
 	// mark the object and event with the run time and position
 	new_latest->time = actual_run_time; // can be read when executing event, and should contain event time in that case
@@ -256,6 +256,7 @@ void Timeline::VoidEvent::run(std::shared_ptr<WorldEvent> this_event) {
 	new_latest->position = latest->position;
 	new_latest->event_position = new_latest->position;
 	new_latest->writing_event = this_event;
+	new_latest->random_seed = 0 ;
 	// use the registry to execute the code for the event (events have Timeline::world and obj.time for use)
 	world->registry->execute(new_latest, method_id, args);
 
