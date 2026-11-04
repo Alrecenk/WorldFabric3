@@ -48,7 +48,7 @@ void SceneDemoApp2::enter(std::shared_ptr<MachineState> from) {
 	target_rot = base_rotation;
 	scene->enableIK(fox_id, true);
 
-
+	scene->getRawInstance<GLTF::Instance64>(fox_id)->color_mult = glm::vec4(0.2f,0.2f,1.0f,1.0f);// Test raw instance modification
 
 	scene->createModelSet("shop", "./assets/shop.glb", false);
 	glm::mat4 shop_pose = glm::mat4(1.0f);
@@ -71,31 +71,31 @@ void SceneDemoApp2::enter(std::shared_ptr<MachineState> from) {
 
 
 
-		float t = 0 ;
+	float t = 0 ;
 
-		ScenePlugin::LightComponent lc;
+	ScenePlugin::LightComponent lc;
 		
-		glm::vec3 pos = glm::vec3(0, 2, -5) ;
-		glm::vec3 look_at = glm::vec3(0, 0, 1);
+	glm::vec3 pos = glm::vec3(0, 2, -5) ;
+	glm::vec3 look_at = glm::vec3(0, 0, 1);
 
 
-		lc.light_color = glm::vec4(1, 0, 0, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(1, 0, 0, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 
-		lc.light_color = glm::vec4(1, 0, 1, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(1, 0, 1, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 
-		lc.light_color = glm::vec4(0, 1, 0, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(0, 1, 0, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 
-		lc.light_color = glm::vec4(1, 1, 0, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(1, 1, 0, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 
-		lc.light_color = glm::vec4(0, 0, 1, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(0, 0, 1, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 
-		lc.light_color = glm::vec4(0, 1, 1, 1);
-		moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
+	lc.light_color = glm::vec4(0, 1, 1, 1);
+	moving_lights.push_back(scene->createLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(pos, look_at, glm::vec3(0, 1, 0), 0.55f, 30, 1024, 0, lc));
 }
 
 void SceneDemoApp2::run() {
@@ -157,7 +157,7 @@ void SceneDemoApp2::run() {
 		scene->setPose(id, cube_pose);
 	}
 
-
+	
 	current_angle+=dt ;
 	for(int k=0;k<moving_lights.size();k++){
 
@@ -169,6 +169,9 @@ void SceneDemoApp2::run() {
 		look_at+=add;
 		scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(moving_lights[k],pos,look_at, add, 0.35f,30) ;
 	}
+
+
+	scene->getRawInstance<GLTF::Instance64>(shop_id)->texture_offset = glm::vec2(current_angle*0.001f, current_angle*0.001f);// Test raw instance modification
 
 
 	Uint32 which_pad = window->getLastGamepadPress().first ; // first is gamepad, second is button

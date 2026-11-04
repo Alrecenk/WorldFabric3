@@ -623,8 +623,8 @@ void ScenePlugin::setTransformGroup(int instance_id, int group) {
 
 
 
-// Create a model set that can be attached to instances
-	// This assumethe models are already loaded onto the vulkanplugin with the given ids
+	// Create a model set that can be attached to instances
+	// This assumes the models are already loaded onto the vulkanplugin with the given ids
 void ScenePlugin::createModelSet(const std::string& name, std::shared_ptr<GLTF> gltf, std::vector<int> model_ids, std::vector<int> shadow_model_ids, bool translucent){
 	model_sets[next_model_id] = GLTFModelSet();
 	GLTFModelSet& mset = model_sets[next_model_id];

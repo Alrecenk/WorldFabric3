@@ -17,6 +17,8 @@ struct Vertex {
 
 struct Instance {
 	mat4 root;
+	vec2 texture_offset;
+	vec4 color_mult;
 	mat4[64] bone_pose;
 }; 
 
@@ -69,6 +71,6 @@ void main()
 	out_position = (root * vec4(v_game_position, 1.0)).xyz;
 	gl_Position = PushConstants.camera_matrix * vec4(out_position, 1.0);
 	out_normal = normalize((root * vec4(v_game_normal, 0.0)).xyz);
-	out_tex_coord = v.tex_coord;
-	out_color = v.color ;
+	out_tex_coord = v.tex_coord + ib.instances[gl_InstanceIndex].texture_offset ;
+	out_color = v.color * ib.instances[gl_InstanceIndex].color_mult ;
 }

@@ -135,16 +135,22 @@ class GLTF : public OptimizationProblem, public TableInterface {
 
 		struct alignas(16) Instance256{
 			alignas(16) glm::mat4 root;
+			alignas(16) glm::vec2 texture_offset;
+			alignas(16) glm::vec4 color_mult = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			alignas(16) glm::mat4 bone_pose[256]; // NOTE: this length must match the fixed value in the shader even if there are fewer bones!
 		};
 
 		struct alignas(16) Instance64 {
 			alignas(16) glm::mat4 root;
+			alignas(16) glm::vec2 texture_offset;
+			alignas(16) glm::vec4 color_mult = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			alignas(16) glm::mat4 bone_pose[64]; // NOTE: this length must match the fixed value in the shader even if there are fewer bones!
 		};
 
 		struct alignas(16) Instance1 {
 			alignas(16) glm::mat4 root;
+			alignas(16) glm::vec2 texture_offset;
+			alignas(16) glm::vec4 color_mult = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		};
 
 

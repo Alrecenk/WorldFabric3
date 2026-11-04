@@ -299,6 +299,16 @@ public:
 				cached_model_sets.push_back(&scene->model_sets[model_set_id]) ;
 			}
 		}
+
+		template <typename T>
+		inline std::shared_ptr<T> getMainInstance(){
+			return static_pointer_cast<T>(main_instance) ;
+		}
+
+		template <typename T>
+		inline std::shared_ptr<T> getShadowInstance() {
+			return static_pointer_cast<T>(shadow_instance);
+		}
 	};
 
 	
@@ -400,6 +410,25 @@ public:
 
 	//gets the world pose of an instance
 	glm::mat4 getPose(const int instance_id);
+
+
+	template <typename T>
+	inline std::shared_ptr<T> getRawInstance(const int instance_id) {
+		if(hasInstance(instance_id)){
+			return instances[instance_id].getMainInstance<T>();
+		}else{
+			return nullptr ;
+		}
+	}
+
+	template <typename T>
+	inline std::shared_ptr<T> getRawShadowInstance(const int instance_id) {
+		if (hasInstance(instance_id)) {
+			return instances[instance_id].getShadowInstance<T>();
+		}else{
+			return nullptr ;
+		}
+	}
 
 	//delete an Instance
 	void deleteInstance(const int instance_id);
