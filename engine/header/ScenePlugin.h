@@ -433,10 +433,6 @@ public:
 	//delete an Instance
 	void deleteInstance(const int instance_id);
 
-	std::shared_ptr<void> main_instance;
-	std::shared_ptr<void> shadow_instance;
-
-
 	//Used for tracking input latency to visual display
 	void setInputNum(const int instance_id, const int input_num);
 

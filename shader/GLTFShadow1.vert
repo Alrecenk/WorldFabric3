@@ -50,5 +50,4 @@ void main()
 	gl_Position = PushConstants.camera_matrix * vec4(out_position, 1.0);
 	out_tex_coord = v.tex_coord + ib.instances[gl_InstanceIndex].texture_offset ;
 	out_normal = normalize((root * vec4(v.normal, 0.0)).xyz);
-	
 }
