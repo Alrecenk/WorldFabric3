@@ -45,6 +45,7 @@ public:
 	std::shared_ptr<RigidBody> body ;
 	glm::mat3 inv_moment;
 	std::pair<glm::vec3, glm::vec3> AABB;
+	std::vector<std::pair<glm::vec3, glm::vec3>> part_AABB ;
 
 };
 

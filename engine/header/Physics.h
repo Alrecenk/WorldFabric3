@@ -433,7 +433,7 @@ public:
 };
 
 //Returns if two axis aligned bounding boxes intersect
-bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
+bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
 
 // return the volume of the given tetrahedron
 float computeTetraVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);

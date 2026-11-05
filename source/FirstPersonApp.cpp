@@ -41,14 +41,7 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 	posed_action_right->world = WORLD;
 
 	window->setRelativeMouseMode(true) ;
-
-
-
-
-	
-
 	//scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), 0.7, 35);
-
 
 }
 

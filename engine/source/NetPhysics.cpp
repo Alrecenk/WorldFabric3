@@ -91,6 +91,7 @@ BodyInstant RigidBody::computeBodyInstant() const{
 	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
 	for (auto& s : types[type].shape) {
 		auto  sAABB = s->getAABB(data.pose);
+		data.part_AABB.push_back(sAABB) ;
 		data.AABB.first.x = fmin(data.AABB.first.x, sAABB.first.x);
 		data.AABB.second.x = fmax(data.AABB.second.x, sAABB.second.x);
 		data.AABB.first.y = fmin(data.AABB.first.y, sAABB.first.y);
@@ -769,37 +770,39 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 			if (id1 < id2 && // only check each pair once
 				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
-				Physics::AAABIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
+				Physics::AABBIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
 				//printf("AABBs intersect  %lld to %lld\n", id1, id2);
 				bool collides = false;
 				for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
 					for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
-						auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
-						if (simplex.size() > 0) {
-							collides = true ;
-							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
-							float penetration_depth = glm::length(sp.x) ;
-							if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
-								glm::vec3 point = (sp.a + sp.b) * 0.5f;
-								glm::vec3 normal = glm::normalize(sp.x);
-								normal = glm::normalize(normal);
-								int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
+						if(Physics::AABBIntersect(body_1.part_AABB[shape_1], body_2.part_AABB[shape_2])){
+							auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+							if (simplex.size() > 0) {
+								collides = true ;
+								Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+								float penetration_depth = glm::length(sp.x) ;
+								if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
+									glm::vec3 point = (sp.a + sp.b) * 0.5f;
+									glm::vec3 normal = glm::normalize(sp.x);
+									normal = glm::normalize(normal);
+									int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
 
-								Collision constraint;
-								constraint.point = point;
-								constraint.normal = normal;
-								constraint.local_a = body_1.inv_pose * glm::vec4(sp.a, 1);
-								constraint.local_b = body_2.inv_pose * glm::vec4(sp.b, 1);
-								constraint.penetration_depth = penetration_depth;
+									Collision constraint;
+									constraint.point = point;
+									constraint.normal = normal;
+									constraint.local_a = body_1.inv_pose * glm::vec4(sp.a, 1);
+									constraint.local_b = body_2.inv_pose * glm::vec4(sp.b, 1);
+									constraint.penetration_depth = penetration_depth;
 
-								if (collisions.find(constraint_hash) == collisions.end()) {
-									collisions[constraint_hash] = ManifoldCollision(id1, shape_1, id2, shape_2);
-									//printf("Collision manifold created\n");
+									if (collisions.find(constraint_hash) == collisions.end()) {
+										collisions[constraint_hash] = ManifoldCollision(id1, shape_1, id2, shape_2);
+										//printf("Collision manifold created\n");
+									}
+
+									collisions[constraint_hash].addConstraint(constraint, body_1, body_2);
+									found_constraints.insert(constraint_hash);
+
 								}
-
-								collisions[constraint_hash].addConstraint(constraint, body_1, body_2);
-								found_constraints.insert(constraint_hash);
-
 							}
 						}
 					}
@@ -958,7 +961,7 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 	for (auto& [id, body] : read_bodies) {
 		if (body.body->id != tester.body->id &&
 			(!immoveable_only || !body.body->receives_impulse) &&
-			Physics::AAABIntersect(body.AABB, tester.AABB)) { // check AABBs first
+			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
 
 			//printf("AABBs are colliding\n");
@@ -1001,7 +1004,7 @@ glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& t
 	for (auto& [id, body] : read_bodies) {
 		if (body.body->id != tester.body->id &&
 			(!immoveable_only || !body.body->receives_impulse) &&
-			Physics::AAABIntersect(body.AABB, tester.AABB)) { // check AABBs first
+			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
 
 			//printf("AABBs are colliding\n");

@@ -1044,7 +1044,7 @@ std::pair<glm::vec3, glm::vec3> Sphere::getAABB(const glm::mat4& pose) const {
 	return AABB;
 }
 
-bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
+bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
 	return A.first.x < B.second.x && B.first.x < A.second.x &&
 		A.first.y < B.second.y && B.first.y < A.second.y &&
 		A.first.z < B.second.z && B.first.z < A.second.z;
@@ -1351,7 +1351,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 			if (id1 < id2 && // only check each pair once
 				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
-				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+				Physics::AABBIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
 
 				for(int shapeA = 0; shapeA < body_1->shape.size(); shapeA++){
 					for (int shapeB = 0; shapeB < body_2->shape.size(); shapeB++) {
