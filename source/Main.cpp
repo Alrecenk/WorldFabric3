@@ -413,8 +413,8 @@ void setupGameStates() {
 	//app->add(SceneDemoApp::state_name, std::shared_ptr<SceneDemoApp>(new SceneDemoApp()));
 	//app->setState(SceneDemoApp::state_name);
 
-	app->add(SceneDemoApp2::state_name, std::shared_ptr<SceneDemoApp2>(new SceneDemoApp2()));
-	app->setState(SceneDemoApp2::state_name);
+	//app->add(SceneDemoApp2::state_name, std::shared_ptr<SceneDemoApp2>(new SceneDemoApp2()));
+	//app->setState(SceneDemoApp2::state_name);
 	
 	//app->add(SocketTest::state_name, std::shared_ptr<SocketTest>(new SocketTest()));
 	//app->setState(SocketTest::state_name);
@@ -440,8 +440,8 @@ void setupGameStates() {
 	//app->add(NetPhysicsApp::state_name, std::make_shared<NetPhysicsApp>());
 	//app->setState(NetPhysicsApp::state_name);
 
-	//app->add(FirstPersonApp::state_name, std::shared_ptr<FirstPersonApp>(new FirstPersonApp()));
-	//app->setState(FirstPersonApp::state_name);
+	app->add(FirstPersonApp::state_name, std::shared_ptr<FirstPersonApp>(new FirstPersonApp()));
+	app->setState(FirstPersonApp::state_name);
 }
 
 int debugMain(int argc, char* argv[]) {

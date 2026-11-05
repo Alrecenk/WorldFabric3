@@ -114,7 +114,7 @@ ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const
 	inv_moment = glm::inverse(moment);
 }
 
-ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass) {
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose, float mass) {
 	vertex = base.vertex;
 	for(auto& v : vertex){
 		 v = pose * glm::vec4(v,1.0f) ;
@@ -129,7 +129,7 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, floa
 	}
 }
 
-ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose) {
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose) {
 	vertex = base.vertex;
 	for (auto& v : vertex) {
 		v = pose * glm::vec4(v, 1.0f);
@@ -1044,7 +1044,7 @@ std::pair<glm::vec3, glm::vec3> Sphere::getAABB(const glm::mat4& pose) const {
 	return AABB;
 }
 
-bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
+bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
 	return A.first.x < B.second.x && B.first.x < A.second.x &&
 		A.first.y < B.second.y && B.first.y < A.second.y &&
 		A.first.z < B.second.z && B.first.z < A.second.z;
@@ -1351,7 +1351,7 @@ void SimpleLocalPhysicsCell::updateCollisions() {
 			if (id1 < id2 && // only check each pair once
 				collision_disabled.find({id1,id2}) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
 				(body_1->inv_mass > 0 || body_2->inv_mass > 0) && // only check if one is moveable
-				Physics::AAABIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
+				Physics::AABBIntersect(body_1->AABB, body_2->AABB)) { // check AABBs first
 
 				for(int shapeA = 0; shapeA < body_1->shape.size(); shapeA++){
 					for (int shapeB = 0; shapeB < body_2->shape.size(); shapeB++) {

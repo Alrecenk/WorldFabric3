@@ -4,7 +4,7 @@
 namespace NetPhysics {
 
 
-BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction){
 	this->shape = shape ;
 	this->model = model ;
 	this->render_transform = render_transform ;
@@ -91,6 +91,7 @@ BodyInstant RigidBody::computeBodyInstant() const{
 	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
 	for (auto& s : types[type].shape) {
 		auto  sAABB = s->getAABB(data.pose);
+		data.part_AABB.push_back(sAABB) ;
 		data.AABB.first.x = fmin(data.AABB.first.x, sAABB.first.x);
 		data.AABB.second.x = fmax(data.AABB.second.x, sAABB.second.x);
 		data.AABB.first.y = fmin(data.AABB.first.y, sAABB.first.y);
@@ -146,6 +147,7 @@ void RigidBody::runPhysics(){
 	int amount = 0 ;
 	glm::vec3 v_total(0,0,0) ;
 	glm::vec3 av_total(0, 0, 0);
+	collisions.clear();
 	for(int64_t& cell_id : cells){
 		std::shared_ptr<const Cell> cell = read<Cell>(cell_id);
 		if(cell){
@@ -154,6 +156,12 @@ void RigidBody::runPhysics(){
 				amount++;
 				v_total += iter->second.first ;
 				av_total += iter->second.second ;
+			}
+			if(collect_collisions){
+				auto c_iter = cell->collected_collisions.find(id);
+				if(c_iter != cell->collected_collisions.end()){
+					collisions.insert(c_iter->second.begin(), c_iter->second.end()) ;
+				}
 			}
 		}
 	}
@@ -230,6 +238,11 @@ void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	wakeUp();
 }
 
+//Sets the owner ID that may be read by other objects
+void RigidBody::setOwner(const int64_t& new_owner){
+	owner = new_owner ;
+}
+
 //Wake upa body that has been asleep
 void RigidBody::wakeUp(){
 	last_active_frame = (int)(time * Root::ticks_per_second);
@@ -245,20 +258,20 @@ void RigidBody::wakeUp(){
 	}
 }
 
-int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction) {
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
 	types[id] = BodyType(shape, model, render_transform, elasticity, friction);
 	return id;
 }
 
-int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> single_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> single_shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction){
 	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 	shape.push_back(single_shape);
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
-int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model,const glm::mat4& render_transform, float elasticity, float friction){
 	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 	for (auto& s : raw_shape) {
 		std::shared_ptr<Physics::ConvexPolyhedron> sh = std::make_shared<Physics::ConvexPolyhedron>(s, render_transform, s.mass);
@@ -267,8 +280,21 @@ int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const s
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity, float friction){
+	return RigidBody::addType(shape, "", glm::mat4(0), elasticity, friction) ;
+}
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity, float friction){
+	return RigidBody::addType(shape, "", glm::mat4(0), elasticity, friction);
+}
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity, float friction){
+	return RigidBody::addType(raw_shape, "", glm::mat4(0), elasticity, friction);
+}
+
 //created is called when an objectis observed that ws no observed last time view was called on the world
 void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
+	if(RigidBody::types[body->type].model == ""){
+		return ;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	last_view = body;
@@ -285,6 +311,9 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
 void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
+	if (RigidBody::types[body->type].model == "") {
+		return;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
@@ -296,7 +325,7 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 
 	} else {
 
-		double observation_time = worlds->getWorldTime("netphysics", body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
+		double observation_time = worlds->getWorldTime(source_world, body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
 		float observation_age = (float)(observation_time - body->time);// time difference between what we're supposed to see and what we observed
 
 		//Extrapolate the passage of time since the observation
@@ -338,6 +367,9 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 //Destroyed is called when an observation that was present in the last observation is no longer observed
 //This view will be deleted immediately after this call (it's destructor will be called after this)
 void RigidBodyView::destroyed() {
+	if (scene_id == -1) {
+		return;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	scene->deleteInstance(scene_id);
@@ -737,39 +769,50 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 			BodyType& body_2_type = RigidBody::types[body_2.body->type];
 			if (id1 < id2 && // only check each pair once
 				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
-				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0) && // only check if one is moveable
-				Physics::AAABIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
+				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
+				Physics::AABBIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
 				//printf("AABBs intersect  %lld to %lld\n", id1, id2);
+				bool collides = false;
 				for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
 					for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
+						if(Physics::AABBIntersect(body_1.part_AABB[shape_1], body_2.part_AABB[shape_2])){
+							auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+							if (simplex.size() > 0) {
+								collides = true ;
+								Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
+								float penetration_depth = glm::length(sp.x) ;
+								if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
+									glm::vec3 point = (sp.a + sp.b) * 0.5f;
+									glm::vec3 normal = glm::normalize(sp.x);
+									normal = glm::normalize(normal);
+									int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
 
-						auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
-						if (simplex.size() > 0) {
-							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
-							float penetration_depth = glm::length(sp.x) ;
-							if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
-								glm::vec3 point = (sp.a + sp.b) * 0.5f;
-								glm::vec3 normal = glm::normalize(sp.x);
-								normal = glm::normalize(normal);
-								int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
+									Collision constraint;
+									constraint.point = point;
+									constraint.normal = normal;
+									constraint.local_a = body_1.inv_pose * glm::vec4(sp.a, 1);
+									constraint.local_b = body_2.inv_pose * glm::vec4(sp.b, 1);
+									constraint.penetration_depth = penetration_depth;
 
-								Collision constraint;
-								constraint.point = point;
-								constraint.normal = normal;
-								constraint.local_a = body_1.inv_pose * glm::vec4(sp.a, 1);
-								constraint.local_b = body_2.inv_pose * glm::vec4(sp.b, 1);
-								constraint.penetration_depth = penetration_depth;
+									if (collisions.find(constraint_hash) == collisions.end()) {
+										collisions[constraint_hash] = ManifoldCollision(id1, shape_1, id2, shape_2);
+										//printf("Collision manifold created\n");
+									}
 
-								if (collisions.find(constraint_hash) == collisions.end()) {
-									collisions[constraint_hash] = ManifoldCollision(id1, shape_1, id2, shape_2);
-									//printf("Collision manifold created\n");
+									collisions[constraint_hash].addConstraint(constraint, body_1, body_2);
+									found_constraints.insert(constraint_hash);
+
 								}
-
-								collisions[constraint_hash].addConstraint(constraint, body_1, body_2);
-								found_constraints.insert(constraint_hash);
-
 							}
 						}
+					}
+				}
+				if(collides){
+					if(body_1.body->collect_collisions){
+						collected_collisions[id1].insert(id2);
+					}
+					if (body_2.body->collect_collisions) {
+						collected_collisions[id2].insert(id1);
 					}
 				}
 			}
@@ -818,7 +861,7 @@ void Cell::runPhysics(){
 		}
 	}
 
-
+	collected_collisions.clear();
 	updateCollisions(read_bodies);
 	
 	for (auto& [body_id, constraint] : collisions) {
@@ -918,7 +961,7 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 	for (auto& [id, body] : read_bodies) {
 		if (body.body->id != tester.body->id &&
 			(!immoveable_only || !body.body->receives_impulse) &&
-			Physics::AAABIntersect(body.AABB, tester.AABB)) { // check AABBs first
+			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
 
 			//printf("AABBs are colliding\n");
@@ -961,7 +1004,7 @@ glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& t
 	for (auto& [id, body] : read_bodies) {
 		if (body.body->id != tester.body->id &&
 			(!immoveable_only || !body.body->receives_impulse) &&
-			Physics::AAABIntersect(body.AABB, tester.AABB)) { // check AABBs first
+			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
 
 			//printf("AABBs are colliding\n");
@@ -1053,6 +1096,7 @@ void registerPhysics(){
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
 	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
+	worlds->registerMethod(&RigidBody::setOwner, "RigidBody::setOwner");
 	worlds->registerMethod(&RigidBody::destroy, "RigidBody::destroy");
 
 	worlds->registerClass<Cell>("Cell");

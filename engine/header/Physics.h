@@ -43,10 +43,10 @@ public:
 	ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const std::vector<std::vector<int>>& faces, float mass);
 
 	// Make a new polyhedron by reposing and/or changing the mass of an existing polyhedron
-	ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass);
+	ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose, float mass);
 
 	// Make a new polyhedron by reposing another, no specified mass means infinite mass and unmoveable
-	ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose);
+	ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose);
 
 	void buildFromPolygons(std::vector<Polygon>& polygons);
 
@@ -433,7 +433,7 @@ public:
 };
 
 //Returns if two axis aligned bounding boxes intersect
-bool AAABIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
+bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B);
 
 // return the volume of the given tetrahedron
 float computeTetraVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);

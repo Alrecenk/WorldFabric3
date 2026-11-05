@@ -426,6 +426,7 @@ void WorldPlugin::viewCreateDestroy(const std::string& local_world){
 		if (views.find(observation->id) == views.end()) { // Observation has no view
 			std::shared_ptr<BaseObjectView> new_view = registry->createView(observation->getTypeId(registry.get()));
 			if (new_view) {
+				new_view->source_world = local_world;
 				views[observation->id] = new_view;
 				new_view->createdBase(observation);
 			}

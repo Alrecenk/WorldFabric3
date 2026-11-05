@@ -20,8 +20,8 @@ public:
 	glm::mat3 base_inv_moment;
 	float bounding_radius  = -1.0f;
 
-	std::string model;
-	glm::mat4 render_transform;
+	std::string model = "";
+	glm::mat4 render_transform = glm::mat4(0);
 
 	float elasticity = 0.5f;
 	float friction = 0.6f;
@@ -33,7 +33,7 @@ public:
 
 	BodyType(){};
 
-	BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction);
+	BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model,const glm::mat4& render_transform, float elasticity, float friction);
 
 };
 
@@ -45,6 +45,7 @@ public:
 	std::shared_ptr<RigidBody> body ;
 	glm::mat3 inv_moment;
 	std::pair<glm::vec3, glm::vec3> AABB;
+	std::vector<std::pair<glm::vec3, glm::vec3>> part_AABB ;
 
 };
 
@@ -56,6 +57,7 @@ public:
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
+	int64_t owner = -1 ; // If this object is controlled by another world objec this should be set to its ID
 	int64_t root_id = -1; // links to root of physics system for finding cells
 	std::vector<int64_t> cells ; // cells currently occupied
 
@@ -65,6 +67,9 @@ public:
 	bool asleep = false; // if a body is asleep it is not calling runPhysics
 	int last_active_frame = 0; // Last frame a body moved on
 
+	//If collect_collisions is set to true then IDs of all colliding bodies will be stored in collisions
+	bool collect_collisions = false;
+	std::set<int64_t> collisions ;
 
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline int frames_to_sleep = 5 ; //if I body doesn't move for this many frames it will go to sleep
@@ -93,6 +98,8 @@ public:
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
 
+	//Sets the owner ID that may be read by other objects
+	void setOwner(const int64_t& new_owner);
 	
 	void destroy(){
 		destroyed = true ;
@@ -120,19 +127,22 @@ public:
 	static inline std::map<int, BodyType> types;
 	static inline int next_type_id = 1;
 
+	//Create an objects type with various ConvexShape input
+	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model,const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 
-	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
-
-
-	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
-
-
-	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	//Same as above,butwith no render model provided
+	static int addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity = 0.5f, float friction = 0.5f);
 
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.last_active_frame) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, 
+					o.owner, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, 
+					o.asleep, o.last_active_frame, o.collect_collisions, o.collisions) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {
@@ -317,7 +327,7 @@ public:
 	std::set<int64_t> bodies;
 	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint reslt
-	
+	std::map<int64_t, std::set<int64_t>> collected_collisions ; // rigid bodies with collect_collisions can find their collisions from this cell here
 	bool asleep = false; // A cell can go to sleep if all bodies in it are asleep
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
@@ -368,7 +378,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result, o.asleep);
+	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result, o.asleep, o.collected_collisions);
 }
 
 //Contains cells and routes body requests to the appropriate one

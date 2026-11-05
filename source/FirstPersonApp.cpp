@@ -41,14 +41,7 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 	posed_action_right->world = WORLD;
 
 	window->setRelativeMouseMode(true) ;
-
-
-
-
-	
-
 	//scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), 0.7, 35);
-
 
 }
 
@@ -474,7 +467,10 @@ void PlayerCharacter::update() {
 	double target_time = (frame + interframe_time) * frame_length;
 
 	if(body_id == -1){
-		body_id = create(std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position), time);
+		std::shared_ptr<NetPhysics::RigidBody> body = std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position) ;
+		body->owner = id ;
+		body->collect_collisions = true ;
+		body_id = create(body, time);
 		queue(body_id,time+0.001, &NetPhysics::RigidBody::runPhysics);
 		last_control_time = time;
 	}else{
@@ -532,6 +528,13 @@ void PlayerCharacter::update() {
 			queue(body_id,time, &NetPhysics::RigidBody::destroy) ;
 			destroyed= true ;
 		}
+		/*
+		printf("collisions:");
+		for(const int64_t& c : my_body->collisions){
+			printf("%lld,", c);
+		}
+		printf("\n");
+		*/
 		
 	}
 	if(!destroyed){
