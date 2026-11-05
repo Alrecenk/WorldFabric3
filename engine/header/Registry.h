@@ -608,6 +608,7 @@ T interpolateObj(const T& A, const T& B, float t){
 // Outer base class makes it possible to put templayed subclasses int one list
 class BaseObjectView {
 public:
+	std::string source_world = ""; // The WorldPlugin world that generated this view if it was auto-generated
 	virtual ~BaseObjectView() = default;
 	virtual void createdBase(std::shared_ptr<const void> obj) = 0;
 	virtual void updatedBase(std::shared_ptr<const void> obj) = 0;

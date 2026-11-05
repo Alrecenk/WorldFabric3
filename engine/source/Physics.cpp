@@ -114,7 +114,7 @@ ConvexPolyhedron::ConvexPolyhedron(const std::vector<glm::vec3>& vertices, const
 	inv_moment = glm::inverse(moment);
 }
 
-ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, float mass) {
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose, float mass) {
 	vertex = base.vertex;
 	for(auto& v : vertex){
 		 v = pose * glm::vec4(v,1.0f) ;
@@ -129,7 +129,7 @@ ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose, floa
 	}
 }
 
-ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, glm::mat4& pose) {
+ConvexPolyhedron::ConvexPolyhedron(ConvexPolyhedron& base, const glm::mat4& pose) {
 	vertex = base.vertex;
 	for (auto& v : vertex) {
 		v = pose * glm::vec4(v, 1.0f);

@@ -33,7 +33,7 @@ public:
 
 	BodyType(){};
 
-	BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction);
+	BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model,const glm::mat4& render_transform, float elasticity, float friction);
 
 };
 
@@ -121,9 +121,9 @@ public:
 	static inline int next_type_id = 1;
 
 	//Create an objects type with various ConvexShape input
-	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
-	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
-	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model,const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 
 	//Same as above,butwith no render model provided
 	static int addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity = 0.5f, float friction = 0.5f);

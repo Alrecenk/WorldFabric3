@@ -4,7 +4,7 @@
 namespace NetPhysics {
 
 
-BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+BodyType::BodyType(std::vector<std::shared_ptr<Physics::ConvexShape>>& shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction){
 	this->shape = shape ;
 	this->model = model ;
 	this->render_transform = render_transform ;
@@ -245,20 +245,20 @@ void RigidBody::wakeUp(){
 	}
 }
 
-int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction) {
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction) {
 	int id = next_type_id;
 	next_type_id++;
 	types[id] = BodyType(shape, model, render_transform, elasticity, friction);
 	return id;
 }
 
-int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> single_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> single_shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction){
 	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 	shape.push_back(single_shape);
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
-int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, glm::mat4& render_transform, float elasticity, float friction){
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model,const glm::mat4& render_transform, float elasticity, float friction){
 	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
 	for (auto& s : raw_shape) {
 		std::shared_ptr<Physics::ConvexPolyhedron> sh = std::make_shared<Physics::ConvexPolyhedron>(s, render_transform, s.mass);
@@ -267,14 +267,14 @@ int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const s
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
-int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity = 0.5f, float friction = 0.5f){
-	return addType(shape, "", glm::mat4(0), elasticity, friction) ;
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity, float friction){
+	return RigidBody::addType(shape, "", glm::mat4(0), elasticity, friction) ;
 }
-int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity = 0.5f, float friction = 0.5f){
-	return addType(shape, "", glm::mat4(0), elasticity, friction);
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity, float friction){
+	return RigidBody::addType(shape, "", glm::mat4(0), elasticity, friction);
 }
-int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity = 0.5f, float friction = 0.5f){
-	return addType(raw_shape, "", glm::mat4(0), elasticity, friction);
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity, float friction){
+	return RigidBody::addType(raw_shape, "", glm::mat4(0), elasticity, friction);
 }
 
 //created is called when an objectis observed that ws no observed last time view was called on the world
@@ -312,7 +312,7 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 
 	} else {
 
-		double observation_time = worlds->getWorldTime("netphysics", body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
+		double observation_time = worlds->getWorldTime(source_world, body->position); // TODO get world from view, view should know what world it's in, but it doesn't?
 		float observation_age = (float)(observation_time - body->time);// time difference between what we're supposed to see and what we observed
 
 		//Extrapolate the passage of time since the observation
@@ -354,7 +354,7 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 //Destroyed is called when an observation that was present in the last observation is no longer observed
 //This view will be deleted immediately after this call (it's destructor will be called after this)
 void RigidBodyView::destroyed() {
-	if (RigidBody::types[body->type].model == "") {
+	if (scene_id == -1) {
 		return;
 	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
