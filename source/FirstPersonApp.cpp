@@ -476,6 +476,7 @@ void PlayerCharacter::update() {
 	if(body_id == -1){
 		std::shared_ptr<NetPhysics::RigidBody> body = std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position) ;
 		body->owner = id ;
+		body->collect_collisions = true ;
 		body_id = create(body, time);
 		queue(body_id,time+0.001, &NetPhysics::RigidBody::runPhysics);
 		last_control_time = time;
@@ -534,6 +535,13 @@ void PlayerCharacter::update() {
 			queue(body_id,time, &NetPhysics::RigidBody::destroy) ;
 			destroyed= true ;
 		}
+		/*
+		printf("collisions:");
+		for(const int64_t& c : my_body->collisions){
+			printf("%lld,", c);
+		}
+		printf("\n");
+		*/
 		
 	}
 	if(!destroyed){

@@ -146,6 +146,7 @@ void RigidBody::runPhysics(){
 	int amount = 0 ;
 	glm::vec3 v_total(0,0,0) ;
 	glm::vec3 av_total(0, 0, 0);
+	collisions.clear();
 	for(int64_t& cell_id : cells){
 		std::shared_ptr<const Cell> cell = read<Cell>(cell_id);
 		if(cell){
@@ -154,6 +155,12 @@ void RigidBody::runPhysics(){
 				amount++;
 				v_total += iter->second.first ;
 				av_total += iter->second.second ;
+			}
+			if(collect_collisions){
+				auto c_iter = cell->collected_collisions.find(id);
+				if(c_iter != cell->collected_collisions.end()){
+					collisions.insert(c_iter->second.begin(), c_iter->second.end()) ;
+				}
 			}
 		}
 	}
@@ -761,14 +768,15 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 			BodyType& body_2_type = RigidBody::types[body_2.body->type];
 			if (id1 < id2 && // only check each pair once
 				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
-				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0) && // only check if one is moveable
+				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
 				Physics::AAABIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
 				//printf("AABBs intersect  %lld to %lld\n", id1, id2);
+				bool collides = false;
 				for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
 					for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
-
 						auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
 						if (simplex.size() > 0) {
+							collides = true ;
 							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
 							float penetration_depth = glm::length(sp.x) ;
 							if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
@@ -794,6 +802,14 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 
 							}
 						}
+					}
+				}
+				if(collides){
+					if(body_1.body->collect_collisions){
+						collected_collisions[id1].insert(id2);
+					}
+					if (body_2.body->collect_collisions) {
+						collected_collisions[id2].insert(id1);
 					}
 				}
 			}
@@ -842,7 +858,7 @@ void Cell::runPhysics(){
 		}
 	}
 
-
+	collected_collisions.clear();
 	updateCollisions(read_bodies);
 	
 	for (auto& [body_id, constraint] : collisions) {
