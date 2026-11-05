@@ -56,6 +56,7 @@ public:
 	glm::quat orientation = glm::quat(1, 0, 0, 0);
 	glm::vec3 angular_velocity = glm::vec3(0, 0, 0);
 		
+	int64_t owner = -1 ; // If this object is controlled by another world objec this should be set to its ID
 	int64_t root_id = -1; // links to root of physics system for finding cells
 	std::vector<int64_t> cells ; // cells currently occupied
 
@@ -93,6 +94,8 @@ public:
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
 
+	//Sets the owner ID that may be read by other objects
+	void setOwner(const int64_t& new_owner);
 	
 	void destroy(){
 		destroyed = true ;
@@ -133,7 +136,7 @@ public:
 };
 
 auto static getStructure(RigidBody& o) {
-	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.last_active_frame) ;
+	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, o.owner, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, o.asleep, o.last_active_frame) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {

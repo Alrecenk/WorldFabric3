@@ -230,6 +230,11 @@ void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	wakeUp();
 }
 
+//Sets the owner ID that may be read by other objects
+void RigidBody::setOwner(const int64_t& new_owner){
+	owner = new_owner ;
+}
+
 //Wake upa body that has been asleep
 void RigidBody::wakeUp(){
 	last_active_frame = (int)(time * Root::ticks_per_second);
@@ -1072,6 +1077,7 @@ void registerPhysics(){
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
 	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
+	worlds->registerMethod(&RigidBody::setOwner, "RigidBody::setOwner");
 	worlds->registerMethod(&RigidBody::destroy, "RigidBody::destroy");
 
 	worlds->registerClass<Cell>("Cell");

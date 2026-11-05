@@ -474,7 +474,9 @@ void PlayerCharacter::update() {
 	double target_time = (frame + interframe_time) * frame_length;
 
 	if(body_id == -1){
-		body_id = create(std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position), time);
+		std::shared_ptr<NetPhysics::RigidBody> body = std::make_shared<NetPhysics::RigidBody>(root_id, FirstPersonApp::player_type, position) ;
+		body->owner = id ;
+		body_id = create(body, time);
 		queue(body_id,time+0.001, &NetPhysics::RigidBody::runPhysics);
 		last_control_time = time;
 	}else{
