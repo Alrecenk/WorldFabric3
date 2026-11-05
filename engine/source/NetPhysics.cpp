@@ -267,8 +267,21 @@ int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const s
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
+int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity = 0.5f, float friction = 0.5f){
+	return addType(shape, "", glm::mat4(0), elasticity, friction) ;
+}
+int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity = 0.5f, float friction = 0.5f){
+	return addType(shape, "", glm::mat4(0), elasticity, friction);
+}
+int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity = 0.5f, float friction = 0.5f){
+	return addType(raw_shape, "", glm::mat4(0), elasticity, friction);
+}
+
 //created is called when an objectis observed that ws no observed last time view was called on the world
 void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
+	if(RigidBody::types[body->type].model == ""){
+		return ;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	last_view = body;
@@ -285,6 +298,9 @@ void RigidBodyView::created(std::shared_ptr<const RigidBody>& body) {
 
 //Update is called when an observation is made of an object that was also observed last frame on this same view
 void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
+	if (RigidBody::types[body->type].model == "") {
+		return;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
@@ -338,6 +354,9 @@ void RigidBodyView::updated(std::shared_ptr<const RigidBody>& body) {
 //Destroyed is called when an observation that was present in the last observation is no longer observed
 //This view will be deleted immediately after this call (it's destructor will be called after this)
 void RigidBodyView::destroyed() {
+	if (RigidBody::types[body->type].model == "") {
+		return;
+	}
 	ScenePlugin* scene = getTool<ScenePlugin>();
 	ActionMap* action_map = getTool<ActionMap>();
 	scene->deleteInstance(scene_id);
