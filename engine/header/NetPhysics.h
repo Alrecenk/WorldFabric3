@@ -115,7 +115,9 @@ public:
 	}
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
-		return std::make_shared<RigidBody>(*this);
+		auto copy = std::make_shared<RigidBody>(*this);
+		copy->writing_event = nullptr ;
+		return copy ;
 	}
 
 	//Functions used on observables or on read objects need to be const
@@ -367,7 +369,9 @@ public:
 	}
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
-		return std::make_shared<Cell>(*this);
+		auto copy = std::make_shared<Cell>(*this);
+		copy->writing_event = nullptr ;
+		return copy ;
 	}
 
 	//Functions used on observables or on read objects need to be const
@@ -419,7 +423,9 @@ public:
 	}
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
-		return std::make_shared<Root>(*this);
+		auto copy = std::make_shared<Root>(*this);
+		copy->writing_event = nullptr ;
+		return copy;
 	}
 
 	//Functions used on observables or on read objects need to be const
