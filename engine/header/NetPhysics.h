@@ -352,6 +352,9 @@ public:
 	//Removes a body from the cell
 	void removeBody(const int64_t& body_id);
 
+	//Returns if the given position for the given object is not colliding objects in this cell
+	bool validPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& body, const glm::vec3& target_position, bool immoveable_only) const;
+
 	//Returns the nearest position to the target that the given body could be placed without colliding
 	//with the contents of this cell from the perspective of the active vantage point in the given world
 	//Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
