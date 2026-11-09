@@ -17,6 +17,8 @@ struct Vertex {
 
 struct Instance {
 	mat4 root;
+	vec2 texture_offset;
+	vec4 color_mult;
 	mat4[256] bone_pose;
 }; 
 
