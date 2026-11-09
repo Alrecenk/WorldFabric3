@@ -150,7 +150,9 @@ void ParticlePlugin::run() {
 		dist_to_id[distance].push_back(id);
 			
 	}
-	
+	lock.unlock();
+	std::this_thread::sleep_for(std::chrono::microseconds(wait_micros));
+	lock.lock();
 	int num_instances = std::min(max_visible, (int)particles.size());
 	std::vector<ParticleInstance> instances = std::vector<ParticleInstance>(num_instances);
 	int i = num_instances - 1;
