@@ -152,25 +152,34 @@ public:
 	}
 
 	template<typename T>
-	std::shared_ptr<const T> observeNearest(const std::string& local_world) {
+	std::shared_ptr<const T> observeNearest(const std::string& local_world, const glm::vec3& to) {
 		std::shared_ptr<const T> closest;
 		std::vector<std::shared_ptr<const WorldObject>> objects = observe(local_world);
 		if (objects.size() == 0) {
 			return closest;
 		}
 		float closest_distance = FLT_MAX;
-		glm::vec3 vantage = worlds[local_world].vantage_point;
 		for (std::shared_ptr<const WorldObject>& obj : objects) {
 			std::shared_ptr<const T> inst = dynamic_pointer_cast<const T>(obj);
 			if (inst) {
-				float distance = glm::distance2(inst->position, vantage);
+				float distance = glm::distance2(inst->position, to);
 				if (distance < closest_distance) {
-					distance = closest_distance;
+					closest_distance = distance;
 					closest = inst;
 				}
 			}
 		}
 		return closest;
+	}
+
+	template<typename T>
+	std::shared_ptr<const T> observeNearest(const std::string& local_world) {
+		auto iter = worlds.find(local_world) ;
+		if(iter == worlds.end()){
+			return nullptr ;
+		}
+		glm::vec3 vantage = iter->second.vantage_point;
+		return observeNearest<T>(local_world, vantage);
 	}
 
 	//Calls created, updated and destroyed on all views as required with the latest observations
