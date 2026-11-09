@@ -1115,7 +1115,7 @@ public:
 
 		}
 		//renderer->stampTime(cmd, "E");
-		if(texture_set_descriptor){
+		if(texture_set_descriptor || textures.size() == 0){
 			vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
 			if(textures.size() >0){
 				program->bindTextures(cmd, texture_set_descriptor);
