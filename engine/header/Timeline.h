@@ -72,6 +72,20 @@ public:
 		bool destroyed = false;// set to true to "delete" an object, this will cause attempted reads aftyerward to return nullptr and event executions to fail
 		int64_t random_seed = 0 ;
 
+		//Custom copy constructor explictly severs writing_event link to be safe for cross thread access
+		WorldObject(const WorldObject& other) {
+			this->position = other.position;
+			this->id = other.id;
+			this->time = other.time;
+			this->event_position = other.event_position;
+			this->destroyed = other.destroyed;
+			this->random_seed = other.random_seed;
+			// Explicitly do NOT copy writing_event
+			this->writing_event = nullptr;
+		}
+
+		WorldObject() = default;
+
 		virtual ~WorldObject() = default; // Force to be polymorphic
 
 		// returns the type id of the object in the given registry
