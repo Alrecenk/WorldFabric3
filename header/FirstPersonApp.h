@@ -130,9 +130,10 @@ private:
 	std::chrono::high_resolution_clock::time_point last_input_time = now();
 
 	int light_id = -1; // Scene light
-	float mouse_depth = 11.0f;
-	float mouse_size = 0.1f;
+	float mouse_depth = 0.5f;
+	float mouse_size = 0.002f;
 	int mouse_particle_id = -1;
+	glm::vec4 crosshair_color = glm::vec4(1, 1, 1, 0.5f);
 	std::shared_ptr<RayGrab> mouse_action = std::make_shared<RayGrab>();
 	std::shared_ptr<PosedGrab> posed_action_left = std::make_shared<PosedGrab>(0.025f);
 	std::shared_ptr<PosedGrab> posed_action_right = std::make_shared<PosedGrab>(0.025f);
