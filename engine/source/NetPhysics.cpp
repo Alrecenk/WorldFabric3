@@ -552,7 +552,6 @@ void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
 
-
 	//printf("Warm impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
 	if (body_1.body->receives_impulse) {
 		body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
@@ -582,9 +581,11 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, normal), r1), normal);
-	float rot_term2 = glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, normal), r2), normal);
-	float effective_mass_n = body_1_type.inv_mass + body_2_type.inv_mass + rot_term1 + rot_term2;
+	float rot_term1 = body_1.body->receives_impulse ? glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, normal), r1), normal) : 0;
+	float rot_term2 = body_2.body->receives_impulse ? glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, normal), r2), normal) : 0;
+	float effective_mass_n = (body_1.body->receives_impulse ?  body_1_type.inv_mass : 0) + 
+							 (body_2.body->receives_impulse ? body_2_type.inv_mass : 0) +
+							 rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
 		//printf("Collision early exit\n");
 		return; // two immovable objects
