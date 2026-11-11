@@ -41,6 +41,11 @@ void FirstPersonApp::enter(std::shared_ptr<MachineState> from) {
 	posed_action_right->world = WORLD;
 
 	window->setRelativeMouseMode(true) ;
+
+	mouse_particle_id = particles->createParticle(0);
+	particles->setColor(mouse_particle_id, crosshair_color);
+	particles->setPose(mouse_particle_id, glm::mat4(1.0f));
+
 	//scene->moveLight<ScenePlugin::ScreenPushConstants, ScenePlugin::LightComponent>(light_id, light_position, light_look_at, glm::vec3(0, 1, 0), 0.7, 35);
 
 }
@@ -81,6 +86,12 @@ void FirstPersonApp::run() {
 	glm::vec3 ray_direction = window->getPixelRay(window->window_target->width*0.5f, window->window_target->height * 0.5f) ;
 	bool grabbing = input->getBoolean("grab");
 	mouse_action->performAction(ray_origin, ray_direction, grabbing);
+
+	glm::mat4 mouse_pose = glm::mat4(1.0f);
+	mouse_pose = glm::translate(mouse_pose, ray_origin + ray_direction * mouse_depth);
+	mouse_pose = glm::scale(mouse_pose, glm::vec3(mouse_size, mouse_size, mouse_size));
+	particles->setPose(mouse_particle_id, mouse_pose);
+	particles->setViewPosition(ray_origin);
 
 
 	if (OpenXRPlugin::ENABLED) {

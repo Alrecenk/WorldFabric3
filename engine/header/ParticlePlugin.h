@@ -43,7 +43,7 @@ public:
 	static inline std::string tag = "Particles";
 	static inline int PARTICLE_RENDER_PHASE = 1000; // Note these are just defaults and may need to be set
 	static inline int PARTICLE_RENDER_GROUP = -1; 
-	static inline int wait_micros = 1000 ; // Micros to wait before finalizing poses
+	static inline int wait_micros = 3000 ; // Micros to wait before finalizing poses
 
 	ParticlePlugin(VulkanPlugin* renderer, int max_visible, Variant& vertex_shader_file_data, Variant& frag_shader_file_data, std::unordered_set<std::shared_ptr<RenderTarget>> render_targets);
 
