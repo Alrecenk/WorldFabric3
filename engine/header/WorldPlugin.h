@@ -380,7 +380,6 @@ private:
 	std::recursive_mutex packet_lock ; // lock specifically for processing packets since the main lock is used for cross plugin access
 
 	std::string version = "none" ;
-	bool wait_enabled = false;
 
 	int simulated_lag_micros = 0; // 0 disables fake lag path entirely
 	int simulated_jitter = 0 ;

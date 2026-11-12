@@ -621,15 +621,6 @@ public:
 	std::shared_ptr<RenderTarget> getAShadowTarget(){
 		return lights.begin()->second.targets[0] ;
 	}
-	
-	// if wait for signal is enabled then the scene waits for signalReady to be called before processing models
-	//This hurts performance but can reduce responsiveness by guaranteeding models update on the same frame as user input
-	void enableWaitForSignal(bool enable) ;
-
-	//Tell the scene to begin processing if waitForSignal is enabled
-	void signalReady();
-	void signalNotReady();
-
 
 	//Sets the morph weights on a model to be applied to all instances
 	void setMorphWeights(std::string model_name, std::vector<float> weights);
@@ -657,7 +648,6 @@ private:
 	std::unordered_map<int, Light> lights;
 	
 	int next_light = 0 ;
-	bool wait_enabled = false;
 
 	std::chrono::high_resolution_clock::time_point last_scene_run_time = now();
 	float last_dt = 1.0f/120.0f;
