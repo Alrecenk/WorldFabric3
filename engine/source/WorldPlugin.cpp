@@ -569,6 +569,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 	}
 
 	socket = client ;
+	
 	connections.clear();
 	//connections[0].address = address ;
 	//connections[0].socket_id = 0;
@@ -578,10 +579,12 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 		std::this_thread::sleep_for(std::chrono::microseconds(simulated_lag_micros));
 	}
 	bool connected = client->connect(address, port);
+	client.reset();
 	if(!connected){
 		printf("IP connection failed\n");
 		disconnect();
 		connection_pending = false;
+		
 		return ;
 	}
 	printf("Successfully connected by IP!\n");
