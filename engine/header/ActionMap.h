@@ -62,11 +62,11 @@ public:
 	//1) The trigger and action are in the same context.
 	//2) The geometry of the trigger intersect the geometry of the action.
 	//3) The action reciever overrides ActionReceiver for the type of action
-	virtual void receiveAction(T* action, ActionTrigger* trigger) = 0;
+	virtual void receiveAction(T* action, int trigger_id) = 0;
 
 	//An action may wish to send a signal to an item it previously intersected
 	// For instance to alert an item being interacted with that it not longer intersectsthe trigger
-	virtual void receiveSignal(int signal_type, T* action, ActionTrigger* trigger){};
+	virtual void receiveSignal(int signal_type, T* action, int trigger_id){};
 
 };
 
@@ -83,6 +83,7 @@ public:
 		int id = next_trigger_id ;
 		next_trigger_id++;
 		triggers[id] = trigger ;
+		trigger->id = id ;
 		lock.unlock();
 		return id ;
 	}
@@ -100,6 +101,15 @@ public:
 		}
 	}
 
+	std::shared_ptr<ActionTrigger> getTrigger(int trigger_id){
+		auto iter = triggers.find(trigger_id);
+		if(iter != triggers.end()){
+			return iter->second ;
+		}else{
+			return nullptr ;
+		}
+	}
+
 	//Immediately performs an action, sending it to all recievers whose triggers are hit
 	// returns the number of triggers the action was sent to
 	template <typename T>
@@ -113,7 +123,7 @@ public:
 			triggers.pop();
 			ActionReceiver<T>* receiver = dynamic_cast<ActionReceiver<T>*>(trigger.second->action_receiver);
 			if (receiver) {
-				receiver->receiveAction(action, trigger.second.get());
+				receiver->receiveAction(action, trigger.second->id);
 				performed++;
 			}
 		}
@@ -227,7 +237,7 @@ public:
 	int hits = 0 ;
 	std::string world ;
 
-	ActionTrigger* active_item = nullptr; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
+	int active_item = -1; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
 	static inline int RELEASED = 1 ;
 	static inline int CLICKED = 2;
 	static inline int UPDATED = 3 ;
@@ -245,8 +255,8 @@ public:
 		hits = getTool<ActionMap>()->performAction(this) ;
 		
 		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
-		if(active_item != nullptr){
-			ActionReceiver<RayGrab>* receiver = dynamic_cast<ActionReceiver<RayGrab>*>(active_item->action_receiver);
+		if(active_item != -1){
+			ActionReceiver<RayGrab>* receiver = dynamic_cast<ActionReceiver<RayGrab>*>(getTool<ActionMap>()->getTrigger(active_item)->action_receiver);
 			if (receiver) {
 				if (released) {
 					receiver->receiveSignal(RELEASED, this, active_item);
@@ -278,7 +288,7 @@ public:
 	glm::mat4 current_pose ;
 	float box_size = 0;
 
-	ActionTrigger* active_item = nullptr; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
+	int active_item = -1; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
 	static inline int RELEASED = 1;
 	static inline int CLICKED = 2;
 	static inline int UPDATED = 3;
@@ -307,8 +317,8 @@ public:
 		hits = getTool<ActionMap>()->performAction(this);
 
 		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
-		if (active_item != nullptr) {
-			ActionReceiver<PosedGrab>* receiver = dynamic_cast<ActionReceiver<PosedGrab>*>(active_item->action_receiver);
+		if (active_item != -1) {
+			ActionReceiver<PosedGrab>* receiver = dynamic_cast<ActionReceiver<PosedGrab>*>(getTool<ActionMap>()->getTrigger(active_item)->action_receiver);
 			if (receiver) {
 				if (released) {
 					receiver->receiveSignal(RELEASED, this, active_item);

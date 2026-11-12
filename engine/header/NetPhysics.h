@@ -185,12 +185,12 @@ public:
 
 	~RigidBodyView() = default;
 
-	void receiveAction(RayGrab* action, ActionTrigger* trigger) override;
-	void receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) override;
+	void receiveAction(RayGrab* action, int trigger_id) override;
+	void receiveSignal(int signal, RayGrab* action,int trigger_id) override;
 
 
-	void receiveAction(PosedGrab* action, ActionTrigger* trigger) override;
-	void receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) override;
+	void receiveAction(PosedGrab* action, int trigger_id) override;
+	void receiveSignal(int signal, PosedGrab* action, int trigger_id) override;
 
 };
 
