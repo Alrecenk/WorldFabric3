@@ -377,7 +377,7 @@ void RigidBodyView::destroyed() {
 }
 
 
-void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
+void RigidBodyView::receiveAction(RayGrab* action, int trigger_id) {
 	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
 		ScenePlugin* scene = getTool<ScenePlugin>();
 		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
@@ -392,13 +392,13 @@ void RigidBodyView::receiveAction(RayGrab* action, ActionTrigger* trigger) {
 			action->hover_depth = t;
 			if (action->clicked) {
 				action->next_held = last_view->id;
-				action->active_item = trigger;
+				action->active_item = trigger_id;
 			}
 		}
 	}
 }
 
-void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* trigger) {
+void RigidBodyView::receiveSignal(int signal, RayGrab* action, int trigger_id) {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	if (signal == RayGrab::CLICKED) {
 		//printf("grabbed: %lld\n", last_view->id);
@@ -409,7 +409,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
 	}
 	else if (signal == RayGrab::RELEASED) {
-		action->active_item = nullptr;
+		action->active_item = -1;
 		action->next_held = -1;
 		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
@@ -438,7 +438,7 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, ActionTrigger* tr
 }
 
 
-void RigidBodyView::receiveAction(PosedGrab* action, ActionTrigger* trigger) {
+void RigidBodyView::receiveAction(PosedGrab* action, int trigger_id) {
 	//printf("Received pose action\n");
 	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
 		ScenePlugin* scene = getTool<ScenePlugin>();
@@ -452,14 +452,14 @@ void RigidBodyView::receiveAction(PosedGrab* action, ActionTrigger* trigger) {
 			action->hover_distance = distance;
 			if (action->clicked) {
 				action->next_held = last_view->id;
-				action->active_item = trigger;
+				action->active_item = trigger_id;
 				//printf("grabbed in receive! %lld  distance: %f\n", last_view->id, distance);
 			}
 		}
 	}
 }
 
-void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* trigger) {
+void RigidBodyView::receiveSignal(int signal, PosedGrab* action, int trigger_id) {
 	//printf("Received pose signal\n");
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	if (signal == PosedGrab::CLICKED) {
@@ -472,7 +472,7 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, ActionTrigger* 
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, false, true);
 	}
 	else if (signal == PosedGrab::RELEASED) {
-		action->active_item = nullptr;
+		action->active_item = -1;
 		action->next_held = -1;
 		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);

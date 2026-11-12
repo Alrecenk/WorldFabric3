@@ -554,13 +554,11 @@ void WorldPlugin::connect(const std::string& address, int port, const std::strin
 }
 
 void WorldPlugin::runConnect(const std::string& address, int port, const std::string& version) {
-	
 	if(socket){
 		disconnect();
 	}
 
 	auto client = std::shared_ptr<TCPClientSocket>(new TCPClientSocket());
-	
 	if (simulated_lag_micros > 0) {
 		fake_lag = std::shared_ptr<SlowPacketReceiver>(new SlowPacketReceiver(this, simulated_lag_micros, simulated_jitter));
 		client->setPacketReceiver(fake_lag.get());
@@ -569,6 +567,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 	}
 
 	socket = client ;
+	
 	connections.clear();
 	//connections[0].address = address ;
 	//connections[0].socket_id = 0;
@@ -578,6 +577,7 @@ void WorldPlugin::runConnect(const std::string& address, int port, const std::st
 		std::this_thread::sleep_for(std::chrono::microseconds(simulated_lag_micros));
 	}
 	bool connected = client->connect(address, port);
+	client.reset();
 	if(!connected){
 		printf("IP connection failed\n");
 		disconnect();
