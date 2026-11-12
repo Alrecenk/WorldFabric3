@@ -552,14 +552,13 @@ void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
 
-
 	//printf("Warm impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
-	if (body_1.body->receives_impulse) {
+	if (body_1.body->receives_impulse && body_2.body->applies_impulse) {
 		body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
 		glm::vec3 r1 = point - body_1.body->position;
 		body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse);
 	}
-	if (body_2.body->receives_impulse) {
+	if (body_2.body->receives_impulse && body_1.body->applies_impulse) {
 		body_2.body->velocity += impulse * RigidBody::types[body_2.body->type].inv_mass;
 		glm::vec3 r2 = point - body_2.body->position;
 		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse);
@@ -582,9 +581,11 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
 	//calculate effective mass
-	float rot_term1 = glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, normal), r1), normal);
-	float rot_term2 = glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, normal), r2), normal);
-	float effective_mass_n = body_1_type.inv_mass + body_2_type.inv_mass + rot_term1 + rot_term2;
+	float rot_term1 = body_1.body->receives_impulse ? glm::dot(glm::cross(body_1.inv_moment * glm::cross(r1, normal), r1), normal) : 0;
+	float rot_term2 = body_2.body->receives_impulse ? glm::dot(glm::cross(body_2.inv_moment * glm::cross(r2, normal), r2), normal) : 0;
+	float effective_mass_n = (body_1.body->receives_impulse ?  body_1_type.inv_mass : 0) + 
+							 (body_2.body->receives_impulse ? body_2_type.inv_mass : 0) +
+							 rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
 		//printf("Collision early exit\n");
 		return; // two immovable objects
@@ -598,11 +599,11 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	glm::vec3 impulse_vec_n = normal * current_impulse_n;
 
 	//Apply normal impulse
-	if (body_1.body->receives_impulse) {
+	if (body_1.body->receives_impulse && body_2.body->applies_impulse) {
 		body_1.body->velocity -= impulse_vec_n * body_1_type.inv_mass;
 		body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse_vec_n);
 	}
-	if (body_2.body->receives_impulse) {
+	if (body_2.body->receives_impulse && body_1.body->applies_impulse) {
 		body_2.body->velocity += impulse_vec_n * body_2_type.inv_mass;
 		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse_vec_n);
 	}
@@ -966,7 +967,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world, id);
-		if (body) {
+		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
 		}
 	}
@@ -1010,7 +1011,7 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world, id);
-		if (body) {
+		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
 		}
 	}
@@ -1053,7 +1054,7 @@ glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& t
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
-		if (body) {
+		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
 		}
 	}
