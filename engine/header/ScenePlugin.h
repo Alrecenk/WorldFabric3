@@ -43,8 +43,6 @@ public:
 	static inline int shadow_resolution = 1024;
 	//ui phase is typically 10000
 
-	static inline const int READY_FOR_SCENE = 56296549;//thread signal for when the scene waits to run
-
 	struct DefaultPushConstants {
 		glm::mat4 world_matrix;
 		alignas(16) glm::vec3 camera_position;
