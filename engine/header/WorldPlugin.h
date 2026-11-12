@@ -31,12 +31,12 @@ public:
 	static inline float server_vantage_warp_fraction = 0.0f;
 	static inline float extra_sync_depth = 0.2f ;
 
-	int simulated_lag_micros = 0; // 0 disables fake lag path entirely
-	int simulated_jitter = 0;
+	static inline int simulated_lag_micros = 0; // 0 disables fake lag path entirely
+	static inline int simulated_jitter = 0;
 	std::shared_ptr<SlowPacketReceiver> fake_lag;
-	double absolute_time = 0; // absolute time in seconds since this plugin started_running
-	double ping = 0; // most recent estimate of ping
-	float dt = 0; // last time step of the world plugin
+	static inline double absolute_time = 0; // absolute time in seconds since this plugin started_running
+	static inline double ping = 0; // most recent estimate of ping
+	static inline float dt = 0; // last time step of the world plugin
 
 	//Observations look ahead by a tiny amount in seconds so player actions are visible the frame they are on
 	static inline double observation_look_ahead = 1.0/240.0 ;
