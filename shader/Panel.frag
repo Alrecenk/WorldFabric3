@@ -46,5 +46,9 @@ layout( push_constant ) uniform constants
 
 void main() {
 	vec4 tex_color = texture(color_texture, in_tex_coord);
-	panel_color = tex_color ;
+	if(tex_color.a < 0.01){
+		discard;
+	}else{
+		panel_color = tex_color ;
+	}
 }

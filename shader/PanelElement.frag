@@ -71,13 +71,11 @@ void main() {
 	vec4 bg_color = t * bg_color_1 + (1-t) * bg_color_2 ;
 	float a = tex_color.a ;
 	if(x < box_border_width || y < box_border_width || x > w-box_border_width || y > h-box_border_width){
-		panel_color = box_border_color ;
+			panel_color = box_border_color ;
 	}else{
-		
 		if(a > 0.1){
 			panel_color = bg_color * (1-a) + tex_color * a ;
-
-		}else{
+		}else if(alpha_border_width > 0){
 			float n1a = getAlpha(vec2(x+alpha_border_width, y), w, h) ;
 			float n2a = getAlpha(vec2(x-alpha_border_width, y), w, h) ;
 			float n3a = getAlpha(vec2(x, y+alpha_border_width), w, h) ;
@@ -87,6 +85,9 @@ void main() {
 			}else{
 				panel_color = bg_color * (1-a) + tex_color * a ;
 			}
+		}else{
+			panel_color = bg_color ;
 		}
+		
 	}
 }

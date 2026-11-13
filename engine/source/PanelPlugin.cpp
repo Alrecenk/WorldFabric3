@@ -438,17 +438,25 @@ void PanelPlugin::Label::setText(std::string new_text) {
 		inst.bg_color_1 = back_color_1;
 		inst.bg_color_2 = back_color_2;
 		inst.box_border_color = border_color;
+		inst.box_border_width = box_border_width ;
+		inst.alpha_border_width = alpha_border_width ;
+		inst.alpha_border_color = alpha_border_color ;
 		inst.pose = pose;
 		panels->clearKeyFrames(panel, element);
 		panels->addPanelElementKeyFrame(panel, element, panels->getTime(), inst);
 	}
 }
 
-void PanelPlugin::Label::setColors(const glm::vec4& bg_1, const glm::vec4& bg_2, const glm::vec4& text, const glm::vec4& border){
+void PanelPlugin::Label::setColors(const glm::vec4& bg_1, const glm::vec4& bg_2, const glm::vec4& text,
+		const glm::vec4& border, int border_width,  const glm::vec4& alpha_border, int text_border_width){
 	back_color_1 = bg_1 ;
 	back_color_2 = bg_2 ;
 	border_color = border ;
 	text_color = text ;
+	box_border_width = border_width;
+	alpha_border_color = alpha_border ;
+	alpha_border_width = text_border_width;
+	
 	//printf("Set colors of a label!\n");
 	//Force text to regenerate
 	std::string new_text = this->text ;
