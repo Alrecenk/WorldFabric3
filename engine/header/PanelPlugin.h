@@ -585,6 +585,10 @@ public:
 		glm::vec4 back_color_1 = glm::vec4(0.1, 0, 0.4, 1.0);
 		glm::vec4 back_color_2 = glm::vec4(0.8, 0, 0.8, 0.4);
 
+		int box_border_width = 0 ;
+		int alpha_border_width = 0 ;
+		glm::vec4 alpha_border_color = glm::vec4(0.0, 0, 0.0, 0.0);
+
 		Label() {} // default constructor allows map of buttons
 		Label(int panel_id, const std::string& text, float x, float y, bool centered, const std::string& font);
 
@@ -595,7 +599,9 @@ public:
 		// interpolate to the given position over an amount of time
 		void moveTo(float x, float y, bool centered, double time_to_move);
 
-		void setColors(const glm::vec4& bg_1, const glm::vec4& bg_2, const glm::vec4& text, const glm::vec4& border);
+		void setColors(const glm::vec4& bg_1, const glm::vec4& bg_2, const glm::vec4& text, 
+			const glm::vec4& border = glm::vec4(0.0, 0.0, 0.0, 1), int border_width = 4,
+			const glm::vec4& alpha_border = glm::vec4(1.0, 1.0, 1.0, 0.95), int text_border_width = 4);
 	};
 
 	class TextBox {

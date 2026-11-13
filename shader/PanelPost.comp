@@ -38,19 +38,24 @@ void main() {
 	float alpha = panel_color.a ;	
 
 	vec4 scene_color = vec4(0,0,0,0) ;
-	if(alpha > 0.01){
 
-	for(int dx = -3; dx <=3; dx++){
-		for(int dy = -3; dy <=3; dy++){
-			scene_color += imageLoad(final_image, texelCoord + ivec2(dx,dy)) ;
-		}
-	}
-	scene_color /=49 ;
+
+	if(alpha > 0.02f && alpha < 0.98f){
+		//Blur the background behind the panel
+		scene_color = (imageLoad(final_image, texelCoord + ivec2(-3,-3)) +
+			//imageLoad(final_image, texelCoord + ivec2(-3,0)) +
+			imageLoad(final_image, texelCoord + ivec2(-3,3)) +
+			//imageLoad(final_image, texelCoord + ivec2(0,-3)) +
+			imageLoad(final_image, texelCoord + ivec2(0,0)) +
+			//imageLoad(final_image, texelCoord + ivec2(0,3)) +
+			imageLoad(final_image, texelCoord + ivec2(3,-3)) +
+			//imageLoad(final_image, texelCoord + ivec2(3,0)) +
+			imageLoad(final_image, texelCoord + ivec2(3,3)) )*0.2f ;
 	}else{
 		scene_color = imageLoad(final_image, texelCoord) ;
 	}
 	
-	vec4 new_color = panel_color * panel_color.a + scene_color * (1.0 - panel_color.a) ;
-	new_color.a = 1.0 ;
-	imageStore(final_image, texelCoord, new_color); 
+	vec4 new_color = panel_color * panel_color.a + scene_color * (1.0f - panel_color.a) ;
+	new_color.a = 1.0f ;
+	imageStore(color, texelCoord, new_color); 
 }
