@@ -869,7 +869,7 @@ void Cell::runPhysics(){
 	for (const int64_t& body_id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(body_id);
 		if (body) {
-			if(time - body->time > frame_length && !body->asleep){
+			if(time - body->time > frame_length && !body->asleep && body->receives_impulse){
 				printf("Rigid body is too old, speed of light is too low for physics! Age: %lf  FrameLength: %lf\n", time - body->time, frame_length);
 			}
 			read_bodies[body_id] = body->computeBodyInstant();
