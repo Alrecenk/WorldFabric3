@@ -256,15 +256,24 @@ public:
 		
 		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
 		if(active_item != -1){
-			ActionReceiver<RayGrab>* receiver = dynamic_cast<ActionReceiver<RayGrab>*>(getTool<ActionMap>()->getTrigger(active_item)->action_receiver);
-			if (receiver) {
-				if (released) {
-					receiver->receiveSignal(RELEASED, this, active_item);
-				}else if(clicked) {
-					receiver->receiveSignal(CLICKED, this, active_item);
-				}else{
-					receiver->receiveSignal(UPDATED, this, active_item);
+			std::shared_ptr<ActionTrigger> trigger = getTool<ActionMap>()->getTrigger(active_item) ;
+			if(trigger){ // trigger could have been asynchronously deleted
+				ActionReceiver<RayGrab>* receiver = dynamic_cast<ActionReceiver<RayGrab>*>(trigger->action_receiver);
+				if (receiver) { // reciever may not support RayGrab
+					if (released) {
+						receiver->receiveSignal(RELEASED, this, active_item);
+					}else if(clicked) {
+						receiver->receiveSignal(CLICKED, this, active_item);
+					}else{
+						receiver->receiveSignal(UPDATED, this, active_item);
+					}
+				}else {
+					active_item = -1;
+					next_held = -1 ;
 				}
+			}else{
+				active_item = -1 ;
+				next_held = -1;
 			}
 		}
 		held = next_held ;
@@ -318,17 +327,26 @@ public:
 
 		//If an item sets held and active item then it will receive updates regardless of if it is still intersecting
 		if (active_item != -1) {
-			ActionReceiver<PosedGrab>* receiver = dynamic_cast<ActionReceiver<PosedGrab>*>(getTool<ActionMap>()->getTrigger(active_item)->action_receiver);
-			if (receiver) {
-				if (released) {
-					receiver->receiveSignal(RELEASED, this, active_item);
+			std::shared_ptr<ActionTrigger> trigger = getTool<ActionMap>()->getTrigger(active_item);
+			if (trigger) { // trigger could have been asynchronously deleted
+				ActionReceiver<PosedGrab>* receiver = dynamic_cast<ActionReceiver<PosedGrab>*>(trigger->action_receiver);
+				if (receiver) {
+					if (released) {
+						receiver->receiveSignal(RELEASED, this, active_item);
+					}
+					else if (clicked) {
+						receiver->receiveSignal(CLICKED, this, active_item);
+					}
+					else {
+						receiver->receiveSignal(UPDATED, this, active_item);
+					}
+				} else {
+					active_item = -1;
+					next_held = -1;
 				}
-				else if (clicked) {
-					receiver->receiveSignal(CLICKED, this, active_item);
-				}
-				else {
-					receiver->receiveSignal(UPDATED, this, active_item);
-				}
+			} else {
+				active_item = -1;
+				next_held = -1;
 			}
 		}
 		held = next_held;
