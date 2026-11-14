@@ -958,9 +958,9 @@ void Cell::removeBody(const int64_t& body_id) {
 }
 
 //Returns if the given position for the given object is not colliding objects in this cell
-bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const{
+bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<RigidBody>& test_copy, const glm::vec3& target_position, bool immoveable_only, float allowed_penetration) const{
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
+	
 	test_copy->position = target_position;
 	BodyInstant tester = test_copy->computeBodyInstant();
 
@@ -972,7 +972,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 		}
 	}
 	BodyType& tester_type = RigidBody::types[tester.body->type];
-
+	float ap2 =allowed_penetration * allowed_penetration ;
 	for (auto& [id, body] : read_bodies) {
 		if (body.body->id != tester.body->id &&
 			(!immoveable_only || !body.body->receives_impulse) &&
@@ -982,12 +982,13 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 			//printf("AABBs are colliding\n");
 			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
 				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
-
-					auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-					if (simplex.size() > 0) {
-						Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-						if(glm::dot(sp.x,sp.x) > 1e-5f){ // some leeway to not count jus touching
-							return false ;
+					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
+						auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+							if(glm::dot(sp.x,sp.x) > ap2){ // some leeway to not count jus touching
+								return false ;
+							}
 						}
 					}
 				}
@@ -998,13 +999,16 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 	return  true ;
 
 }
+bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only, float allowed_penetration) const {
+	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
+	return validPositionExternal(world, test_copy, target_position, immoveable_only, allowed_penetration) ;
+}
 
 //Returns the nearest position to the target that the given body could be placed without colliding
 //with the contents of this cell from the perspective of the active vantage point in the given world
 //Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
-glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const{
+glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<RigidBody>& test_copy, const glm::vec3& target_position, bool immoveable_only) const{
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
 	test_copy->position = target_position;
 	BodyInstant tester = test_copy->computeBodyInstant();
 	
@@ -1026,13 +1030,14 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 			//printf("AABBs are colliding\n");
 			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
 				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
-
-					auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-					if (simplex.size() > 0) {
-						Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
+						auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
 						
-						tester.body->position += sp.x;
-						tester = tester.body->computeBodyInstant();
+							tester.body->position += sp.x;
+							tester = tester.body->computeBodyInstant();
+						}
 					}
 				}
 			}
@@ -1041,6 +1046,12 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 
 	return  tester.body->position;
 }
+
+glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const {
+	WorldPlugin* worlds = getTool<WorldPlugin>();
+	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
+	return nearestValidPositionExternal(world, test_copy, target_position, immoveable_only) ;
+	}
 
 //Returns the nearest position to the target that the given body could be placed without colliding
 //with the contents of this cell from the perspective of the calling world object (TODO check this is true)
@@ -1069,13 +1080,14 @@ glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& t
 			//printf("AABBs are colliding\n");
 			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
 				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
+					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
+						auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
+						if (simplex.size() > 0) {
+							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
 
-					auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-					if (simplex.size() > 0) {
-						Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-
-						tester.body->position += sp.x;
-						tester = tester.body->computeBodyInstant();
+							tester.body->position += sp.x;
+							tester = tester.body->computeBodyInstant();
+						}
 					}
 				}
 			}
