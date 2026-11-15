@@ -116,7 +116,6 @@ public:
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
 		auto copy = std::make_shared<RigidBody>(*this);
-		copy->writing_event = nullptr ;
 		return copy ;
 	}
 
@@ -371,6 +370,9 @@ public:
 	//Note: This is for user controls that move bodies and is for use only INSIDE world events (like from a player controller handling a rigid body)
 	glm::vec3 nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const;
 
+	//Gets the nearest valid position given a list of BodyInstants to push out of
+	static glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only, std::map<int64_t, BodyInstant>& read_bodies) ;
+
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
 	int getTypeId(Registry* r) const override{
@@ -379,7 +381,6 @@ public:
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
 		auto copy = std::make_shared<Cell>(*this);
-		copy->writing_event = nullptr ;
 		return copy ;
 	}
 
@@ -433,7 +434,6 @@ public:
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
 		auto copy = std::make_shared<Root>(*this);
-		copy->writing_event = nullptr ;
 		return copy;
 	}
 

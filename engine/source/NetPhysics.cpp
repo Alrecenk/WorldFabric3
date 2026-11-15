@@ -1014,9 +1014,6 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 //Note: This is for user controls that move bodies and is for use only OUTSIDE world events (like from views or actions)
 glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<RigidBody>& test_copy, const glm::vec3& target_position, bool immoveable_only) const{
 	WorldPlugin* worlds = getTool<WorldPlugin>();
-	test_copy->position = target_position;
-	BodyInstant tester = test_copy->computeBodyInstant();
-	
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world, id);
@@ -1024,49 +1021,20 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 			read_bodies[id] = body->computeBodyInstant();
 		}
 	}
-	BodyType& tester_type = RigidBody::types[tester.body->type];
-
-	for (auto& [id, body] : read_bodies) {
-		if (body.body->id != tester.body->id &&
-			(!immoveable_only || !body.body->receives_impulse) &&
-			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
-			BodyType& body_type = RigidBody::types[body.body->type];
-
-			//printf("AABBs are colliding\n");
-			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
-				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
-					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
-						auto simplex = Physics::detectCollision(&body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-						if (simplex.size() > 0) {
-							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
-						
-							tester.body->position += sp.x;
-							tester = tester.body->computeBodyInstant();
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return  tester.body->position;
+	return  nearestValidPosition(test_copy, target_position, immoveable_only, read_bodies);
 }
 
 glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
 	return nearestValidPositionExternal(world, test_copy, target_position, immoveable_only) ;
-	}
+}
 
 //Returns the nearest position to the target that the given body could be placed without colliding
 //with the contents of this cell from the perspective of the calling world object (TODO check this is true)
 //Note: This is for user controls that move bodies and is for use only INSIDE world events (like from a player controller handling a rigid body)
 glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const {
-	WorldPlugin* worlds = getTool<WorldPlugin>();
 	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
-	test_copy->position = target_position;
-	BodyInstant tester = test_copy->computeBodyInstant();
-
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
@@ -1074,6 +1042,12 @@ glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& t
 			read_bodies[id] = body->computeBodyInstant();
 		}
 	}
+	return nearestValidPosition(test_copy, target_position, immoveable_only, read_bodies) ;
+}
+
+glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_copy, const glm::vec3& target_position, bool immoveable_only, std::map<int64_t, BodyInstant>& read_bodies) {
+	test_copy->position = target_position;
+	BodyInstant tester = test_copy->computeBodyInstant();
 	BodyType& tester_type = RigidBody::types[tester.body->type];
 
 	for (auto& [id, body] : read_bodies) {
