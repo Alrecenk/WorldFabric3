@@ -166,11 +166,11 @@ void RigidBody::runPhysics(){
 			}
 		}
 	}
-	if(amount > 0){
+	if(amount > 0 && !just_set){
 		velocity = v_total / amount ;
 		angular_velocity = av_total/amount ;
 	}
-	
+	just_set = false ;
 
 	
 	//Move this object with its updated velocity
@@ -230,12 +230,24 @@ void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat
 	velocity = v;
 	orientation = o;
 	angular_velocity = av;
+	just_set = true ;
 	wakeUp();
 }
 
 void RigidBody::setInteractions(const bool& receives, const bool& applies) {
 	receives_impulse = receives;
 	applies_impulse = applies;
+	wakeUp();
+}
+
+void RigidBody::setStateandInteractions(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av, const bool& receives, const bool& applies) {
+	position = p;
+	velocity = v;
+	orientation = o;
+	angular_velocity = av;
+	receives_impulse = receives;
+	applies_impulse = applies;
+	just_set = true;
 	wakeUp();
 }
 
@@ -923,7 +935,7 @@ void Cell::runPhysics(){
 			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
 		){
 			asleep = false;
-			queue(body_id,time+ random() * frame_length * 0.05, &RigidBody::setState, body.body->position, body.body->velocity, body.body->orientation, body.body->angular_velocity) ;
+			queue(body_id, time + random() * frame_length * 0.05, &RigidBody::wakeUp);
 		}else if(!body.body->asleep){
 			asleep = false;
 		}
@@ -1146,6 +1158,8 @@ void registerPhysics(){
 	worlds->registerMethod(&RigidBody::runPhysics, "RigidBody::runPhysics");
 	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
 	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
+	worlds->registerMethod(&RigidBody::setStateandInteractions, "RigidBody::setStateandInteractions");
+	worlds->registerMethod(&RigidBody::wakeUp, "RigidBody::wakeUp");
 	worlds->registerMethod(&RigidBody::setOwner, "RigidBody::setOwner");
 	worlds->registerMethod(&RigidBody::destroy, "RigidBody::destroy");
 

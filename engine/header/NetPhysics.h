@@ -71,6 +71,8 @@ public:
 	bool collect_collisions = false;
 	std::set<int64_t> collisions ;
 
+	bool just_set = false ; // if just set then don't overwrite with cell data
+
 	static inline float interframe_time = 0.1f; //when in a frame a lockstep component should run its tick
 	static inline int frames_to_sleep = 5 ; //if I body doesn't move for this many frames it will go to sleep
 	static inline float world_radius = 14.0f ; // Should be slightly less than max read distance, so objects are stopped before they escape the root
@@ -97,6 +99,10 @@ public:
 
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
+	
+
+	void setStateandInteractions(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av, const bool& receives, const bool& applies) ;
+
 
 	//Sets the owner ID that may be read by other objects
 	void setOwner(const int64_t& new_owner);
@@ -116,6 +122,7 @@ public:
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
 		auto copy = std::make_shared<RigidBody>(*this);
+		copy->writing_event = nullptr ;
 		return copy ;
 	}
 
@@ -143,7 +150,7 @@ public:
 auto static getStructure(RigidBody& o) {
 	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, 
 					o.owner, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, 
-					o.asleep, o.last_active_frame, o.collect_collisions, o.collisions) ;
+					o.asleep, o.last_active_frame, o.collect_collisions, o.collisions, o.just_set) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {
