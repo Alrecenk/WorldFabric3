@@ -89,6 +89,7 @@ BodyInstant RigidBody::computeBodyInstant() const{
 	glm::mat3 r = glm::mat3_cast(orientation);
 	data.inv_moment = r * types[type].base_inv_moment * glm::transpose(r);
 	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
+	data.part_AABB.reserve(types[type].shape.size()) ;
 	for (auto& s : types[type].shape) {
 		auto  sAABB = s->getAABB(data.pose);
 		data.part_AABB.push_back(sAABB) ;
@@ -781,7 +782,7 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 		for (auto& [id2, body_2] : bodies) {
 			BodyType& body_2_type = RigidBody::types[body_2.body->type];
 			if (id1 < id2 && // only check each pair once
-				//collision_disabled.find({ id1,id2 }) == collision_disabled.end() &&  // collision not explicitly disabled between this pair
+				(!body_1.body->asleep || !body_2.body->asleep) && // at least one body is awake
 				(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
 				Physics::AABBIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
 				//printf("AABBs intersect  %lld to %lld\n", id1, id2);
@@ -841,7 +842,11 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 	std::vector<int64_t> to_delete;
 	for (auto& [c_id, constraint] : collisions) {
 		if (found_constraints.find(c_id) == found_constraints.end()) {
-			to_delete.push_back(c_id);
+			auto iter1 = bodies.find(constraint.id_1) ;
+			auto iter2 = bodies.find(constraint.id_2);
+			if(iter1 == bodies.end() || iter2 == bodies.end() || !iter1->second.body->asleep || !iter2->second.body->asleep){// don't delete constraints on an asleep pair
+				to_delete.push_back(c_id);
+			}
 		}
 	}
 	for (auto& c_id : to_delete) {
