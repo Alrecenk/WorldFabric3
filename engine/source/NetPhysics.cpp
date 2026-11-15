@@ -79,6 +79,12 @@ void RigidBody::integrateVelocity(float dt) {
 }
 
 BodyInstant RigidBody::computeBodyInstant() const{
+	auto iter = instant_cache.find(id);
+	if(iter != instant_cache.end()){
+		if(iter->second.first == state_hash){
+			return iter->second.second ;
+		}
+	}
 	BodyInstant data ;
 	data.body = std::make_shared<RigidBody>(*this);
 	data.pose = glm::mat4(1.0f);
@@ -89,6 +95,7 @@ BodyInstant RigidBody::computeBodyInstant() const{
 	glm::mat3 r = glm::mat3_cast(orientation);
 	data.inv_moment = r * types[type].base_inv_moment * glm::transpose(r);
 	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
+	data.part_AABB.reserve(types[type].shape.size()) ;
 	for (auto& s : types[type].shape) {
 		auto  sAABB = s->getAABB(data.pose);
 		data.part_AABB.push_back(sAABB) ;
@@ -99,6 +106,10 @@ BodyInstant RigidBody::computeBodyInstant() const{
 		data.AABB.first.z = fmin(data.AABB.first.z, sAABB.first.z);
 		data.AABB.second.z = fmax(data.AABB.second.z, sAABB.second.z);
 	}
+
+	
+	instant_cache[state_hash] = {state_hash,data} ;
+	
 
 	return data ;
 }
@@ -217,6 +228,9 @@ void RigidBody::runPhysics(){
 		position *= world_radius/sqrtf(d2) ;
 		asleep = true ;
 	}
+
+	int64_t hash64 = hashBytes(serialize(position, orientation, type));
+	state_hash = (int)(hash64 & 0xffffffff) ^ (int)(hash64 >> 32) & 0xffffffff; // store hash of state so we can memoize instant data
 
 	//Requeue this event at the beginning of the next frame
 	if(!asleep){

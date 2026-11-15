@@ -6,6 +6,7 @@
 #include "ActionMap.h"
 
 #include <map>
+#include <unordered_map>
 
 
 namespace NetPhysics {
@@ -66,6 +67,10 @@ public:
 
 	bool asleep = false; // if a body is asleep it is not calling runPhysics
 	int last_active_frame = 0; // Last frame a body moved on
+	int state_hash = -1 ; // hash of this bodies state on last move (used ot memoize body instants)
+
+	//maps id to sleep hash and instant, used to memoize Body Instants
+	static inline std::unordered_map<int64_t, std::pair<int, BodyInstant>> instant_cache ;
 
 	//If collect_collisions is set to true then IDs of all colliding bodies will be stored in collisions
 	bool collect_collisions = false;
@@ -144,7 +149,7 @@ public:
 auto static getStructure(RigidBody& o) {
 	return std::tie(o.type, o.position, o.velocity, o.orientation, o.angular_velocity, 
 					o.owner, o.root_id, o.cells, o.receives_impulse, o.applies_impulse, 
-					o.asleep, o.last_active_frame, o.collect_collisions, o.collisions) ;
+					o.asleep, o.last_active_frame, o.collect_collisions, o.collisions, o.state_hash) ;
 }
 
 class RigidBodyView : public ObjectView<RigidBody>, public ActionReceiver<RayGrab>, public ActionReceiver<PosedGrab> {
