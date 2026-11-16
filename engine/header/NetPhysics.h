@@ -122,7 +122,6 @@ public:
 
 	std::shared_ptr<WorldObject> deepCopy() const override {
 		auto copy = std::make_shared<RigidBody>(*this);
-		copy->writing_event = nullptr ;
 		return copy ;
 	}
 

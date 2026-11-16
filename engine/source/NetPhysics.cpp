@@ -902,14 +902,14 @@ void Cell::runPhysics(){
 	for (auto& [body_id, constraint] : collisions) {
 		auto iter1 = read_bodies.find(constraint.id_1);
 		auto iter2 = read_bodies.find(constraint.id_2);
-		if(iter1 != read_bodies.end() && iter2 != read_bodies.end()){
+		if(iter1 != read_bodies.end() && iter2 != read_bodies.end() && (!iter1->second.body->asleep || !iter2->second.body->asleep)){
 			constraint.updateConstraints(iter1->second, iter2->second);
 		}
 	}
 	for (auto& [body_id, constraint] : collisions) {
 		auto iter1 = read_bodies.find(constraint.id_1);
 		auto iter2 = read_bodies.find(constraint.id_2);
-		if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
+		if (iter1 != read_bodies.end() && iter2 != read_bodies.end() && (!iter1->second.body->asleep || !iter2->second.body->asleep)) {
 			constraint.applyWarmingImpulses(iter1->second, iter2->second);
 		}
 	}
@@ -918,7 +918,7 @@ void Cell::runPhysics(){
 		for (auto& [body_id, constraint] : collisions) {
 			auto iter1 = read_bodies.find(constraint.id_1);
 			auto iter2 = read_bodies.find(constraint.id_2);
-			if (iter1 != read_bodies.end() && iter2 != read_bodies.end()) {
+			if (iter1 != read_bodies.end() && iter2 != read_bodies.end() && (!iter1->second.body->asleep || !iter2->second.body->asleep)) {
 				constraint.applyConstraints(iter1->second, iter2->second);
 			}
 		}
