@@ -278,6 +278,12 @@ bool WorldPlugin::createWorld(const std::string& world_name, float info_speed, f
 	return true ;
 }
 
+//Returns whether a world currently exists
+bool WorldPlugin::hasWorld(const std::string& world_name){
+	auto iter = worlds.find(world_name) ;
+	return iter != worlds.end() && iter->second.timeline;
+}
+
 // Sets the local viewing position within the given world
 void WorldPlugin::setVantagePoint(const std::string& world_name, const glm::vec3& vantage){
 	auto iter = worlds.find(world_name);

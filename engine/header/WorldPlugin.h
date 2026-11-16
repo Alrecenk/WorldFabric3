@@ -112,6 +112,9 @@ public:
 	// Returns if successful (may fail if world_name is taken already or parameters are invalid
 	bool createWorld(const std::string& world_name, float info_speed, float min_event_duration, float max_read_distance);
 
+	//Returns whether a world currently exists
+	bool hasWorld(const std::string& world_name) ;
+
 	// Sets the local viewing position within the given world
 	void setVantagePoint(const std::string& world_name, const glm::vec3& vantage) ;
 
