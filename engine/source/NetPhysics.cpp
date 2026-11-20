@@ -209,7 +209,7 @@ void RigidBody::runPhysics(){
 	}
 
 	// Don't sleep bodies before they can get into the grid
-	asleep = frame - last_active_frame  > frames_to_sleep && cells.size() > 0; 
+	asleep = frame - last_active_frame  > frames_to_sleep && cells.size() > 0 && !collect_collisions; 
 	//Objects that escape the world are frozen at the boundary
 	float d2 = glm::dot(position, position) ;
 	if(d2 > world_radius*world_radius){
@@ -248,6 +248,13 @@ void RigidBody::setStateandInteractions(const glm::vec3& p, const glm::vec3& v, 
 	receives_impulse = receives;
 	applies_impulse = applies;
 	just_set = true;
+	wakeUp();
+}
+
+void RigidBody::applyVelocityChange(const glm::vec3& delta_v, const glm::vec3& delta_av){
+	velocity+= delta_v ;
+	angular_velocity += delta_av ;
+	just_set = true ; // TODO shouldn't ned to do this and it could cause collisions to not resolve quickly
 	wakeUp();
 }
 
@@ -1160,6 +1167,7 @@ void registerPhysics(){
 	worlds->registerMethod(&RigidBody::setInteractions, "RigidBody::setInteractions");
 	worlds->registerMethod(&RigidBody::setState, "RigidBody::setState");
 	worlds->registerMethod(&RigidBody::setStateandInteractions, "RigidBody::setStateandInteractions");
+	worlds->registerMethod(&RigidBody::applyVelocityChange, "RigidBody::applyVelocityChange");
 	worlds->registerMethod(&RigidBody::wakeUp, "RigidBody::wakeUp");
 	worlds->registerMethod(&RigidBody::setOwner, "RigidBody::setOwner");
 	worlds->registerMethod(&RigidBody::destroy, "RigidBody::destroy");

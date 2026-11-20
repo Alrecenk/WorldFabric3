@@ -100,9 +100,10 @@ public:
 	//Sets how this body interacts with others through constraints
 	void setInteractions(const bool& receives, const bool& applies);
 	
-
 	void setStateandInteractions(const glm::vec3& p, const glm::vec3& v, const glm::quat& o, const glm::vec3& av, const bool& receives, const bool& applies) ;
 
+
+	void applyVelocityChange(const glm::vec3& delta_v, const glm::vec3& delta_av);
 
 	//Sets the owner ID that may be read by other objects
 	void setOwner(const int64_t& new_owner);
@@ -247,7 +248,7 @@ public:
 	glm::vec3 local_b; // point on surface of b in B's local coordinates
 
 	//The values below are used internally within an cell update but are not saved across frames
-	glm::vec3 point; // middle point of collision
+	glm::vec3 point ; // middle point of collision
 	std::vector<glm::vec3> tangents;
 	float penetration_depth = 0;
 	float target = 0;
@@ -377,7 +378,7 @@ public:
 	glm::vec3 nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const;
 
 	//Gets the nearest valid position given a list of BodyInstants to push out of
-	static glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only, std::map<int64_t, BodyInstant>& read_bodies) ;
+	static glm::vec3 nearestValidPosition(std::shared_ptr<RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only, std::map<int64_t, BodyInstant>& read_bodies) ;
 
 	//This needs to be in every WorldObject to deduce types for serialziation templates from polymorphism
 	// Just change the template parameter to match your class
