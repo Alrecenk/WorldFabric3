@@ -235,6 +235,7 @@ public:
 	bool released = false; // if the mouse was just released this frame
 	bool pressed = false;
 	int hits = 0 ;
+	int button = 0 ; 
 	std::string world ;
 
 	int active_item = -1; // Reciever should set this when it is held to be notified on actions in case it no longer intersects
@@ -242,9 +243,10 @@ public:
 	static inline int CLICKED = 2;
 	static inline int UPDATED = 3 ;
 
-	void performAction(const glm::vec3& origin, const glm::vec3& direction, bool button_down){
+	void performAction(const glm::vec3& origin, const glm::vec3& direction, bool button_down,int button){
 		this->origin = origin ;
 		this->direction= direction ;
+		this->button = button ;
 		clicked = button_down && !pressed ;
 		released = !button_down && pressed;
 		pressed = button_down ;
@@ -292,6 +294,7 @@ public:
 	bool clicked = false; // if the button was just pressed down this frame
 	bool released = false; // if the button was just released this frame
 	bool pressed = false;
+	int button  = 0 ;
 	int hits = 0;
 	std::string world;
 	glm::mat4 current_pose ;
@@ -307,7 +310,7 @@ public:
 		box_size = size ;
 	}
 
-	void performAction(const glm::mat4& pose, bool button_down) {
+	void performAction(const glm::mat4& pose, bool button_down,int button) {
 		current_pose = pose ;
 		//Variant(current_pose).printFormatted() ;
 		//printf("Button down: %d\n", button_down) ;
@@ -319,6 +322,7 @@ public:
 		clicked = button_down && !pressed;
 		released = !button_down && pressed;
 		pressed = button_down;
+		this->button = button ;
 		hover = -1;
 		hover_distance = FLT_MAX;
 

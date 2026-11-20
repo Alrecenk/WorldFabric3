@@ -85,7 +85,7 @@ void FirstPersonApp::run() {
 	glm::vec3 ray_origin = window->window_target->camera_position;
 	glm::vec3 ray_direction = window->getPixelRay(window->window_target->width*0.5f, window->window_target->height * 0.5f) ;
 	bool grabbing = input->getBoolean("grab");
-	mouse_action->performAction(ray_origin, ray_direction, grabbing);
+	mouse_action->performAction(ray_origin, ray_direction, grabbing, 1);
 
 	glm::mat4 mouse_pose = glm::mat4(1.0f);
 	mouse_pose = glm::translate(mouse_pose, ray_origin + ray_direction * mouse_depth);
@@ -99,12 +99,12 @@ void FirstPersonApp::run() {
 		//TODO switch to JSON bindable action instead of direct
 		glm::mat4 current_left_hand_pose = controls->getPose("/actions/general/in/left_pose");
 		bool grabbing_left = controls->getBoolean("/actions/general/in/press_x");
-		posed_action_left->performAction(current_left_hand_pose, grabbing_left);
+		posed_action_left->performAction(current_left_hand_pose, grabbing_left, 1);
 
 
 		glm::mat4 current_right_hand_pose = controls->getPose("/actions/general/in/right_pose");
 		bool grabbing_right = controls->getBoolean("/actions/general/in/press_a");
-		posed_action_right->performAction(current_right_hand_pose, grabbing_right);
+		posed_action_right->performAction(current_right_hand_pose, grabbing_right, 2);
 
 		if (cursor_instance_left == -1) {
 			scene->createModelSet(CURSOR_MODEL, CURSOR_MODEL, false);
