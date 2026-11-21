@@ -78,28 +78,36 @@ void RigidBody::integrateVelocity(float dt) {
 
 BodyInstant RigidBody::computeBodyInstant() const{
 	BodyInstant data ;
-	data.body = std::make_shared<RigidBody>(*this);
-	data.pose = glm::mat4(1.0f);
-	data.pose = glm::translate(data.pose, position);
-	data.pose = data.pose * glm::mat4_cast(orientation);
-	data.inv_pose = glm::inverse(data.pose);
-
-	glm::mat3 r = glm::mat3_cast(orientation);
-	data.inv_moment = r * types[type].base_inv_moment * glm::transpose(r);
-	data.AABB = { {FLT_MAX,FLT_MAX,FLT_MAX},{-FLT_MAX,-FLT_MAX,-FLT_MAX} };
-	data.part_AABB.reserve(types[type].shape.size()) ;
-	for (auto& s : types[type].shape) {
-		auto  sAABB = s->getAABB(data.pose);
-		data.part_AABB.push_back(sAABB) ;
-		data.AABB.first.x = fmin(data.AABB.first.x, sAABB.first.x);
-		data.AABB.second.x = fmax(data.AABB.second.x, sAABB.second.x);
-		data.AABB.first.y = fmin(data.AABB.first.y, sAABB.first.y);
-		data.AABB.second.y = fmax(data.AABB.second.y, sAABB.second.y);
-		data.AABB.first.z = fmin(data.AABB.first.z, sAABB.first.z);
-		data.AABB.second.z = fmax(data.AABB.second.z, sAABB.second.z);
-	}
+	data.body = this;
+	data.position = position ;
+	data.velocity = velocity ;
+	data.angular_velocity = angular_velocity ;
+	data.computePosedInfo();
 
 	return data ;
+}
+
+void BodyInstant::computePosedInfo(){
+	pose = glm::mat4(1.0f);
+	pose = glm::translate(pose, position);
+	glm::mat3 r = glm::mat3_cast(body->orientation); // TODO don't convert quat to matrix twice!
+	pose = pose * glm::mat4_cast(body->orientation);
+	inv_pose = glm::inverse(pose);
+
+	
+	inv_moment = r * RigidBody::types[body->type].base_inv_moment * glm::transpose(r);
+	AABB = { { FLT_MAX,FLT_MAX,FLT_MAX },{ -FLT_MAX,-FLT_MAX,-FLT_MAX } };
+	part_AABB.reserve(RigidBody::types[body->type].shape.size());
+	for (auto& s : RigidBody::types[body->type].shape) {
+		auto sAABB = s->getAABB(pose);
+		part_AABB.push_back(sAABB);
+		AABB.first.x = fmin(AABB.first.x, sAABB.first.x);
+		AABB.second.x = fmax(AABB.second.x, sAABB.second.x);
+		AABB.first.y = fmin(AABB.first.y, sAABB.first.y);
+		AABB.second.y = fmax(AABB.second.y, sAABB.second.y);
+		AABB.first.z = fmin(AABB.first.z, sAABB.first.z);
+		AABB.second.z = fmax(AABB.second.z, sAABB.second.z);
+	}
 }
 
 void RigidBody::integrateAcceleration(float dt, const glm::vec3& acceleration) {
@@ -518,10 +526,10 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, int trigger_id)
 //Update the constraint target based on information at the start of the frame
 void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	//lever arms for torque
-	glm::vec3 r1 = point - body_1.body->position;
-	glm::vec3 r2 = point - body_2.body->position;
-	glm::vec3 contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
-	glm::vec3 contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	glm::vec3 r1 = point - body_1.position;
+	glm::vec3 r2 = point - body_2.position;
+	glm::vec3 contact_velocity_1 = body_1.velocity + glm::cross(body_1.angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2.velocity + glm::cross(body_2.angular_velocity, r2);
 	float velocity_against_normal = glm::dot(contact_velocity_1 - contact_velocity_2, normal);
 
 	float restitution_bias = 0.0f; // inelastic
@@ -551,14 +559,14 @@ void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
 	warm_impulse = normal * glm::dot(normal, warm_impulse);
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
 	if (body_1.body->receives_impulse && body_2.body->applies_impulse) {
-		body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
-		glm::vec3 r1 = point - body_1.body->position;
-		body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse);
+		body_1.velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
+		glm::vec3 r1 = point - body_1.position;
+		body_1.angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse);
 	}
 	if (body_2.body->receives_impulse && body_1.body->applies_impulse) {
-		body_2.body->velocity += impulse * RigidBody::types[body_2.body->type].inv_mass;
-		glm::vec3 r2 = point - body_2.body->position;
-		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse);
+		body_2.velocity += impulse * RigidBody::types[body_2.body->type].inv_mass;
+		glm::vec3 r2 = point - body_2.position;
+		body_2.angular_velocity += body_2.inv_moment * glm::cross(r2, impulse);
 	}
 }
 
@@ -569,11 +577,11 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	BodyType& body_2_type = RigidBody::types[body_2.body->type];
 
 	//lever arms for torque
-	glm::vec3 r1 = point - body_1.body->position;
-	glm::vec3 r2 = point - body_2.body->position;
+	glm::vec3 r1 = point - body_1.position;
+	glm::vec3 r2 = point - body_2.position;
 
-	glm::vec3 contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
-	glm::vec3 contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	glm::vec3 contact_velocity_1 = body_1.velocity + glm::cross(body_1.angular_velocity, r1);
+	glm::vec3 contact_velocity_2 = body_2.velocity + glm::cross(body_2.angular_velocity, r2);
 	glm::vec3 relative_velocity = contact_velocity_2 - contact_velocity_1;
 	float velocity_along_normal = glm::dot(relative_velocity, normal);
 
@@ -596,12 +604,12 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 
 	//Apply normal impulse
 	if (body_1.body->receives_impulse && body_2.body->applies_impulse) {
-		body_1.body->velocity -= impulse_vec_n * body_1_type.inv_mass;
-		body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse_vec_n);
+		body_1.velocity -= impulse_vec_n * body_1_type.inv_mass;
+		body_1.angular_velocity -= body_1.inv_moment * glm::cross(r1, impulse_vec_n);
 	}
 	if (body_2.body->receives_impulse && body_1.body->applies_impulse) {
-		body_2.body->velocity += impulse_vec_n * body_2_type.inv_mass;
-		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, impulse_vec_n);
+		body_2.velocity += impulse_vec_n * body_2_type.inv_mass;
+		body_2.angular_velocity += body_2.inv_moment * glm::cross(r2, impulse_vec_n);
 	}
 	
 
@@ -609,8 +617,8 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 	warm_impulse += impulse_vec_n;
 
 	// Recalculate velocities at point after normal impulse
-	contact_velocity_1 = body_1.body->velocity + glm::cross(body_1.body->angular_velocity, r1);
-	contact_velocity_2 = body_2.body->velocity + glm::cross(body_2.body->angular_velocity, r2);
+	contact_velocity_1 = body_1.velocity + glm::cross(body_1.angular_velocity, r1);
+	contact_velocity_2 = body_2.velocity + glm::cross(body_2.angular_velocity, r2);
 	relative_velocity = contact_velocity_2 - contact_velocity_1;
 
 
@@ -645,12 +653,12 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 
 	// Apply Tangent Impulse
 	if(body_1.body->receives_impulse){
-		body_1.body->velocity -= tangent_impulse * body_1_type.inv_mass;
-		body_1.body->angular_velocity -= body_1.inv_moment * glm::cross(r1, tangent_impulse);
+		body_1.velocity -= tangent_impulse * body_1_type.inv_mass;
+		body_1.angular_velocity -= body_1.inv_moment * glm::cross(r1, tangent_impulse);
 	}
 	if(body_2.body->receives_impulse){
-		body_2.body->velocity += tangent_impulse * body_2_type.inv_mass;
-		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, tangent_impulse);
+		body_2.velocity += tangent_impulse * body_2_type.inv_mass;
+		body_2.angular_velocity += body_2.inv_moment * glm::cross(r2, tangent_impulse);
 	}
 
 	//update warm impulse
@@ -911,11 +919,11 @@ void Cell::runPhysics(){
 	asleep = true ;
 	for(auto& [body_id, body] : read_bodies){
 		//Save results that real bodies want to read
-		constraint_result[body_id] = {body.body->velocity - constraint_result[body_id].first, body.body->angular_velocity - constraint_result[body_id].second } ;
+		constraint_result[body_id] = {body.velocity - constraint_result[body_id].first, body.angular_velocity - constraint_result[body_id].second } ;
 		//Wake up sleeping bodies if they are being moved
 		if(body.body->asleep && body.body->receives_impulse && (
-			glm::dot(body.body->velocity, body.body->velocity) > sleep_speed2 ||
-			glm::dot(body.body->angular_velocity, body.body->angular_velocity) > angular_sleep_speed2 )
+			glm::dot(body.velocity, body.velocity) > sleep_speed2 ||
+			glm::dot(body.angular_velocity, body.angular_velocity) > angular_sleep_speed2 )
 		){
 			asleep = false;
 			queue(body_id, time + random() * frame_length * 0.05, &RigidBody::wakeUp);
@@ -960,6 +968,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<Rigid
 	
 	test_copy->position = target_position;
 	BodyInstant tester = test_copy->computeBodyInstant();
+	
 
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
@@ -1052,8 +1061,8 @@ glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_copy, cons
 						if (simplex.size() > 0) {
 							Physics::SupportPoint sp = Physics::getPenetration(simplex, &body, body_type.shape[shape_1].get(), &tester, tester_type.shape[shape_2].get());
 
-							tester.body->position += sp.x;
-							tester = tester.body->computeBodyInstant();
+							tester.position += sp.x;
+							tester.computePosedInfo();
 						}
 					}
 				}
@@ -1061,7 +1070,7 @@ glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_copy, cons
 		}
 	}
 
-	return  tester.body->position;
+	return  tester.position;
 }
 
 

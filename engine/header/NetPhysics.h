@@ -42,10 +42,15 @@ class RigidBody ;
 //An editable reference to a body with computed fields filled out
 class BodyInstant : public Physics::PosedBody{
 public:
-	std::shared_ptr<RigidBody> body ;
+	const RigidBody* body ;
+	glm::vec3 position;
+	glm::vec3 velocity;
+	glm::vec3 angular_velocity ;
 	glm::mat3 inv_moment;
 	std::pair<glm::vec3, glm::vec3> AABB;
 	std::vector<std::pair<glm::vec3, glm::vec3>> part_AABB ;
+
+	void computePosedInfo();
 
 };
 
