@@ -1204,8 +1204,11 @@ void countEdge(const SupportPoint& A, const SupportPoint& B, std::vector<Support
 // Uses expanding polytope algorithm on result of detectCollision
 // Returns a supportPoint containg the resolution vector in x and the closest points on the shapes in a and b
 SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB, int max_iterations) {
-	std::vector<SupportTriangle> polytope = collision_result;
+	std::vector<SupportTriangle> polytope ;
+	polytope.reserve(15);
+	polytope.insert(polytope.end(), collision_result.begin(), collision_result.end());
 	std::vector<SupportEdge> edge_list;
+	edge_list.reserve(10);
 	int iterations = 0;
 	while (true) {
 
@@ -1243,6 +1246,7 @@ SupportPoint getPenetration(std::vector<SupportTriangle>& collision_result, cons
 
 			//printf("a:%f, b:%f, c:%f\n", a,b,c) ;
 			//printf(" %f == %f, %f == %f, %f == %f\n",collision_point.x.x, closest_x.x, collision_point.x.y, closest_x.y, collision_point.x.z, closest_x.z) ;
+			//printf("polytope capacity: %d edge_list capacity: %d\n", (int)polytope.capacity(), (int)edge_list.capacity()) ;
 			SupportPoint collision_point = active_face.A * a + active_face.B * b + active_face.C * c;
 			return collision_point;
 		}
