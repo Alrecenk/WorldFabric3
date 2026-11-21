@@ -130,8 +130,7 @@ public:
 	}
 
 
-	static inline std::map<int, BodyType> types;
-	static inline int next_type_id = 1;
+	static inline std::vector<BodyType> types;
 
 	//Create an objects type with various ConvexShape input
 	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
@@ -257,8 +256,10 @@ public:
 	static inline float min_velocity_for_elastic = 0.05f;
 	static inline float retarget_normal_alignment_minimum = 0.95f;
 
-	static int64_t getHash(int64_t id1, int s1, int64_t id2, int s2) {
-		return hashBytes(serialize(id1, s1, id2, s2, CONSTRAINT_TYPE));
+	static inline int64_t getHash(const int64_t& id1,const char& s1, const int64_t& id2, const char& s2) {
+		int packed = (s1 | (s2 << 10) | CONSTRAINT_TYPE << 20) ;
+		return packed ^ (id1 << 2) ^ (id2 >> 2) ;
+		//return hashBytes(serialize(id1, s1, id2, s2, CONSTRAINT_TYPE));
 	}
 
 	//Update the constraint target based on information at the start of the frame

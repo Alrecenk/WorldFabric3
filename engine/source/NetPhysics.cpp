@@ -275,9 +275,8 @@ void RigidBody::wakeUp(){
 }
 
 int RigidBody::addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction) {
-	int id = next_type_id;
-	next_type_id++;
-	types[id] = BodyType(shape, model, render_transform, elasticity, friction);
+	int id = types.size();
+	types.emplace_back(shape, model, render_transform, elasticity, friction);
 	return id;
 }
 
@@ -725,11 +724,21 @@ void ManifoldCollision::addConstraint(Collision& new_point, BodyInstant& body_1,
 		points.push_back(new_point);
 	}
 
+	/*
 	std::vector<Collision> new_points;
 	for (int k : to_keep) {
 		new_points.push_back(points[k]);
 	}
 	points = new_points;
+	*/
+	
+	int k = 0 ;
+	for (const auto& j : to_keep) {
+		points[k] = points[j];
+		k++;
+	}
+	points.resize(to_keep.size());
+
 }
 
 //Update the constraint targets based on information at the start of the frame
@@ -775,8 +784,8 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 					(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
 					Physics::AABBIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
 					bool collides = false;
-					for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
-						for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
+					for (unsigned char shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
+						for (unsigned char shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
 							if(Physics::AABBIntersect(body_1.part_AABB[shape_1], body_2.part_AABB[shape_2])){
 								auto simplex = Physics::detectCollision(&body_1, body_1_type.shape[shape_1].get(), &body_2, body_2_type.shape[shape_2].get());
 								if (simplex.size() > 0) {
@@ -789,7 +798,6 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 										if (penetration_depth > Collision::allowed_collision_depth * 0.5f) {
 											glm::vec3 point = (sp.a + sp.b) * 0.5f;
 											glm::vec3 normal = glm::normalize(sp.x);
-											normal = glm::normalize(normal);
 											int64_t constraint_hash = Collision::getHash(id1, shape_1, id2, shape_2);
 
 											Collision constraint;
