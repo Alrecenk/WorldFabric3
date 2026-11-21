@@ -63,7 +63,6 @@ void RigidBody::integrateVelocity(float dt) {
 	if (receives_impulse) { // don't integrate bodies that aren't running impulse physics
 
 		position += velocity * dt;
-		//printf("moved: %f,%f,%f\n", velocity.x * dt, velocity.y * dt, velocity.z * dt) ;
 		// Update orientation quaternion
 		// dq/dt = 0.5 * omega * q
 		glm::quat omega_quat(0, angular_velocity.x, angular_velocity.y, angular_velocity.z);
@@ -75,7 +74,6 @@ void RigidBody::integrateVelocity(float dt) {
 	if(speed > max_sleep_speed || angular_speed > max_sleep_angular_speed){
 		last_active_frame = (int)(time * Root::ticks_per_second) ;
 	}
-	
 }
 
 BodyInstant RigidBody::computeBodyInstant() const{
@@ -131,14 +129,12 @@ void RigidBody::integrateAcceleration(float dt, const glm::vec3& acceleration) {
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void RigidBody::runPhysics(){
-	//printf("rigid body run physics %lf \n", time);
 	double frame_length = 1.0 / Root::ticks_per_second;
 	int frame = (int)(time * Root::ticks_per_second);
 	double target_time = (frame + interframe_time) * frame_length;
 
 	//If this function is off step then it's probably new (or maybe backed up)
 	if(fabs(time-target_time)> frame_length *0.1){
-		//printf("Miss-step, target: %lf\n", target_time) ;
 		last_active_frame = frame ;
 		queue(id,target_time + frame_length,&RigidBody::runPhysics) ; // requeue on the step
 		return ; // take no other action at this time
@@ -166,19 +162,33 @@ void RigidBody::runPhysics(){
 			}
 		}
 	}
-	if(amount > 0 && !just_set){
-		velocity = v_total / amount ;
-		angular_velocity = av_total/amount ;
+	if(amount > 0){
+		velocity += v_total / amount ;
+		angular_velocity += av_total/amount ;
 	}
-	just_set = false ;
 
 	
 	//Move this object with its updated velocity
 	float dt = 1.0f/Root::ticks_per_second ;
 	integrateVelocity(dt);
+
+	// Don't sleep bodies before they can get into the grid
+	asleep = frame - last_active_frame > frames_to_sleep && cells.size() > 0 && !collect_collisions;
+
+	//Objects that escape the world are frozen at the boundary
+	float d2 = glm::dot(position, position);
+	if (d2 > world_radius * world_radius) {
+		velocity = glm::vec3(0, 0, 0);
+		angular_velocity = glm::vec3(0, 0, 0);
+		position *= world_radius / sqrtf(d2);
+		asleep = true;
+	}
+
 	std::shared_ptr<const Root> root = read<Root>(root_id);
 	if (root) {
-		integrateAcceleration(dt, root->acceleration);
+		if(!asleep){
+			integrateAcceleration(dt, root->acceleration);
+		}
 		//Check our cells and send updates iff they have changed
 		std::pair<std::vector<int64_t>, bool> new_cells = root->getCells(position, types[type].bounding_radius);
 
@@ -208,17 +218,6 @@ void RigidBody::runPhysics(){
 		}
 	}
 
-	// Don't sleep bodies before they can get into the grid
-	asleep = frame - last_active_frame  > frames_to_sleep && cells.size() > 0 && !collect_collisions; 
-	//Objects that escape the world are frozen at the boundary
-	float d2 = glm::dot(position, position) ;
-	if(d2 > world_radius*world_radius){
-		velocity = glm::vec3(0,0,0);
-		angular_velocity = glm::vec3(0, 0, 0);
-		position *= world_radius/sqrtf(d2) ;
-		asleep = true ;
-	}
-
 	//Requeue this event at the beginning of the next frame
 	if(!asleep){
 		queue(id, target_time + frame_length, &RigidBody::runPhysics);
@@ -230,7 +229,6 @@ void RigidBody::setState(const glm::vec3& p, const glm::vec3& v, const glm::quat
 	velocity = v;
 	orientation = o;
 	angular_velocity = av;
-	just_set = true ;
 	wakeUp();
 }
 
@@ -247,14 +245,12 @@ void RigidBody::setStateandInteractions(const glm::vec3& p, const glm::vec3& v, 
 	angular_velocity = av;
 	receives_impulse = receives;
 	applies_impulse = applies;
-	just_set = true;
 	wakeUp();
 }
 
 void RigidBody::applyVelocityChange(const glm::vec3& delta_v, const glm::vec3& delta_av){
 	velocity+= delta_v ;
 	angular_velocity += delta_av ;
-	just_set = true ; // TODO shouldn't ned to do this and it could cause collisions to not resolve quickly
 	wakeUp();
 }
 
@@ -421,7 +417,6 @@ void RigidBodyView::receiveAction(RayGrab* action, int trigger_id) {
 void RigidBodyView::receiveSignal(int signal, RayGrab* action, int trigger_id) {
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	if (signal == RayGrab::CLICKED) {
-		//printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_depth;
 		glm::vec3 world_point = action->origin + action->direction * grab_distance;
 		grab_offset = last_view->position - world_point;
@@ -431,12 +426,9 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, int trigger_id) {
 	else if (signal == RayGrab::RELEASED) {
 		action->active_item = -1;
 		action->next_held = -1;
-		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}
 	else if (signal == RayGrab::UPDATED) {
-		//printf("updating: %lld\n", last_view->id);
-
 		glm::vec3 world_point = grab_offset + action->origin + action->direction * grab_distance;
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
 		world_point = cell->nearestValidPositionExternal(action->world, last_view, world_point, true);
@@ -459,7 +451,6 @@ void RigidBodyView::receiveSignal(int signal, RayGrab* action, int trigger_id) {
 
 
 void RigidBodyView::receiveAction(PosedGrab* action, int trigger_id) {
-	//printf("Received pose action\n");
 	if (action->held == -1 && last_view->receives_impulse) { // no piece currently held and this body is grabbable
 		ScenePlugin* scene = getTool<ScenePlugin>();
 		std::shared_ptr<GLTF> model = scene->getModelController(RigidBody::types[last_view->type].model);
@@ -467,23 +458,19 @@ void RigidBodyView::receiveAction(PosedGrab* action, int trigger_id) {
 		glm::vec3 world_point = (action->min + action->max) * 0.5f;
 		float distance = glm::distance(world_point, last_position) ;//TODO avoid sqrt
 		if (distance < action->hover_distance) {// Only act if the actual model was hit and the closest
-			//printf("Hovered Distance: %f\n", distance);
 			action->hover = last_view->id;
 			action->hover_distance = distance;
 			if (action->clicked) {
 				action->next_held = last_view->id;
 				action->active_item = trigger_id;
-				//printf("grabbed in receive! %lld  distance: %f\n", last_view->id, distance);
 			}
 		}
 	}
 }
 
 void RigidBodyView::receiveSignal(int signal, PosedGrab* action, int trigger_id) {
-	//printf("Received pose signal\n");
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	if (signal == PosedGrab::CLICKED) {
-		//printf("grabbed: %lld\n", last_view->id);
 		grab_distance = action->hover_distance;
 		glm::vec3 world_point = (action->min + action->max)*0.5f;
 		grab_pose_offset = glm::inverse(action->current_pose) * pose ;
@@ -494,20 +481,15 @@ void RigidBodyView::receiveSignal(int signal, PosedGrab* action, int trigger_id)
 	else if (signal == PosedGrab::RELEASED) {
 		action->active_item = -1;
 		action->next_held = -1;
-		//printf("released: %lld\n", last_view->id) ;
 		getTool<WorldPlugin>()->queue(action->world, last_view->id, &RigidBody::setInteractions, true, true);
 	}
 	else if (signal == PosedGrab::UPDATED) {
-		//printf("updating: %lld\n", last_view->id);
 		glm::mat4 held_pose = action->current_pose * grab_pose_offset ;
 		glm::vec3 world_point = held_pose*glm::vec4(0,0,0,1);
 		std::shared_ptr< const Cell> cell = worlds->observeNearest<Cell>(action->world); // TODO support mutlicell
 		world_point = cell->nearestValidPositionExternal(action->world, last_view, world_point, true);
-
 		double dt = last_view->time - last_grab_time;
-
 		if (dt > 1e-4f) {
-
 			glm::vec3 v = (world_point - last_view->position) / dt;
 			float speed = glm::length(v);
 			if (speed > max_grab_velocity) {
@@ -566,13 +548,9 @@ void Collision::updateConstraint(BodyInstant& body_1, BodyInstant& body_2){
 
 //Apply starting impulses carried over if the constraint has existed for multiple frames in a row
 void Collision::applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2){
-
 	warm_tangent_impulse -= normal * glm::dot(normal, warm_tangent_impulse);
 	warm_impulse = normal * glm::dot(normal, warm_impulse);
-
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
-
-	//printf("Warm impulse: %f, %f, %f\n", impulse.x, impulse.y, impulse.z) ;
 	if (body_1.body->receives_impulse && body_2.body->applies_impulse) {
 		body_1.body->velocity -= impulse * RigidBody::types[body_1.body->type].inv_mass;
 		glm::vec3 r1 = point - body_1.body->position;
@@ -607,7 +585,6 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 							 (body_2.body->receives_impulse ? body_2_type.inv_mass : 0) +
 							 rot_term1 + rot_term2;
 	if (effective_mass_n <= 1e-6f) {
-		//printf("Collision early exit\n");
 		return; // two immovable objects
 	}
 
@@ -677,13 +654,10 @@ void Collision::applyConstraint(BodyInstant& body_1, BodyInstant& body_2){
 		body_2.body->angular_velocity += body_2.inv_moment * glm::cross(r2, tangent_impulse);
 	}
 
-	//printf("appled impulse!\n");
 	//update warm impulse
 	warm_tangent_impulse = accumulated_friction;
 
 	glm::vec3 impulse = warm_impulse + warm_tangent_impulse;
-
-	//printf("Warm impulse after apply: %f, %f, %f\n", impulse.x, impulse.y, impulse.z);
 }
 
 //Retargets this constraint to the objects after they have moved
@@ -756,8 +730,6 @@ void ManifoldCollision::addConstraint(Collision& new_point, BodyInstant& body_1,
 		new_points.push_back(points[k]);
 	}
 	points = new_points;
-
-	//printf("collision manifold updated to %d points\n", (int)points.size()) ;
 }
 
 //Update the constraint targets based on information at the start of the frame
@@ -777,7 +749,6 @@ void ManifoldCollision::applyWarmingImpulses(BodyInstant& body_1, BodyInstant& b
 
 //Applies impulses to velocity of involved bodies to satisfy these constraints
 void ManifoldCollision::applyConstraints(BodyInstant& body_1, BodyInstant& body_2){
-	//printf("manifold applying constraints to %d points\n", (int)points.size());
 	for (auto& p : points) {
 		p.applyConstraint(body_1, body_2);
 	}
@@ -794,7 +765,6 @@ Cell::Cell(int64_t root, const glm::vec3& pos, float cell_size){
 //Creates or destroys constraints so the contents of constraints match the current collisions
 //Also sets points and normals for collisions
 void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
-	//printf("Updating collisions on %d bodies\n", (int)bodies.size()) ;
 	std::set<int64_t> found_constraints;
 	for (auto& [id1, body_1] : bodies) {
 		BodyType& body_1_type = RigidBody::types[body_1.body->type] ;
@@ -804,7 +774,6 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 				if ((!body_1.body->asleep || !body_2.body->asleep) && // at least one body is awake
 					(body_1_type.inv_mass > 0 || body_2_type.inv_mass > 0 || body_1.body->collect_collisions || body_2.body->collect_collisions) && // only check if one is moveable or needs list
 					Physics::AABBIntersect(body_1.AABB, body_2.AABB)) { // check AABBs first
-					//printf("AABBs intersect  %lld to %lld\n", id1, id2);
 					bool collides = false;
 					for (int shape_1= 0; shape_1 < body_1_type.shape.size(); shape_1++) {
 						for (int shape_2 = 0; shape_2 < body_2_type.shape.size(); shape_2++) {
@@ -878,14 +847,12 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void Cell::runPhysics(){
-	//printf("cell run physics called!\n");
 	double frame_length = 1.0 / Root::ticks_per_second;
 	int frame = (int)(time * Root::ticks_per_second);
 	double target_time = (interframe_time + frame) * frame_length;
 
 	// If this function is off step then it's probably new (or maybe backed up)
 	if (fabs(time - target_time) > frame_length * 0.1) {
-		//printf("Miss-step, target: %lf\n", target_time) ;
 		queue(id, target_time + frame_length, &Cell::runPhysics); // requeue on the step
 		return; // take no other action at this time
 	}
@@ -898,6 +865,7 @@ void Cell::runPhysics(){
 				printf("Rigid body is too old, speed of light is too low for physics! Age: %lf  FrameLength: %lf\n", time - body->time, frame_length);
 			}
 			read_bodies[body_id] = body->computeBodyInstant();
+			constraint_result[body_id] = { body->velocity, body->angular_velocity} ; // hold dstart values so we can calculate change at the end
 		}else{
 			//printf("body could not be read!\n");
 		}
@@ -921,7 +889,6 @@ void Cell::runPhysics(){
 		}
 	}
 	for (int i = 0; i < Root::constraint_iterations; i++) {
-		//printf("Constraint iteration: %d\n", i) ;
 		for (auto& [body_id, constraint] : collisions) {
 			auto iter1 = read_bodies.find(constraint.id_1);
 			auto iter2 = read_bodies.find(constraint.id_2);
@@ -936,7 +903,7 @@ void Cell::runPhysics(){
 	asleep = true ;
 	for(auto& [body_id, body] : read_bodies){
 		//Save results that real bodies want to read
-		constraint_result[body_id] = {body.body->velocity, body.body->angular_velocity} ;
+		constraint_result[body_id] = {body.body->velocity - constraint_result[body_id].first, body.body->angular_velocity - constraint_result[body_id].second } ;
 		//Wake up sleeping bodies if they are being moved
 		if(body.body->asleep && body.body->receives_impulse && (
 			glm::dot(body.body->velocity, body.body->velocity) > sleep_speed2 ||
@@ -948,7 +915,6 @@ void Cell::runPhysics(){
 			asleep = false;
 		}
 	}
-
 	if(!asleep){
 		queue(id,target_time + frame_length,&Cell::runPhysics) ;
 	}
@@ -956,7 +922,6 @@ void Cell::runPhysics(){
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
-	//printf("cell addbody called! %lld\n", body_id);
 	bodies.insert(body_id);
 	if(asleep){
 		asleep = false;
@@ -970,7 +935,6 @@ void Cell::addBody(const int64_t& body_id){
 
 //Removes a body to the cell
 void Cell::removeBody(const int64_t& body_id) {
-	//printf("cell removebody called! %lld\n", body_id);
 	bodies.erase(body_id);
 	if (asleep) {
 		asleep = false;
@@ -1003,8 +967,6 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<Rigid
 			(!immoveable_only || !body.body->receives_impulse) &&
 			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
-
-			//printf("AABBs are colliding\n");
 			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
 				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
 					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
@@ -1075,8 +1037,6 @@ glm::vec3 Cell::nearestValidPosition(std::shared_ptr<RigidBody>& test_copy, cons
 			(!immoveable_only || !body.body->receives_impulse) &&
 			Physics::AABBIntersect(body.AABB, tester.AABB)) { // check AABBs first
 			BodyType& body_type = RigidBody::types[body.body->type];
-
-			//printf("AABBs are colliding\n");
 			for (int shape_1 = 0; shape_1 < body_type.shape.size(); shape_1++) {
 				for (int shape_2 = 0; shape_2 < tester_type.shape.size(); shape_2++) {
 					if (Physics::AABBIntersect(body.part_AABB[shape_1], tester.part_AABB[shape_2])) {
@@ -1148,7 +1108,6 @@ void Root::updateCells(const glm::vec3& center, const float& radius){
 					glm::vec3 pos =( glm::vec3(coord) + glm::vec3(0.5f,0.5f,0.5f))* cell_size ;
 					cells[coord] = create(std::make_shared<Cell>(id, pos, cell_size),time) ;
 					queue(cells[coord], target_time + frame_length, &Cell::runPhysics);
-					//printf("Created cell (%d) at: %f, %f, %f\n", (int)(cells.size()-1), pos.x,pos.y, pos.z) ;
 				}
 			}
 		}
