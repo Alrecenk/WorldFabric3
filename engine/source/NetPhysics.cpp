@@ -1083,10 +1083,15 @@ glm::ivec3 Root::getCellCoord(const glm::vec3& p) const{
 	return glm::ivec3( std::floor(p.x/cell_size), std::floor(p.y / cell_size), std::floor(p.z / cell_size)) ;
 }
 
+int Root::getCoordIndex(const glm::ivec3& coord) const{
+	return (coord.x + 128) << 16 | (coord.y + 128) << 8 |  (coord.z + 128)  ;
+}
+
 //returns the ids of all cells overlapping the bounding box of the given bounding sphere
 //The second element of the return is whether the root needs to be updated (i.e. to create more cells)
 //If the second element is true for a rigid body then that rigid body should call updateCells with the same data
 std::pair<std::vector<int64_t>, bool> Root::getCells(const glm::vec3& center, const float& radius) const{
+		//printf("get cells for (%f, %f, %f) radius: %f\n", center.x, center.y, center.z,radius) ;
 		std::vector<int64_t> result ;
 		glm::vec3 rad = glm::vec3(radius,radius,radius);
 		glm::ivec3 min = getCellCoord(center - rad);
@@ -1095,7 +1100,7 @@ std::pair<std::vector<int64_t>, bool> Root::getCells(const glm::vec3& center, co
 		for(int x = min.x ; x <=max.x; x++){
 			for (int y = min.y; y <= max.y; y++) {
 				for (int z = min.z; z <= max.z; z++) {
-					auto iter = cells.find(glm::ivec3(x,y,z)) ;
+					auto iter = cells.find(getCoordIndex(glm::ivec3(x,y,z))) ;
 					if(iter != cells.end()){
 						result.push_back(iter->second);
 					}else{
@@ -1120,20 +1125,22 @@ void Root::updateCells(const glm::vec3& center, const float& radius){
 		for (int y = min.y; y <= max.y; y++) {
 			for (int z = min.z; z <= max.z; z++) {
 				glm::ivec3 coord = glm::ivec3(x, y, z) ;
-				auto iter = cells.find(coord);
+				int index = getCoordIndex(coord) ;
+				auto iter = cells.find(index);
 				if (iter == cells.end()) {
 					glm::vec3 pos =( glm::vec3(coord) + glm::vec3(0.5f,0.5f,0.5f))* cell_size ;
-					cells[coord] = create(std::make_shared<Cell>(id, pos, cell_size),time) ;
-					queue(cells[coord], target_time + frame_length, &Cell::runPhysics);
+					cells[index] = create(std::make_shared<Cell>(id, pos, cell_size),time) ;
+					queue(cells[index], target_time + frame_length, &Cell::runPhysics);
 				}
 			}
 		}
 	}
+	//printf("Cells updated: %d\n", (int)cells.size()) ;
 }
 
 //Remove a cell from the table
 void Root::removeCell(const glm::vec3& center){
-	cells.erase(getCellCoord(center)) ;
+	cells.erase(getCoordIndex(getCellCoord(center))) ;
 }
 
 void registerPhysics(){

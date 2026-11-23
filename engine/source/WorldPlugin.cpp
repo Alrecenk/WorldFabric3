@@ -190,7 +190,9 @@ void WorldPlugin::run(){
 				for (auto& [name, world] : worlds) {
 					float sync_depth = extra_sync_depth + 1.01f* world.max_read_distance / world.max_info_speed ;// fudge it a little to make sure we send everything on the edge
 					//printf("Building packet with sync depth = %f seconds\n", sync_depth);
+					registry->resetSizeTotals();
 					Timeline::CopyPacket copy = world.timeline->copy(world.current_time - sync_depth);
+					registry->printSizeTotals();
 					copy.extra_string_data = { name }; // these need to match the constants that reference their locations
 					copy.extra_double_data = { 0, world.time_speed };
 					std::pair<int, std::vector<char>> packet = registry->serializeObj(&copy);
