@@ -90,6 +90,10 @@ SteamworksPlugin::~SteamworksPlugin(){
 
 // Called on every plug-in before any plug-ins are run
 void SteamworksPlugin::initialize() {
+	if (!enabled) {
+		return;
+	}
+	SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_SendBufferSize, PACKET_QUEUE_SIZE);
 	printf("Steamworks plugin started.\n");
 }
 
@@ -107,7 +111,7 @@ void SteamworksPlugin::pumpCallbacks(){
 		steam_socket->processIncomingPackets();
 	}
 
-
+	
 }
 
 // runs the plugin on its own thread
@@ -115,7 +119,7 @@ void SteamworksPlugin::run() {
 
 	pumpCallbacks();
 	initialized = true;
-	SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_SendBufferSize, PACKET_QUEUE_SIZE);
+	
 
 	if(join_lobby_pending && millisBetween(creation_time, now()) > 2000){
 		printf("Time waited before attempting to join %d\n", millisBetween(creation_time, now()));

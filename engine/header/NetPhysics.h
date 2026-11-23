@@ -411,7 +411,7 @@ class Root: public WorldObject {
 public:
 	float cell_size = -1 ;
 	
-	std::map<glm::ivec3, int64_t> cells ;
+	std::map<int, int64_t> cells ;
 
 	glm::vec3 acceleration = glm::vec3(0, -4.0, 0);
 
@@ -424,6 +424,8 @@ public:
 
 	//Returns the cell indices for a given point
 	glm::ivec3 getCellCoord(const glm::vec3& p) const ;
+
+	int Root::getCoordIndex(const glm::ivec3& coord) const ;
 
 	//returns the ids of all cells overlapping the bounding box of the given bounding sphere
 	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)

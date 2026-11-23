@@ -659,6 +659,7 @@ public:
 	std::unordered_map<int, std::string> method_name; // text names of methods for debugging
 	std::unordered_map<int, std::function<std::shared_ptr<BaseObjectView>()>> view_factories; //used to create associated views from objects
 
+	static inline std::map<int,int> obj_size_total ;
 
     // Adds a class to the registry
     template<typename T>
@@ -757,7 +758,9 @@ public:
     inline std::vector<char> serializeObj(int type_id, const void* objPtr) const {
         auto it = serializers.find(type_id);
         if (it != serializers.end()) {
-            return it->second(objPtr);
+			auto a = it->second(objPtr);
+			obj_size_total[type_id]+=a.size();
+            return a ;
         }
         throw std::runtime_error("Unknown class id during serialization");
     }
@@ -815,6 +818,17 @@ public:
 			return it->second();
 		}
 		return nullptr;
+	}
+
+
+	void printSizeTotals(){
+		for(auto& [type_id, size] : obj_size_total){
+			printf("%s (%d): %d\n", class_name[type_id].c_str(), type_id, size) ;
+		}
+	}
+
+	void resetSizeTotals(){
+		obj_size_total.clear() ;
 	}
 };
 
