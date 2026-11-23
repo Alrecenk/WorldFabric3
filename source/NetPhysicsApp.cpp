@@ -13,7 +13,8 @@ void NetPhysicsApp::enter(std::shared_ptr<MachineState> from) {
 	ParticlePlugin* particles = getTool<ParticlePlugin>();
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	
-
+	NetPhysics::Root::ticks_per_second = 120 ;
+	NetPhysics::Root::constraint_iterations = 12 ;
 	NetPhysics::registerPhysics();
 
 	// Set up a light for the scene
@@ -350,7 +351,7 @@ void NetPhysicsApp::host() {
 
 
 	//Add some random stuff
-	int amount = 50;
+	int amount = 200;
 	for (int k = 0; k < amount; k++) {
 		glm::vec3 pos = { min.x + (0.2f + randomFloat() * 0.6f) * (max.x - min.x),min.y + (0.6f + randomFloat() * 0.4f) * (max.y - min.y), min.z + (0.2f + randomFloat() * 0.6f) * (max.z - min.z) };
 		glm::vec3 vel = { (randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f,(randomFloat() - 0.5f) * 1.0f };

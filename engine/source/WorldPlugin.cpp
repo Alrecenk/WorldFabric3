@@ -507,7 +507,7 @@ void WorldPlugin::connect(std::shared_ptr<Socket> new_socket, const std::string&
 	if (socket) {
 		disconnect();
 	}
-
+	connection_pending = true;
 
 	if (simulated_lag_micros > 0) {
 		fake_lag = std::shared_ptr<SlowPacketReceiver>(new SlowPacketReceiver(this, simulated_lag_micros, simulated_jitter));
@@ -666,6 +666,9 @@ bool WorldPlugin::connected(int id){
 	if(connections.find(id) == connections.end()){
 		return false;
 	}else{
+		/*if(connections[id].ready && !connections[id].disconnected && microsBetween(connections[id].last_packet_received_time, now()) >= micros_before_considered_disconnected){
+			printf("disconnecting due to timeout!\n");
+		}*/	
 		return  connections[id].ready && !connections[id].disconnected && microsBetween(connections[id].last_packet_received_time, now()) < micros_before_considered_disconnected ;
 	}
 }

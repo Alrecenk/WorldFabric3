@@ -115,6 +115,7 @@ void SteamworksPlugin::run() {
 
 	pumpCallbacks();
 	initialized = true;
+	SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_SendBufferSize, PACKET_QUEUE_SIZE);
 
 	if(join_lobby_pending && millisBetween(creation_time, now()) > 2000){
 		printf("Time waited before attempting to join %d\n", millisBetween(creation_time, now()));
@@ -746,13 +747,13 @@ void SteamworksPlugin::SteamSocket::join(SteamNetworkingIPAddr address_to_join) 
 	HAuthTicket hTicket = SteamUser()->GetAuthSessionTicket(
 		ticket_buffer, max_ticket_size, &ticket_length, nullptr);
 	std::vector<char> ticket_packet(ticket_buffer,ticket_buffer + ticket_length) ;
-	/*printf("auth size: %d\n", ticket_packet.size());
+	printf("auth size: %d\n", ticket_packet.size());
 	for(char& c : ticket_packet){
 		printf("%c", c);
 	}
 	printf("\n");
-*/
-	send(0, serialize(AUTH_PACKET_MAGIC_NUMBER,ticket_packet));
+
+	sendChunk(0, serialize(AUTH_PACKET_MAGIC_NUMBER,ticket_packet));
 
 }
 
@@ -832,13 +833,56 @@ bool SteamworksPlugin::SteamSocket::connected(){
 	return is_server || connections[0] != k_HSteamNetConnection_Invalid ; // TODO this may not be sufficient to detect disconnections
 }
 
+bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char>& data){
+	//printf("Sent abstract packet size: %d  hash: %lld\n", (int) data.size() , hashBytes(data)) ;
+	if(data.size() <= MAX_CHUNK_SIZE - 4){
+		std::vector<char> chunk;
+		int size = (int)data.size();
+		chunk.reserve(size+4);
+		chunk.insert(chunk.end(), (char*)&size, (char*)&size + 4);
+		chunk.insert(chunk.end(), data.begin(), data.end());
+		return sendChunk(receiver_id, chunk);
+	}else{
+		
+		std::vector<char> chunk;
+		chunk.reserve(MAX_CHUNK_SIZE);
+		//Initial packet has size on front
+		int size = (int)data.size();
+		chunk.insert(chunk.end(), (char*)&size, (char*)&size + 4);
+		chunk.insert(chunk.end(), data.begin(), data.begin() + MAX_CHUNK_SIZE-4);
+		//send chunks until done
+		bool success = sendChunk(receiver_id, chunk);
+		int start = MAX_CHUNK_SIZE - 4 ;
+		while(start < data.size()){
+			int end = std::min(start + MAX_CHUNK_SIZE, (int)data.size()) ;
+			chunk.clear();
+			chunk.insert(chunk.end(), data.begin() + start, data.begin() + end);
+			success &= sendChunk(receiver_id, chunk);
+			start = end ;
+		}
+
+		return success ;
+	}
+	
+}
+
+
 // Send data through this socket
 // Returns if data seems to have sent (we can't know now if it arrived)
-bool SteamworksPlugin::SteamSocket::send(int receiver_id, const std::vector<char>& data){
+bool SteamworksPlugin::SteamSocket::sendChunk(int receiver_id, const std::vector<char>& data){
 	if(connections.find(receiver_id) == connections.end()){
 		//printf("Attempted to send packet to a connection we don't have: %d\n", receiver_id) ;
 		return false ;
 	}
+	/*
+	printf("sent chunk:[");
+	for (auto& c : data) {
+		printf("%d, ", c);
+	}
+	printf("]\n");
+	*/
+
+	//printf("sendchunk with hash %lld\n", hashBytes(data));
 
 	EResult res ;
 	if(is_dedicated){
@@ -914,7 +958,7 @@ void SteamworksPlugin::SteamSocket::processIncomingPackets(){
 
 			if(*(uint64_t*)(packet.data()) == AUTH_PACKET_MAGIC_NUMBER){
 				printf("Got Steam Auth Ticket for %ld\n", (long)source) ;
-				/*printf("auth packetsize: %d\n", packet.size()) ;
+				/*printf("auth packetsize: %d\n", (int)packet.size()) ;
 				for(int k=16;k<packet.size(); k++){
 						printf("%c", packet[k]);
 				}
@@ -923,11 +967,49 @@ void SteamworksPlugin::SteamSocket::processIncomingPackets(){
 				*/
 				SteamGameServer()->BeginAuthSession(packet.data()+16, (int)packet.size()-16, source);
 				authenticated[source] = true;
-
+				
 			}else{
-				packet_receiver->receivePacket(steamIDToPlayer[source],packet);
+				//packet_receiver->receivePacket(steamIDToPlayer[source],packet);
+				receiveChunk(steamIDToPlayer[source], packet) ;
 			}
 		}
+	}
+}
+
+void SteamworksPlugin::SteamSocket::receiveChunk(const int& connection_id, const std::vector<char>& chunk){
+	/*printf("received chunk:[");
+	for (auto& c : chunk) {
+		printf("%d, ", c);
+	}
+	printf("]\n");
+	*/
+	//printf("received chunk with has %lld\n", hashBytes(chunk) ) ;
+	auto iter = buffer.find(connection_id) ;
+	if(iter == buffer.end()){ // No current buffer
+		int size = *(int*)(chunk.data()) ; // first 4 bytes shoud be an int of size
+		if(size < 0 || size > Socket::MAX_PACKET_SIZE){
+			printf("Steam packet size is unreasonable, data corruption or a noncompliant application is likely!\n");
+			return ;
+		}
+		//printf("Receiving abstract packet of size: %d\n", size);
+		std::pair<int, std::vector<char>>& user_buffer = buffer[connection_id]; // creates element
+		user_buffer.first = size ;
+		user_buffer.second.reserve(size) ;
+		user_buffer.second.insert(user_buffer.second.end(), chunk.begin() + 4, chunk.end()) ;
+	}else{
+		std::pair<int, std::vector<char>>& user_buffer = buffer[connection_id];
+		user_buffer.second.insert(user_buffer.second.end(), chunk.begin(), chunk.end());
+		//printf("Got chunk: %d / %d\n", (int)user_buffer.second.size(), user_buffer.first) ;
+	}
+	std::pair<int, std::vector<char>>& user_buffer = buffer[connection_id];
+	if(user_buffer.second.size() >= user_buffer.first){
+		//printf("Packet received of size: %d  hash: %lld\n", user_buffer.first, hashBytes(user_buffer.second));
+		/*if(user_buffer.second.size() > user_buffer.first){
+			printf("Chunks was too big, might be getting malformed steam packets!\n");
+			user_buffer.second.resize(user_buffer.first) ;
+		}*/
+		packet_receiver->receivePacket(connection_id, user_buffer.second);
+		buffer.erase(connection_id) ;
 	}
 }
 

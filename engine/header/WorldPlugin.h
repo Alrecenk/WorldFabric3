@@ -23,7 +23,7 @@ class WorldPlugin : public AsyncPlugin, public PacketReceiver {
 public:
 
 	static inline std::string tag = "WorldLink";
-	static inline int micros_before_considered_disconnected = 2000000; //microseconds
+	static inline int micros_before_considered_disconnected = 3000000; //microseconds
 
 	static inline float history_kept = 1.5f;
 	static inline float clock_adjust_rate = 0.05f ;

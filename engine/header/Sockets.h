@@ -30,6 +30,8 @@ struct PendingPacket {
 // An abstract socket that could be either client or server
 class Socket {
 	public:
+
+		static inline const int MAX_PACKET_SIZE = 32000000;
 		// Send data through this socket
 		// Returns if data seems to have sent (we can't know now if it arrived)
 		virtual bool send(int receiver_id, const std::vector<char>& data) = 0;
