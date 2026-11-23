@@ -24,6 +24,8 @@ class SteamworksPlugin : public AsyncPlugin, public ISteamMatchmakingServerListR
 
 public:
 
+	static inline const int PACKET_QUEUE_SIZE = 5000000 ;
+
 	class SteamAchievement {
 	public:
 		std::string id;
@@ -86,6 +88,10 @@ public:
 		// Returns if data seems to have sent (we can't know now if it arrived)
 		bool send(int receiver_id, const std::vector<char>& data) override;
 
+		bool sendChunk(int receiver_id, const std::vector<char>& data) ;
+
+		void receiveChunk(const int& comnnection_id, const std::vector<char>& data);
+
 		// close all connections in this socket and stop allowing new ones if applicable
 		void close() override;
 
@@ -102,6 +108,9 @@ public:
 		std::map<uint64_t, int> steamIDToPlayer;
 		std::map <uint64_t, bool> authenticated ;
 		static inline const int MESSAGE_QUEUE_SIZE = 32;
+		static inline const int MAX_CHUNK_SIZE = 131072 ;
+
+		std::map<int, std::pair<int,std::vector<char>>> buffer ; 
 
 		
 		bool is_server = false;
