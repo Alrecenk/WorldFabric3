@@ -34,7 +34,7 @@ void NarballGame::enter(std::shared_ptr<MachineState> from) {
 	std::shared_ptr<NarballMenu> menu_state = dynamic_pointer_cast<NarballMenu>(from);
 	
 	// Grab the lobby pointer from the menu state
-	lobby = worlds->observe<Lobby>(NARBALL, NarballMenu::lobby_id);
+	lobby = worlds->observe<Lobby>(NarballMenu::lobby_id);
 	if (!lobby) {
 		printf("could not find lobby!?\n");
 	}

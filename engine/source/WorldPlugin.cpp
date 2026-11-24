@@ -106,6 +106,7 @@ void WorldPlugin::run(){
 	//lock.unlock(); // TODO figure out how to lock less agressively
 
 	// Run all the active timelines
+	observation_map.clear();
 	for(auto& [name, world] : worlds){
 			// Run to the new time
 			world.current_time += dt * world.time_speed ;
@@ -113,7 +114,11 @@ void WorldPlugin::run(){
 			world.next_event_time = world.current_time + world.timeline->min_event_duration;
 			world.timeline->run(world.vantage_point,world.current_time) ; // Note we are not locked when actually doing the running which is 95% of time
 			//lock.lock();
-			observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); // buffer observations immediately after run so rollback can't be observed
+			// buffer observations immediately after run so rollback can't be observed
+			observation_buffer[name] = world.timeline->observe(world.vantage_point, world.current_time + observation_look_ahead); 
+			for(std::shared_ptr<const WorldObject>& obs : observation_buffer[name]){
+				observation_map[obs->id] = obs ;
+			}
 			viewCreateDestroy(name); // Make sure views are always inline with observations
 			//lock.unlock();
 			//printf("Runs: %d  Unruns: %d\n", Timeline::event_runs, Timeline::event_unruns) ;
