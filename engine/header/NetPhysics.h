@@ -331,19 +331,37 @@ auto static getStructure(ManifoldCollision& o) {
 
 
 
+class CellBody {
+public:
+	glm::vec3 result_velocity;
+	glm::vec3 result_angular_velocity ;
+	std::set<int64_t> collected_collisions ;
+}; 
+
+auto static getStructure(CellBody& o) {
+	return std::tie(o.result_velocity, o.result_angular_velocity, o.collected_collisions);
+}
+
 //Runs physics pdates in a local region
 class Cell : public WorldObject {
 public:
 	int64_t root_id ;
 	float size = -1; // Cell occupies a box centered on position with axis aligned radius of size
-	std::set<int64_t> bodies;
+	//std::set<int64_t> bodies;
 	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
-	std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint reslt
-	std::map<int64_t, std::set<int64_t>> collected_collisions ; // rigid bodies with collect_collisions can find their collisions from this cell here
+	//std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint result
+	//std::map<int64_t, std::set<int64_t>> collected_collisions ; // rigid bodies with collect_collisions can find their collisions from this cell here
+
+	std::map<int64_t, CellBody> cell_bodies;
+
 	bool asleep = false; // A cell can go to sleep if all bodies in it are asleep
 
 	static inline float interframe_time = 0.6f ; //when in a frame a lockstep component should run its tick
-
+/*
+	static inline int addbody_calls = 0 ;
+	static inline int removebody_calls = 0;
+	static inline int runphysics_calls = 0;
+*/
 	Cell() {};
 
 	Cell(int64_t root, const glm::vec3& pos, float cell_size);
@@ -403,7 +421,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root_id, o.size, o.bodies, o.collisions, o.constraint_result, o.asleep, o.collected_collisions);
+	return std::tie(o.position, o.root_id, o.size, o.cell_bodies, o.collisions, o.asleep);
 }
 
 //Contains cells and routes body requests to the appropriate one
@@ -425,7 +443,7 @@ public:
 	//Returns the cell indices for a given point
 	glm::ivec3 getCellCoord(const glm::vec3& p) const ;
 
-	int Root::getCoordIndex(const glm::ivec3& coord) const ;
+	int getCoordIndex(const glm::ivec3& coord) const ;
 
 	//returns the ids of all cells overlapping the bounding box of the given bounding sphere
 	//The second element of the return is whether the root needs to be updated (i.e. to create more cells)

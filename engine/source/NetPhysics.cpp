@@ -156,18 +156,16 @@ void RigidBody::runPhysics(){
 	for(int64_t& cell_id : cells){
 		std::shared_ptr<const Cell> cell = read<Cell>(cell_id);
 		if(cell){
-			auto iter = cell->constraint_result.find(id);
-			if(iter != cell->constraint_result.end()){
+			auto iter = cell->cell_bodies.find(id);
+			if(iter != cell->cell_bodies.end()){
 				amount++;
-				v_total += iter->second.first ;
-				av_total += iter->second.second ;
-			}
-			if(collect_collisions){
-				auto c_iter = cell->collected_collisions.find(id);
-				if(c_iter != cell->collected_collisions.end()){
-					collisions.insert(c_iter->second.begin(), c_iter->second.end()) ;
+				v_total += iter->second.result_velocity;
+				av_total += iter->second.result_angular_velocity ;
+				if (collect_collisions) {
+					collisions.insert(iter->second.collected_collisions.begin(), iter->second.collected_collisions.end());
 				}
 			}
+			
 		}
 	}
 	if(amount > 0){
@@ -831,10 +829,10 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 					}
 					if(collides){
 						if(body_1.body->collect_collisions){
-							collected_collisions[id1].insert(id2);
+							cell_bodies[id1].collected_collisions.insert(id2);
 						}
 						if (body_2.body->collect_collisions) {
-							collected_collisions[id2].insert(id1);
+							cell_bodies[id2].collected_collisions.insert(id1);
 						}
 					}
 				}
@@ -863,6 +861,7 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 
 //Walks through state machine to run each physics step in lockstep with other elements
 void Cell::runPhysics(){
+	//runphysics_calls++;
 	double frame_length = 1.0 / Root::ticks_per_second;
 	int frame = (int)(time * Root::ticks_per_second);
 	double target_time = (interframe_time + frame) * frame_length;
@@ -874,20 +873,22 @@ void Cell::runPhysics(){
 	}
 
 	std::map<int64_t, BodyInstant> read_bodies;
-	for (const int64_t& body_id : bodies) {
+	for (auto& [body_id, cell_body] : cell_bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(body_id);
 		if (body) {
 			if(time - body->time > frame_length && !body->asleep && body->receives_impulse){
 				printf("Rigid body is too old, speed of light is too low for physics! Age: %lf  FrameLength: %lf\n", time - body->time, frame_length);
 			}
 			read_bodies[body_id] = body->computeBodyInstant();
-			constraint_result[body_id] = { body->velocity, body->angular_velocity} ; // hold dstart values so we can calculate change at the end
+			cell_body.result_velocity = body->velocity ;
+			cell_body.result_angular_velocity = body->angular_velocity ; // hold start values so we can calculate change at the end
 		}else{
-			//printf("body could not be read!\n");
+			cell_body.result_velocity = glm::vec3(0,0,0);
+			cell_body.result_angular_velocity = glm::vec3(0, 0, 0);
 		}
+		cell_body.collected_collisions.clear();
 	}
 
-	collected_collisions.clear();
 	updateCollisions(read_bodies);
 	
 	for (auto& [body_id, constraint] : collisions) {
@@ -918,8 +919,10 @@ void Cell::runPhysics(){
 	float angular_sleep_speed2 = RigidBody::max_sleep_angular_speed * RigidBody::max_sleep_angular_speed ;
 	asleep = true ;
 	for(auto& [body_id, body] : read_bodies){
+		CellBody& cell_body = cell_bodies[body_id] ;
 		//Save results that real bodies want to read
-		constraint_result[body_id] = {body.velocity - constraint_result[body_id].first, body.angular_velocity - constraint_result[body_id].second } ;
+		cell_body.result_velocity = body.velocity - cell_body.result_velocity ;
+		cell_body.result_angular_velocity = body.angular_velocity - cell_body.result_angular_velocity;
 		//Wake up sleeping bodies if they are being moved
 		if(body.body->asleep && body.body->receives_impulse && (
 			glm::dot(body.velocity, body.velocity) > sleep_speed2 ||
@@ -938,7 +941,8 @@ void Cell::runPhysics(){
 
 //Adds a body to the cell
 void Cell::addBody(const int64_t& body_id){
-	bodies.insert(body_id);
+	//addbody_calls++;
+	cell_bodies[body_id] = {} ;
 	if(asleep){
 		asleep = false;
 		double frame_length = 1.0 / Root::ticks_per_second;
@@ -951,7 +955,8 @@ void Cell::addBody(const int64_t& body_id){
 
 //Removes a body to the cell
 void Cell::removeBody(const int64_t& body_id) {
-	bodies.erase(body_id);
+	//removebody_calls++;
+	cell_bodies.erase(body_id);
 	if (asleep) {
 		asleep = false;
 		double frame_length = 1.0 / Root::ticks_per_second;
@@ -971,7 +976,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<Rigid
 	
 
 	std::map<int64_t, BodyInstant> read_bodies;
-	for (const int64_t& id : bodies) {
+	for (const auto& [id,cell_body] : cell_bodies) {
 		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(id);
 		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
@@ -1014,7 +1019,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<const
 glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shared_ptr<RigidBody>& test_copy, const glm::vec3& target_position, bool immoveable_only) const{
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	std::map<int64_t, BodyInstant> read_bodies;
-	for (const int64_t& id : bodies) {
+	for (auto& [id, cell_body] : cell_bodies) {
 		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(id);
 		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
@@ -1035,7 +1040,7 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 glm::vec3 Cell::nearestValidPositionInternal(std::shared_ptr<const RigidBody>& test_body, const glm::vec3& target_position, bool immoveable_only) const {
 	std::shared_ptr<RigidBody> test_copy = static_pointer_cast<RigidBody>(test_body->deepCopy());
 	std::map<int64_t, BodyInstant> read_bodies;
-	for (const int64_t& id : bodies) {
+	for (auto& [id,cell_body] : cell_bodies) {
 		std::shared_ptr<const RigidBody> body = read<RigidBody>(id);
 		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
