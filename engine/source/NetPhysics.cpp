@@ -972,7 +972,7 @@ bool Cell::validPositionExternal(const std::string& world, std::shared_ptr<Rigid
 
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
-		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world, id);
+		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(id);
 		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
 		}
@@ -1015,7 +1015,7 @@ glm::vec3 Cell::nearestValidPositionExternal(const std::string& world, std::shar
 	WorldPlugin* worlds = getTool<WorldPlugin>();
 	std::map<int64_t, BodyInstant> read_bodies;
 	for (const int64_t& id : bodies) {
-		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(world, id);
+		std::shared_ptr<const RigidBody> body = worlds->observe<RigidBody>(id);
 		if (body && body->applies_impulse) {
 			read_bodies[id] = body->computeBodyInstant();
 		}

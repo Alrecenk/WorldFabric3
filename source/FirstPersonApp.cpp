@@ -224,7 +224,7 @@ void FirstPersonApp::updateCamera() {
 	camera_thi += camera_y_speed * mouse_delta.y;
 	camera_thi = fmax(fmin(camera_thi, 3.1415f * 0.5f), -3.1415f*0.5f);
 	
-	std::shared_ptr<const PlayerCharacter> player = worlds->observe<PlayerCharacter>(WORLD,my_player_id) ;
+	std::shared_ptr<const PlayerCharacter> player = worlds->observe<PlayerCharacter>(my_player_id) ;
 		
 	glm::vec3 camera_position = player ? player->position : glm::vec3(0, 0, 0);
 	glm::vec3 look_at = camera_position + glm::vec3(cosf(camera_theta) * cosf(camera_thi), sinf(camera_thi), sinf(camera_theta) * cosf(camera_thi));

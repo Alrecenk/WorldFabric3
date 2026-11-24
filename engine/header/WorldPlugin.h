@@ -145,17 +145,13 @@ public:
 
 	// Observe a specific object whose type you know
 	template<typename T>
-	std::shared_ptr<const T> observe(const std::string& local_world, int64_t id){
+	std::shared_ptr<const T> observe(int64_t id){
 		lock.lock();
-		auto iter = worlds.find(local_world);
-		if (iter != worlds.end()) {
-			for (auto& obj : observation_buffer[local_world]) { // TODO get rid of this loop
-				if (obj->id == id) {
-					std::shared_ptr<const T> result = dynamic_pointer_cast<const T>(obj) ;
-					lock.unlock();
-					return result ;
-				}
-			}
+		auto iter = observation_map.find(id) ;
+		if (iter != observation_map.end()) {
+			std::shared_ptr<const T> result = dynamic_pointer_cast<const T>(iter->second);
+			lock.unlock();
+			return result ;
 		}
 		lock.unlock();
 		return nullptr;
@@ -386,6 +382,7 @@ private:
 	
 	std::vector<std::shared_ptr<Timeline::CopyPacket>> copy_packets ; //if a world is being copied from another world, then that packet waits here until processed
 	std::map <std::string, std::vector<std::shared_ptr<const WorldObject>>> observation_buffer ;
+	std::unordered_map<int64_t, std::shared_ptr<const WorldObject>> observation_map ; // should have same contents as buffer but quicly accessible by id
 
 	std::recursive_mutex packet_lock ; // lock specifically for processing packets since the main lock is used for cross plugin access
 

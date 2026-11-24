@@ -48,7 +48,7 @@ namespace Narball {
 		WorldPlugin* worlds = getTool<WorldPlugin>();
 		SteamworksPlugin* steam = getTool<SteamworksPlugin>();
 
-		lobby = worlds->observe<Lobby>(NARBALL, lobby_id);
+		lobby = worlds->observe<Lobby>(lobby_id);
 		double current_time = worlds->getWorldTime(NARBALL) ;
 
 		//Detect when the game has moved back to the lobby
@@ -98,7 +98,7 @@ namespace Narball {
 
 	void NarballServer::startGame(){
 		WorldPlugin* worlds = getTool<WorldPlugin>();
-		lobby = worlds->observe<Lobby>(NARBALL, lobby_id);
+		lobby = worlds->observe<Lobby>(lobby_id);
 		if (!lobby) {
 			printf("could not find lobby!?\n");
 		}
