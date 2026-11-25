@@ -15,6 +15,7 @@
 #include <unordered_set>
 #include <map>
 #include "Variant.h"
+#include "deterministic_unordered_map.h"
 
 #include "glm/glm.hpp"
 
@@ -119,6 +120,8 @@ template<typename K, typename V, typename C, typename A>
 struct is_any_map<std::map<K, V, C, A>> : std::true_type {};
 template<typename K, typename V, typename H, typename Eq, typename A>
 struct is_any_map<std::unordered_map<K, V, H, Eq, A>> : std::true_type {};
+template<typename K, typename V>
+struct is_any_map<det_map<K, V>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_any_map_v = is_any_map<T>::value;
 
