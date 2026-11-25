@@ -15,6 +15,9 @@ private:
 	static inline float rehash_fill_rate = 0.7f;
 	static inline float rehash_size_multiplier = 2.0f;
 
+
+	static const inline Value default_value = Value();
+
 	struct Slot {
 		std::pair<Key, Value> key_value ;
 		int element_index = -1; // index in element list, < 0 means empty slot
@@ -25,10 +28,12 @@ private:
 	std::vector<int> elements ; // indices in table of all filled elements in a deterministic order
 	int dirty_slots = 0 ;
 
+
 	// returns a pair of the first available dirty write slot followed by the first clean slot
 	//If the key is in the table, clean_slot = -1, and write_slot contains the found Key's location
 	//if write slot < -1 then there were no empty dirty slots before the clean slot was hit
 	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table) const{
+			
 		size_t hash = std::hash<Key>{}(key);
 		int slot_index = hash % table.size();
 		int clean_slot = -1;
@@ -71,7 +76,8 @@ private:
 	}
 
 public:
-	
+	using key_type = typename Key;
+	using mapped_type = typename Value;
 	struct Iterator {
 		deterministic_unordered_map* map;
 		int index = 0;
@@ -180,6 +186,9 @@ public:
 	//return whether the element was found
 	//Note: unlike std::unordered_map, erasing DOES invalidate iterators here
 	bool erase(const Key& key){
+		if(table.empty()){
+			return false;
+		}
 		auto [write_slot, clean_slot] = findSlot(key, table);
 		if (clean_slot < 0) { //exited without hitting a clean slot this means we found it
 			Slot& erase_slot = table[write_slot] ;
@@ -249,9 +258,35 @@ public:
 		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
 			return table[write_slot].key_value.second;
 		}else{
-			return Value();
+			return default_value;
 		}
 
+	}
+
+	Iterator find(const Key& key) {
+		if (table.empty()) {
+			return end();
+		}
+		auto [write_slot, clean_slot] = findSlot(key, table);
+		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
+			return { this, table[write_slot].element_index};
+		}
+		else {
+			return end() ;
+		}
+	}
+
+	ConstIterator find(const Key& key) const {
+		if (table.empty()) {
+			return end();
+		}
+		auto [write_slot, clean_slot] = findSlot(key, table);
+		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
+			return { this, table[write_slot].element_index };
+		}
+		else {
+			return end();
+		}
 	}
 
 	size_t size() const {
@@ -261,9 +296,46 @@ public:
 	size_t capacity() const {
 		return table.size();
 	}
+
+	template <typename KeyArgs, typename ValueArgs>
+	Iterator emplace(KeyArgs&& key_args, ValueArgs&& value_args){
+		if (table.empty()) {
+			rehash(initial_size);
+		}
+		else if (dirty_slots >= table.size() * rehash_fill_rate) {
+			rehash((int)(table.size() * rehash_size_multiplier));
+		}
+		Key key(key_args);
+		auto [write_slot, clean_slot] = findSlot(key, table);
+
+		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
+			table[write_slot].key_value.second = Value(std::forward<ValueArgs>(value_args)); // update value
+			// No need to adjust element indices as it shouold already be there
+		}
+		else if (write_slot < 0) {//a clean slot exit without a dirty write slot
+			//write to the clean slot
+			Slot& slot = table[clean_slot];
+			slot.key_value = { key, Value(std::forward<ValueArgs>(value_args)) };
+			slot.clean = false;
+			slot.element_index = elements.size();
+			elements.push_back(clean_slot);
+			write_slot = clean_slot; // used for return iterator
+			dirty_slots++; //clean slot is now dirty until rehash
+		}
+		else {//clean slot and dirty write slot are both set
+			//write to the earlier dirty write slot
+			Slot& slot = table[write_slot];
+			slot.key_value = { key, Value(std::forward<ValueArgs>(value_args)) };
+			slot.element_index = elements.size();
+			elements.push_back(write_slot);
+		}
+
+		return { this, write_slot };
+
+	}
 };
 
-//Allow det_map as shorthand because the full name is long
+//Short name for deterministic_unordered_map
 template<typename Key, typename Value>
 using det_map = deterministic_unordered_map<Key, Value> ;
 
