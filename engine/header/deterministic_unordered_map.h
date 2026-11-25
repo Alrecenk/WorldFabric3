@@ -66,7 +66,6 @@ private:
 			slot.clean = false;
 			slot.element_index = element_index;
 			elements[element_index] = clean_slot ;
-			element_index++ ;
 		}
 		dirty_slots = elements.size();
 	}
@@ -163,6 +162,47 @@ public:
 		}
 	}
 
+	Iterator begin() { return { this, 0 }; }
+	Iterator end() { return { this, (int)elements.size() }; }
+
+	Value& operator[](const Key& key){
+		if (table.empty()) {
+			rehash(initial_size);
+		}
+		else if (dirty_slots >= table.size() * rehash_fill_rate) {
+			rehash((int)(table.size() * rehash_size_multiplier));
+		}
+
+		auto [write_slot, clean_slot] = findSlot(key, table);
+
+		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
+			return table[write_slot].key_value.second;
+		} else if (write_slot < 0) {//a clean slot exit without a dirty write slot
+			//create a defaulrt initialized elment in the clean clost
+			Slot& slot = table[clean_slot];
+			slot.key_value = { key, Value() };
+			slot.clean = false;
+			slot.element_index = elements.size();
+			elements.push_back(clean_slot);
+			dirty_slots++; //clean slot is now dirty until rehash
+			return slot.key_value.second ;
+		} else {//clean slot and dirty write slot are both set
+			//write a default initialized element to the earlier dirty write slot
+			Slot& slot = table[write_slot];
+			slot.key_value = { key, Value() };
+			slot.element_index = elements.size();
+			elements.push_back(write_slot);
+			return slot.key_value.second;
+		}
+	}
+
+	size_t size(){
+		return elements.size();
+	}
+
+	size_t capacity() {
+		return table.size();
+	}
 };
 
 template<typename Key, typename Value>
@@ -178,6 +218,11 @@ inline void testDeterministicMap() {
 
 
 	bool found = num_legs.erase("chair");
+
+	for(auto& [ key, value ] : num_legs){
+		printf("%s : %d\n", key.c_str(), value) ;
+	}
+
 
 }
 #endif // #ifndef _DETERMINISTIC_UNORDERED_MAP_H_
