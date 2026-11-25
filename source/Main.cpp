@@ -35,6 +35,7 @@
 
 #include "NarballMain.h"
 
+#include "deterministic_unordered_map.h"
 #include <vector>
 #include <set>
 #include <memory>
@@ -588,7 +589,8 @@ int exampleMain(int argc, char* argv[]) {
 
 
 int main(int argc, char* argv[]) {
-	Narball::main(argc, argv);
+	testDeterministicMap();
+	//Narball::main(argc, argv);
 	//exampleMain(argc, argv);
 	//CSVLog::findDesync({ "event_log_1.csv", "event_log_2.csv" }, "time", 1.0);
 }

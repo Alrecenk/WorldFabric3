@@ -8,7 +8,6 @@ template <typename Key, typename Value>
 class deterministic_unordered_map {
 private:
 
-
 	//Maps are created with empty tables and will be initialized to this size on first insertion if not explicitly initialized
 	static inline int initial_size = 10;
 
@@ -26,12 +25,11 @@ private:
 	std::vector<int> elements ; // indices in table of all filled elements in a deterministic order
 	int dirty_slots = 0 ;
 
-
 	// returns a pair of the first available dirty write slot followed by the first clean slot
 	//If the key is in the table, clean_slot = -1, and write_slot contains the found Key's location
 	//if write slot < -1 then there were no empty dirty slots before the clean slot was hit
 	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table){
-		size_t hash = std::hash(key);
+		size_t hash = std::hash<Key>{}(key);
 		int slot_index = hash % table.size();
 		int clean_slot = -1;
 		int write_slot = -1;
@@ -49,7 +47,7 @@ private:
 				write_slot = slot_index;
 				break;
 			}
-			slot_index = (slot_index + 1) % table->size();
+			slot_index = (slot_index + 1) % table.size();
 		}
 		return {write_slot, clean_slot} ;
 	}
@@ -58,19 +56,20 @@ private:
 	void rehash(int new_size){
 		std::vector<Slot> old_table = std::move(table) ;
 		table = std::vector<Slot>(new_size) ;
-		for(auto& old_index : elements){
+		for(int element_index = 0; element_index < elements.size(); element_index++){
+			int old_index = elements[element_index] ;
 			Slot& old_slot = old_table[old_index] ;
 			auto [write_slot, clean_slot] = findSlot(old_slot.key_value.first, table);
 			//findSlot during rehash should always return a clean empty slot
 			Slot& slot = table[clean_slot];
 			slot.key_value = old_slot.key_value ;
-			slot.dirty = true;
-			slot.element_index = old_index;
-			elements[old_index] = clean_slot ;
+			slot.clean = false;
+			slot.element_index = element_index;
+			elements[element_index] = clean_slot ;
+			element_index++ ;
 		}
 		dirty_slots = elements.size();
 	}
-
 
 public:
 	
@@ -89,16 +88,15 @@ public:
 		}
 
 		std::pair<Key,Value>& operator*() {
-			Slot& slot = map->table[elements[index]] ;
+			Slot& slot = map->table[map->elements[index]] ;
 			return slot.key_value ;
 		}
 
-		const std::pair<Key, Value>& operator*() {
-			Slot& slot = map->table[elements[index]];
+		const std::pair<Key, Value>& operator*() const {
+			Slot& slot = map->table[map->elements[index]];
 			return slot.key_value;
 		}
 	};
-
 
 	//Reserve allocates a size such that inserting the given number of elements will not result in a rehash
 	void reserve(int num_elements){
@@ -109,17 +107,20 @@ public:
 	Iterator insert(const Key& key, const Value& value, std::vector<Slot>& table){
 		if(table.empty()){
 			rehash(initial_size);
+		}else if (dirty_slots >= table.size() * rehash_fill_rate) {
+			rehash((int)(table.size() * rehash_size_multiplier));
 		}
+
 		auto [write_slot, clean_slot] = findSlot(key, table);
 		
 		if(clean_slot < 0){ //exited without hitting a clean slot then means we found it
-			table[write_slot].key_value.value = value ; // update value
+			table[write_slot].key_value.second = value ; // update value
 			// No need to adjust element indices as it shouold already be there
 		}else if(write_slot < 0){//a clean slot exit without a dirty write slot
 			//write to the clean slot
 			Slot& slot = table[clean_slot] ;
 			slot.key_value = {key, value} ;
-			slot.dirty = true ;
+			slot.clean = false ;
 			slot.element_index = elements.size() ;
 			elements.push_back(clean_slot) ;
 			write_slot = clean_slot ; // used for return iterator
@@ -141,9 +142,9 @@ public:
 	}
 
 	//Removes the element with given key fro mthe map if found
-	//return whether the lement was found
-	//Note: unlike std::unordered_map, erasing DOES invalidate iterators
-	bool erase(const Key& key, const Value& value, std::vector<Slot>& table){
+	//return whether the element was found
+	//Note: unlike std::unordered_map, erasing DOES invalidate iterators here
+	bool erase(const Key& key){
 		auto [write_slot, clean_slot] = findSlot(key, table);
 		if (clean_slot < 0) { //exited without hitting a clean slot this means we found it
 			Slot& erase_slot = table[write_slot] ;
@@ -160,9 +161,23 @@ public:
 		}else{
 			return false; // we did not find it
 		}
-
 	}
 
-
 };
+
+template<typename Key, typename Value>
+using det_map = deterministic_unordered_map<Key, Value> ;
+
+inline void testDeterministicMap() {
+	det_map<std::string, int> num_legs;
+	num_legs.insert("cow", 4);
+	num_legs.insert("bird", 2);
+	num_legs.insert("spider", 8);
+	num_legs.insert("golf hole", 1);
+	num_legs.insert("chair", 3);
+
+
+	bool found = num_legs.erase("chair");
+
+}
 #endif // #ifndef _DETERMINISTIC_UNORDERED_MAP_H_
