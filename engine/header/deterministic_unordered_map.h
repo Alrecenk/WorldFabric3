@@ -28,7 +28,7 @@ private:
 	// returns a pair of the first available dirty write slot followed by the first clean slot
 	//If the key is in the table, clean_slot = -1, and write_slot contains the found Key's location
 	//if write slot < -1 then there were no empty dirty slots before the clean slot was hit
-	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table){
+	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table) const{
 		size_t hash = std::hash<Key>{}(key);
 		int slot_index = hash % table.size();
 		int clean_slot = -1;
@@ -91,18 +91,44 @@ public:
 			index--;
 		}
 
-		std::pair<Key,Value>& operator*() {
+		std::pair<Key,Value>& operator*() const{
 			Slot& slot = map->table[map->elements[index]] ;
 			return slot.key_value ;
 		}
 
-		const std::pair<Key, Value>& operator*() const {
+
+		std::pair<Key,Value>* operator->() const{
 			Slot& slot = map->table[map->elements[index]];
+			return &(slot.key_value);
+		}
+	};
+
+	struct ConstIterator {
+		const deterministic_unordered_map* map;
+		int index = 0;
+
+		bool operator!=(const ConstIterator& other) const {
+			return map != other.map || index != other.index;
+		}
+
+		bool operator==(const ConstIterator& other) const {
+			return map == other.map && index == other.index;
+		}
+
+		void operator++() {
+			index++;
+		}
+		void operator--() {
+			index--;
+		}
+
+		const std::pair<Key, Value>& operator*() const {
+			const Slot& slot = map->table[map->elements[index]];
 			return slot.key_value;
 		}
 
-		std::pair<Key,Value>* operator->(){
-			Slot& slot = map->table[map->elements[index]];
+		const std::pair<Key, Value>* operator->() const{
+			const Slot& slot = map->table[map->elements[index]];
 			return &(slot.key_value);
 		}
 	};
@@ -179,6 +205,13 @@ public:
 		return { this, (int)elements.size() }; 
 	}
 
+	ConstIterator begin() const{
+		return { this, 0 };
+	}
+	ConstIterator end() const {
+		return { this, (int)elements.size() };
+	}
+
 	Value& operator[](const Key& key){
 		if (table.empty()) {
 			rehash(initial_size);
@@ -208,6 +241,17 @@ public:
 			elements.push_back(write_slot);
 			return slot.key_value.second;
 		}
+	}
+
+	const Value& at(const Key& key) const{
+		auto [write_slot, clean_slot] = findSlot(key, table);
+
+		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
+			return table[write_slot].key_value.second;
+		}else{
+			return Value();
+		}
+
 	}
 
 	size_t size() const {
@@ -317,5 +361,20 @@ inline void testDeterministicMap() {
 		return;
 	}
 
+
+	const auto& C = A ;
+	correct = true ;
+	for (const auto& [key, value] : C) {
+		correct = C.at(key) == B[key ] ;
+	}
+	
+
+	if (correct) {
+		printf("Const iterator and bracket check passed.\n");
+	}
+	else {
+		printf("Const iterator and bracket check failed!\n");
+		return;
+	}
 }
 #endif // #ifndef _DETERMINISTIC_UNORDERED_MAP_H_
