@@ -335,11 +335,10 @@ class CellBody {
 public:
 	glm::vec3 result_velocity;
 	glm::vec3 result_angular_velocity ;
-	std::set<int64_t> collected_collisions ;
 }; 
 
 auto static getStructure(CellBody& o) {
-	return std::tie(o.result_velocity, o.result_angular_velocity, o.collected_collisions);
+	return std::tie(o.result_velocity, o.result_angular_velocity);
 }
 
 //Runs physics pdates in a local region
@@ -348,11 +347,12 @@ public:
 	int64_t root_id ;
 	float size = -1; // Cell occupies a box centered on position with axis aligned radius of size
 	//std::set<int64_t> bodies;
-	std::map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
+	det_map<int64_t, ManifoldCollision> collisions; // maps constraint hash to constraint
 	//std::map<int64_t, std::pair<glm::vec3, glm::vec3>> constraint_result ; // maps body id to velocity and angular velocity of constraint result
 	//std::map<int64_t, std::set<int64_t>> collected_collisions ; // rigid bodies with collect_collisions can find their collisions from this cell here
 
-	std::map<int64_t, CellBody> cell_bodies;
+	det_map<int64_t, CellBody> cell_bodies;
+	det_map< int64_t, std::set<int64_t>> collected_collisions;
 
 	bool asleep = false; // A cell can go to sleep if all bodies in it are asleep
 
@@ -421,7 +421,7 @@ public:
 };
 
 auto static getStructure(Cell& o) {
-	return std::tie(o.position, o.root_id, o.size, o.cell_bodies, o.collisions, o.asleep);
+	return std::tie(o.position, o.root_id, o.size, o.cell_bodies, o.collisions, o.asleep, o.collected_collisions);
 }
 
 //Contains cells and routes body requests to the appropriate one
