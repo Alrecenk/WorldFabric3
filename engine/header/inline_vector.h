@@ -4,7 +4,7 @@
 template <typename Value, int capacity >
 class inline_vector {
 
-	static_assert(capacity <= 255,"inline vectors have a maximum filled of 255");
+	static_assert(capacity <= 255,"inline vectors have a maximum size of 255");
 	static_assert(std::is_trivially_copyable_v<Value>, "Inline vector won't provide a benefit unless the type is trivially copyable.") ;
 public:
 	using value_type = typename Value;
@@ -31,19 +31,11 @@ public:
 
 	void pop_back(){
 		if(filled > 0){
-			if constexpr (!std::is_trivially_copyable_v<Value>) {
-				data[filled] = Value();
-			}
 			filled--;
 		}
 	}
 
 	void clear(){
-		if constexpr (!std::is_trivially_copyable_v<Value>) {
-			for (int k = filled - 1; k >= 0; k--) {
-				data[k] = Value();
-			}
-		}
 		filled = 0 ;
 	}
 
@@ -77,11 +69,6 @@ public:
 	}
 
 	void resize(std::size_t new_size){
-		if constexpr (! std::is_trivially_copyable_v<Value>){
-			for(int k = filled -1; k >= new_size; k--){
-				data[k] = Value();
-			}
-		}
 		filled = new_size ;
 	}
 
