@@ -1056,20 +1056,26 @@ Box::Box(const glm::vec3& mn, const glm::vec3& mx, float ms) {
 	min = mn;
 	max = mx ;
 	mass = ms;
-	inv_mass = 1.0f / mass;
+	if(mass > 0){
+		inv_mass = 1.0f / mass;
 
-	//First get moment of box of this size and mass centered at origing
-	glm::vec3 size = max - min;
-	float w2 = size.x * size.x;
-	float h2 = size.y * size.y;
-	float d2 = size.z * size.z;
-	moment = glm::mat3(0.0f) ;
-	moment[0][0] = mass * (h2 + d2) / 12.0f ;
-	moment[1][1] = mass * (w2 + d2) / 12.0f;
-	moment[2][2] = mass * (h2 + w2) / 12.0f;
-	//Then shift using parallel axis theorem to actual position
-	moment = shiftMoment(moment,(max+min)*0.5f,mass) ;
-	inv_moment = glm::inverse(moment) ;
+		//First get moment of box of this size and mass centered at origing
+		glm::vec3 size = max - min;
+		float w2 = size.x * size.x;
+		float h2 = size.y * size.y;
+		float d2 = size.z * size.z;
+		moment = glm::mat3(0.0f) ;
+		moment[0][0] = mass * (h2 + d2) / 12.0f ;
+		moment[1][1] = mass * (w2 + d2) / 12.0f;
+		moment[2][2] = mass * (h2 + w2) / 12.0f;
+		//Then shift using parallel axis theorem to actual position
+		moment = shiftMoment(moment,(max+min)*0.5f,mass) ;
+		inv_moment = glm::inverse(moment) ;
+	}else{ // zero or negative mass is treated as infinite mass
+		inv_mass = 0;
+		inv_moment = glm::mat3(0);
+		moment = glm::mat3(0);
+	}
 }
 
 //Returns the point on the shape furthest in the given direction
@@ -1105,7 +1111,7 @@ std::pair<glm::vec3, glm::vec3> Box::getAABB(const glm::mat4& pose) const {
 }
 
 //Returns axis aligned bounding boxes for each connected surface within a GLTF model
-std::vector<Box> Box::getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass){
+std::vector<Box> Box::getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass, const glm::vec3& scale){
 	model->applyTransforms();
 	std::vector<Box> result;
 	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
@@ -1122,6 +1128,12 @@ std::vector<Box> Box::getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass){
 				max.z = fmax(max.z, v.z);
 			}
 		}
+		min.x *= scale.x ;
+		max.x *= scale.x ;
+		min.y *= scale.y ;
+		max.y *= scale.y ;
+		min.z *= scale.z ;
+		max.z *= scale.z ;
 		result.emplace_back(min,max,mass/surfaces.size()) ; // TODO make mass relative to size?
 
 	}
@@ -1197,7 +1209,7 @@ glm::mat3 shiftMoment(const glm::mat3& center_moment,const glm::vec3& p, float m
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB) {
+SupportPoint findSupportPoint(const glm::vec3& direction, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB) {
 	SupportPoint sp;
 	sp.a = A->pose * glm::vec4(shapeA->support(A->inv_pose* glm::vec4(direction,0)), 1);
 	sp.b = B->pose * glm::vec4(shapeB->support(B->inv_pose * glm::vec4(-direction, 0)), 1);

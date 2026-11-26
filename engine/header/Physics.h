@@ -170,7 +170,7 @@ public:
 	float boundingRadius() const override;
 
 	//Returns axis aligned bounding boxes for each connected surface within a GLTF model
-	static std::vector<Box> getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass);
+	static std::vector<Box> getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass = 0.0f, const glm::vec3& scale = glm::vec3(1.0f,1.0f,1.0f));
 };
 
 auto static getStructure(ConvexPolyhedron& o) {
@@ -483,7 +483,7 @@ glm::mat3 shiftMoment(const glm::mat3& center_moment, const glm::vec3& p, float 
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction
-SupportPoint findSupportPoint(const glm::vec3 direction, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB);
+SupportPoint findSupportPoint(const glm::vec3& direction, const PosedBody* A, const ConvexShape* shapeA, const PosedBody* B, const ConvexShape* shapeB);
 
 //Build a support simplex from a triangle facing a point
 std::vector<SupportTriangle> buildSupportSimplex(const SupportTriangle& triangle, const SupportPoint& D);
