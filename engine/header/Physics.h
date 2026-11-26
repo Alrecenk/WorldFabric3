@@ -144,6 +144,32 @@ public:
 	float boundingRadius() const override;
 } ;
 
+class Box : public ConvexShape {
+public:
+	glm::vec3 min ;
+	glm::vec3 max ;
+
+	Box() {}
+
+	Box(const glm::vec3& min,const glm::vec3& max);
+
+	Box(const glm::vec3& min, const glm::vec3& max, float mass);
+
+	//Returns the point on the shape furthest in the given direction
+	glm::vec3 support(const glm::vec3& direction) const override;
+
+	//Returns the t for closest intersection on the ray p + v*t
+	//Returns a negative number if the ray does not intersect
+	float rayTrace(const glm::vec3& p, const glm::vec3& v) const override;
+
+	//Returns an axis aligned bounding box for the shape if it had the given pose
+	//First element is min values, second is max values
+	std::pair<glm::vec3, glm::vec3> getAABB(const glm::mat4& pose) const override;
+
+	//Returns the maximum distance from the origin of this shape
+	float boundingRadius() const override;
+};
+
 auto static getStructure(ConvexPolyhedron& o) {
 	return std::tie(o.face, o.vertex, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
 }
@@ -444,6 +470,9 @@ glm::vec3 computeTetraCentroid(const glm::vec3& a, const glm::vec3& b, const glm
 // Returns the inertia tensor of the given tetrahedron about the origin assuming a uniform density
 glm::mat3 computeTetraInertia(const float mass, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);
 
+//Returns the moment of intertia of an object about the origin given its moment around it's own center, the point it is shifted to and its mass
+//This formula is known as the parallel axis theorem
+glm::mat3 shiftMoment(const glm::mat3& center_moment, const glm::vec3& p, float mass);
 
 //Find the support point of the minkowski difference of two shapes
 //Saves the points on the shapes for later reconstruction

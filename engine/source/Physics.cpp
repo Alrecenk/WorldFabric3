@@ -1044,6 +1044,65 @@ std::pair<glm::vec3, glm::vec3> Sphere::getAABB(const glm::mat4& pose) const {
 	return AABB;
 }
 
+Box::Box(const glm::vec3& mn, const glm::vec3& mx) {
+	min = mn;
+	max = mx;
+	inv_mass = 0;
+	inv_moment = glm::mat3(0);
+	moment = glm::mat3(0);
+}
+
+Box::Box(const glm::vec3& mn, const glm::vec3& mx, float ms) {
+	min = mn;
+	max = mx ;
+	mass = ms;
+	inv_mass = 1.0f / mass;
+
+	//First get moment of box of this size and mass centered at origing
+	glm::vec3 size = max - min;
+	float w2 = size.x * size.x;
+	float h2 = size.y * size.y;
+	float d2 = size.z * size.z;
+	moment[0][0] = mass * (h2 + d2) / 12.0f ;
+	moment[1][1] = mass * (w2 + d2) / 12.0f;
+	moment[2][2] = mass * (h2 + w2) / 12.0f;
+	//Then shift using parallel axis theorem to actual position
+	moment = shiftMoment(moment,(max+min)*0.5f,mass) ;
+	inv_moment = glm::inverse(moment) ;
+}
+
+//Returns the point on the shape furthest in the given direction
+glm::vec3 Box::support(const glm::vec3& direction) const {
+	return glm::vec3( direction.x <=0 ? min.x : max.x, direction.y <= 0 ? min.y : max.y, direction.z <= 0 ? min.z : max.z) ;
+}
+
+//Returns the t for closest intersection on the ray p + v*t
+//Returns a negative number if the ray does not intersect
+float Box::rayTrace(const glm::vec3& p, const glm::vec3& v) const {
+	return -1.0f; // TODO
+}
+
+//Returns the maximum distance from the origin of this shape
+float Box::boundingRadius() const {
+	glm::vec3 furthest = glm::vec3(fmax(fabs(min.x), fabs(max.x)), fmax(fabs(min.y), fabs(max.y)), fmax(fabs(min.z), fabs(max.z))) ;
+	return glm::length(furthest) ;
+}
+
+//Returns an axis aligned bounding box for the shape if it had the given pose
+//First element is min values, second is max values
+std::pair<glm::vec3, glm::vec3> Box::getAABB(const glm::mat4& pose) const {
+	glm::vec3 world_center = pose * glm::vec4((min+max)*0.5f, 1.0f) ;
+	glm::vec3 half_extents = (max - min) * 0.5f;
+	glm::vec3 world_half_extents(0.0f);
+	//Project the local axes onto the world axes
+	for (int i = 0; i < 3; i++) { // World axis
+		for (int j = 0; j < 3; j++) { // Local axis
+			world_half_extents[i] += glm::abs(pose[j][i]) * half_extents[j];
+		}
+	}
+	return { world_center - world_half_extents, world_center + world_half_extents };
+}
+
 bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
 	return A.first.x < B.second.x && B.first.x < A.second.x &&
 		A.first.y < B.second.y && B.first.y < A.second.y &&
@@ -1096,6 +1155,19 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::v
 	J[2][2] = (float)c;
 
 	return J;
+}
+
+//Returns the moment of intertia of an object about the origin given its moment around it's own center, the point it is shifted to and its mass
+//This formula is known as the parallel axis theorem
+glm::mat3 shiftMoment(const glm::mat3& center_moment,const glm::vec3& p, float mass){
+	glm::mat3 offset;
+	offset[0][0] = mass * (p.y * p.y + p.z * p.z);
+	offset[1][1] = mass * (p.x * p.x + p.z * p.z);
+	offset[2][2] = mass * (p.x * p.x + p.y * p.y);
+	offset[0][1] = offset[1][0] = -mass * (p.x * p.y);
+	offset[0][2] = offset[2][0] = -mass * (p.x * p.z);
+	offset[1][2] = offset[2][1] = -mass * (p.y * p.z);
+	return center_moment + offset ;
 }
 
 //Find the support point of the minkowski difference of two shapes
