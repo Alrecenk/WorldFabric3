@@ -11,6 +11,8 @@
 namespace NetPhysics {
 
 
+constexpr int max_collision_points = 4;
+
 //Information about a body type stored statically and used by multiple bodies
 class BodyType {
 public:
@@ -251,7 +253,7 @@ public:
 
 	//The values below are used internally within an cell update but are not saved across frames
 	glm::vec3 point ; // middle point of collision
-	std::vector<glm::vec3> tangents;
+	inline_vector<glm::vec3, 2> tangents;
 	float penetration_depth = 0;
 	float target = 0;
 
@@ -296,10 +298,11 @@ public:
 	int64_t id_2 = -1;
 	char shape_2 = -1;
 
+	//inline_vector<Collision,max_collision_points +1> points; // todo change logic not to push 1 above maxsize before clearing out old
 	std::vector<Collision> points;
 
 	static inline float squared_distance_for_match = 1e-6f;
-	static inline int max_collision_points = 4;
+	
 
 
 	ManifoldCollision() {}
