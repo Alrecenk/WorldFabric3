@@ -16,6 +16,7 @@
 #include <map>
 #include "Variant.h"
 #include "deterministic_unordered_map.h"
+#include "inline_vector.h"
 
 #include "glm/glm.hpp"
 
@@ -104,6 +105,8 @@ inline Ret executeTuple(std::shared_ptr<T> obj, Ret(T::* method)(Args...), const
 template<typename T> struct is_vector : std::false_type {};
 template<typename T, typename A>
 struct is_vector<std::vector<T, A>> : std::true_type {};
+template<typename T, int c>
+struct is_vector<inline_vector<T, c>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
 

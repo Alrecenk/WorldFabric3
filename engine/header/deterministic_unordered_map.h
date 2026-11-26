@@ -189,9 +189,9 @@ public:
 			Slot& erase_slot = table[write_slot] ;
 			//swap the elements at the end of the iterator list into the erased position
 			elements[erase_slot.element_index] = elements[elements.size()-1] ;
-			elements.pop_back(); // pop the now duplicate index off the list
-			//update the moved element's table slot to point ot its new index  in element
-			table[elements[erase_slot.element_index].slot_index].element_index = erase_slot.element_index ;
+			//update the moved element's table slot to point to its new index in element
+			table[elements[erase_slot.element_index].slot_index].element_index = erase_slot.element_index;
+			elements.pop_back(); // pop the now duplicate index off the list (do this last in case we swapped the last item with itself)
 			//Erase the now unreferenced slot
 			erase_slot.element_index = -1 ;
 			return true ;
