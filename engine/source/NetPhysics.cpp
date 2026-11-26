@@ -307,6 +307,14 @@ int RigidBody::addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const s
 	return addType(shape, model, render_transform, elasticity, friction);
 }
 
+int RigidBody::addType(std::vector<Physics::Box> raw_shape, const std::string& model, const glm::mat4& render_transform, float elasticity, float friction) {
+	std::vector<std::shared_ptr<Physics::ConvexShape>> shape;
+	for (auto& s : raw_shape) {
+		shape.push_back(std::make_shared<Physics::Box>(s));
+	}
+	return addType(shape, model, render_transform, elasticity, friction);
+}
+
 int RigidBody::addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity, float friction){
 	return RigidBody::addType(shape, "", glm::mat4(0), elasticity, friction) ;
 }

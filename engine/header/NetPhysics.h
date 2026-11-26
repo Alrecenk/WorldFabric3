@@ -143,11 +143,13 @@ public:
 	static int addType(std::shared_ptr<Physics::ConvexShape> shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, const std::string& model,const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<Physics::Box> raw_shape, const std::string& model, const glm::mat4& render_transform, float elasticity = 0.5f, float friction = 0.5f);
 
-	//Same as above,butwith no render model provided
+	//Same as above, butwith no render model provided
 	static int addType(std::shared_ptr<Physics::ConvexShape> shape, float elasticity = 0.5f, float friction = 0.5f);
 	static int addType(std::vector<std::shared_ptr<Physics::ConvexShape>> shape, float elasticity = 0.5f, float friction = 0.5f);
 	static int addType(std::vector<Physics::ConvexPolyhedron> raw_shape, float elasticity = 0.5f, float friction = 0.5f);
+	static int addType(std::vector<Physics::Box> raw_shape, float elasticity = 0.5f, float friction = 0.5f);
 
 };
 

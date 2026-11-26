@@ -168,6 +168,9 @@ public:
 
 	//Returns the maximum distance from the origin of this shape
 	float boundingRadius() const override;
+
+	//Returns axis aligned bounding boxes for each connected surface within a GLTF model
+	static std::vector<Box> getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass);
 };
 
 auto static getStructure(ConvexPolyhedron& o) {
@@ -177,6 +180,10 @@ auto static getStructure(ConvexPolyhedron& o) {
 
 auto static getStructure(Sphere& o) {
 	return std::tie(o.radius, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
+}
+
+auto static getStructure(Box& o) {
+	return std::tie(o.min,o.max, o.mass, o.inv_mass, o.moment, o.inv_moment); // TODO use onDeserialize overide to calculate rather than serializing inv elements
 }
 
 class PosedBody {

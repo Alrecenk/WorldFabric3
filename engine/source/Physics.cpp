@@ -1063,6 +1063,7 @@ Box::Box(const glm::vec3& mn, const glm::vec3& mx, float ms) {
 	float w2 = size.x * size.x;
 	float h2 = size.y * size.y;
 	float d2 = size.z * size.z;
+	moment = glm::mat3(0.0f) ;
 	moment[0][0] = mass * (h2 + d2) / 12.0f ;
 	moment[1][1] = mass * (w2 + d2) / 12.0f;
 	moment[2][2] = mass * (h2 + w2) / 12.0f;
@@ -1101,6 +1102,30 @@ std::pair<glm::vec3, glm::vec3> Box::getAABB(const glm::mat4& pose) const {
 		}
 	}
 	return { world_center - world_half_extents, world_center + world_half_extents };
+}
+
+//Returns axis aligned bounding boxes for each connected surface within a GLTF model
+std::vector<Box> Box::getSurfaceBoxes(std::shared_ptr<GLTF>& model, float mass){
+	model->applyTransforms();
+	std::vector<Box> result;
+	std::vector<std::vector<Polygon>> surfaces = Polygon::collectClosedSurfaces(model);
+	for (auto& surface : surfaces) {
+		glm::vec3 min = {FLT_MAX,FLT_MAX,FLT_MAX} ;
+		glm::vec3 max = {-FLT_MAX,-FLT_MAX,-FLT_MAX };
+		for (auto& poly : surface) {
+			for (auto& v : poly.p) {
+				min.x = fmin(min.x, v.x) ;
+				min.y = fmin(min.y, v.y) ;
+				min.z = fmin(min.z, v.z) ;
+				max.x = fmax(max.x, v.x);
+				max.y = fmax(max.y, v.y);
+				max.z = fmax(max.z, v.z);
+			}
+		}
+		result.emplace_back(min,max,mass/surfaces.size()) ; // TODO make mass relative to size?
+
+	}
+	return result;
 }
 
 bool AABBIntersect(const std::pair<glm::vec3, glm::vec3>& A, const std::pair<glm::vec3, glm::vec3>& B) {
@@ -1160,7 +1185,7 @@ glm::mat3 computeTetraInertia(const float mass, const glm::vec3& A, const glm::v
 //Returns the moment of intertia of an object about the origin given its moment around it's own center, the point it is shifted to and its mass
 //This formula is known as the parallel axis theorem
 glm::mat3 shiftMoment(const glm::mat3& center_moment,const glm::vec3& p, float mass){
-	glm::mat3 offset;
+	glm::mat3 offset ;
 	offset[0][0] = mass * (p.y * p.y + p.z * p.z);
 	offset[1][1] = mass * (p.x * p.x + p.z * p.z);
 	offset[2][2] = mass * (p.x * p.x + p.y * p.y);
