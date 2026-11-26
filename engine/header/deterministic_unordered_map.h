@@ -13,7 +13,7 @@ private:
 
 	//Table will be rehashed at the fill rate and increased in size by the multiplier
 	static inline float rehash_fill_rate = 0.7f;
-	static inline float rehash_size_multiplier = 2.0f;
+	static inline float rehash_size_multiplier = 1.3f;
 
 
 	static const inline Value default_value = Value();
@@ -51,7 +51,7 @@ private:
 			} else if (slot.element_index < 0 && write_slot < 0) {
 				// If we hit an empty slot which is not clean, we could insert here, but item may still be in the list after this
 				write_slot = slot_index;
-			} else if (elements[slot.element_index].key_value.first == key) {
+			} else if (slot.element_index >= 0 && elements[slot.element_index].key_value.first == key) {
 				//if we hit an identical key
 				write_slot = slot_index;
 				break;
@@ -104,7 +104,7 @@ public:
 
 
 		std::pair<Key,Value>* operator->() const{
-			return map->elements[index].key_value;
+			return &map->elements[index].key_value;
 		}
 	};
 
@@ -128,11 +128,11 @@ public:
 		}
 
 		const std::pair<Key, Value>& operator*() const {
-			return map->elements[index].key_value;
+			return map->elements.at(index).key_value;
 		}
 
 		const std::pair<Key, Value>* operator->() const{
-			return map->elements[index].key_value;
+			return &map->elements.at(index).key_value;
 		}
 	};
 
@@ -297,10 +297,10 @@ public:
 			rehash((int)(table.size() * rehash_size_multiplier));
 		}
 		Key key(key_args);
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 
-		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
-			table[write_slot].key_value.second = Value(std::forward<ValueArgs>(value_args)); // update value
+		if (clean_slot < 0) { //exited without hitting a clean slot means we found it
+			elements[table[write_slot].element_index].key_value.second = Value(std::forward<ValueArgs>(value_args)); // update value
 			// No need to adjust element indices as it shouold already be there
 		}
 		else if (write_slot < 0) {//a clean slot exit without a dirty write slot
@@ -322,6 +322,16 @@ public:
 		return { this, write_slot };
 
 	}
+
+
+	void clear(){
+		for(auto& slot : table){
+			slot.element_index = -1 ;
+			slot.clean = true ;
+		}
+		elements.clear();
+	}
+			
 };
 
 //Short name for deterministic_unordered_map

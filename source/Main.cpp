@@ -588,8 +588,8 @@ int exampleMain(int argc, char* argv[]) {
 
 
 int main(int argc, char* argv[]) {
-	testDeterministicMap();
+	//testDeterministicMap();
 	//Narball::main(argc, argv);
-	//exampleMain(argc, argv);
+	exampleMain(argc, argv);
 	//CSVLog::findDesync({ "event_log_1.csv", "event_log_2.csv" }, "time", 1.0);
 }

@@ -161,10 +161,16 @@ void RigidBody::runPhysics(){
 				amount++;
 				v_total += iter->second.result_velocity;
 				av_total += iter->second.result_angular_velocity ;
-				if (collect_collisions) {
-					collisions.insert(iter->second.collected_collisions.begin(), iter->second.collected_collisions.end());
+				
+			}
+			if (collect_collisions) {
+				auto iter2 = cell->collected_collisions.find(id) ;
+				if(iter2 != cell->collected_collisions.end()){
+					collisions.insert(iter2->second.begin(), iter2->second.end());
 				}
 			}
+			
+
 			
 		}
 	}
@@ -829,10 +835,10 @@ void Cell::updateCollisions(std::map<int64_t, BodyInstant>& bodies){
 					}
 					if(collides){
 						if(body_1.body->collect_collisions){
-							cell_bodies[id1].collected_collisions.insert(id2);
+							collected_collisions[id1].insert(id2);
 						}
 						if (body_2.body->collect_collisions) {
-							cell_bodies[id2].collected_collisions.insert(id1);
+							collected_collisions[id2].insert(id1);
 						}
 					}
 				}
@@ -886,8 +892,8 @@ void Cell::runPhysics(){
 			cell_body.result_velocity = glm::vec3(0,0,0);
 			cell_body.result_angular_velocity = glm::vec3(0, 0, 0);
 		}
-		cell_body.collected_collisions.clear();
 	}
+	collected_collisions.clear();
 
 	updateCollisions(read_bodies);
 	
