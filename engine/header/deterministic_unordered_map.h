@@ -19,20 +19,24 @@ private:
 	static const inline Value default_value = Value();
 
 	struct Slot {
-		std::pair<Key, Value> key_value ;
 		int element_index = -1; // index in element list, < 0 means empty slot
 		bool clean = true ; //whether this slot has ever been written to
 	};
 
+	struct Element {
+		int slot_index = -1;
+		std::pair<Key, Value> key_value;
+	};
+
 	std::vector<Slot> table ; // has table of contents
-	std::vector<int> elements ; // indices in table of all filled elements in a deterministic order
+	std::vector<Element> elements ; // indices in table of all filled elements in a deterministic order
 	int dirty_slots = 0 ;
 
 
 	// returns a pair of the first available dirty write slot followed by the first clean slot
 	//If the key is in the table, clean_slot = -1, and write_slot contains the found Key's location
 	//if write slot < -1 then there were no empty dirty slots before the clean slot was hit
-	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table) const{
+	static inline std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table, const std::vector<Element>& elements){
 			
 		size_t hash = std::hash<Key>{}(key);
 		int slot_index = hash % table.size();
@@ -47,7 +51,7 @@ private:
 			} else if (slot.element_index < 0 && write_slot < 0) {
 				// If we hit an empty slot which is not clean, we could insert here, but item may still be in the list after this
 				write_slot = slot_index;
-			} else if (slot.key_value.first == key) {
+			} else if (elements[slot.element_index].key_value.first == key) {
 				//if we hit an identical key
 				write_slot = slot_index;
 				break;
@@ -59,18 +63,15 @@ private:
 
 	//Rehashes the table to the new size (assumed to be large enough)
 	void rehash(int new_size){
-		std::vector<Slot> old_table = std::move(table) ;
 		table = std::vector<Slot>(new_size) ;
 		for(int element_index = 0; element_index < elements.size(); element_index++){
-			int old_index = elements[element_index] ;
-			Slot& old_slot = old_table[old_index] ;
-			auto [write_slot, clean_slot] = findSlot(old_slot.key_value.first, table);
+			Element& element = elements[element_index] ;
+			auto [write_slot, clean_slot] = findSlot(element.key_value.first, table,elements);
 			//findSlot during rehash should always return a clean empty slot
 			Slot& slot = table[clean_slot];
-			slot.key_value = old_slot.key_value ;
 			slot.clean = false;
 			slot.element_index = element_index;
-			elements[element_index] = clean_slot ;
+			element.slot_index = clean_slot ;
 		}
 		dirty_slots = elements.size();
 	}
@@ -98,14 +99,12 @@ public:
 		}
 
 		std::pair<Key,Value>& operator*() const{
-			Slot& slot = map->table[map->elements[index]] ;
-			return slot.key_value ;
+			return map->elements[index].key_value ;
 		}
 
 
 		std::pair<Key,Value>* operator->() const{
-			Slot& slot = map->table[map->elements[index]];
-			return &(slot.key_value);
+			return map->elements[index].key_value;
 		}
 	};
 
@@ -129,13 +128,11 @@ public:
 		}
 
 		const std::pair<Key, Value>& operator*() const {
-			const Slot& slot = map->table[map->elements[index]];
-			return slot.key_value;
+			return map->elements[index].key_value;
 		}
 
 		const std::pair<Key, Value>* operator->() const{
-			const Slot& slot = map->table[map->elements[index]];
-			return &(slot.key_value);
+			return map->elements[index].key_value;
 		}
 	};
 
@@ -152,26 +149,24 @@ public:
 			rehash((int)(table.size() * rehash_size_multiplier));
 		}
 
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 		
 		if(clean_slot < 0){ //exited without hitting a clean slot then means we found it
-			table[write_slot].key_value.second = value ; // update value
+			elements[table[write_slot].element_index].key_value.second = value ; // update value
 			// No need to adjust element indices as it shouold already be there
 		}else if(write_slot < 0){//a clean slot exit without a dirty write slot
 			//write to the clean slot
 			Slot& slot = table[clean_slot] ;
-			slot.key_value = {key, value} ;
 			slot.clean = false ;
 			slot.element_index = elements.size() ;
-			elements.push_back(clean_slot) ;
+			elements.push_back({clean_slot,{ key, value }}) ;
 			write_slot = clean_slot ; // used for return iterator
 			dirty_slots++ ; //clean slot is now dirty until rehash
 		}else{//clean slot and dirty write slot are both set
 			//write to the earlier dirty write slot
 			Slot& slot = table[write_slot];
-			slot.key_value = { key, value };
 			slot.element_index = elements.size();
-			elements.push_back(write_slot);
+			elements.push_back({write_slot,{ key, value }});
 		}
 
 		return {this, write_slot} ;
@@ -189,18 +184,16 @@ public:
 		if(table.empty()){
 			return false;
 		}
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 		if (clean_slot < 0) { //exited without hitting a clean slot this means we found it
 			Slot& erase_slot = table[write_slot] ;
 			//swap the elements at the end of the iterator list into the erased position
 			elements[erase_slot.element_index] = elements[elements.size()-1] ;
 			elements.pop_back(); // pop the now duplicate index off the list
 			//update the moved element's table slot to point ot its new index  in element
-			table[elements[erase_slot.element_index]].element_index = erase_slot.element_index ;
-			
+			table[elements[erase_slot.element_index].slot_index].element_index = erase_slot.element_index ;
 			//Erase the now unreferenced slot
 			erase_slot.element_index = -1 ;
-			erase_slot.key_value = {} ; //default allocate to make sure data is released
 			return true ;
 		}else{
 			return false; // we did not find it
@@ -229,34 +222,32 @@ public:
 			rehash((int)(table.size() * rehash_size_multiplier));
 		}
 
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 
 		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
-			return table[write_slot].key_value.second;
+			return elements[table[write_slot].element_index].key_value.second;
 		} else if (write_slot < 0) {//a clean slot exit without a dirty write slot
 			//create a defaulrt initialized elment in the clean clost
 			Slot& slot = table[clean_slot];
-			slot.key_value = { key, Value() };
 			slot.clean = false;
 			slot.element_index = elements.size();
-			elements.push_back(clean_slot);
+			elements.push_back({clean_slot,{key, Value() }});
 			dirty_slots++; //clean slot is now dirty until rehash
-			return slot.key_value.second ;
+			return elements[slot.element_index].key_value.second;
 		} else {//clean slot and dirty write slot are both set
 			//write a default initialized element to the earlier dirty write slot
 			Slot& slot = table[write_slot];
-			slot.key_value = { key, Value() };
 			slot.element_index = elements.size();
-			elements.push_back(write_slot);
-			return slot.key_value.second;
+			elements.push_back({write_slot,{ key, Value() } });
+			return elements[slot.element_index].key_value.second;
 		}
 	}
 
 	const Value& at(const Key& key) const{
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 
 		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
-			return table[write_slot].key_value.second;
+			return elements[table[write_slot].element_index].key_value.second;
 		}else{
 			return default_value;
 		}
@@ -267,7 +258,7 @@ public:
 		if (table.empty()) {
 			return end();
 		}
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
 			return { this, table[write_slot].element_index};
 		}
@@ -280,7 +271,7 @@ public:
 		if (table.empty()) {
 			return end();
 		}
-		auto [write_slot, clean_slot] = findSlot(key, table);
+		auto [write_slot, clean_slot] = findSlot(key, table, elements);
 		if (clean_slot < 0) { //exited without hitting a clean slot then means we found it
 			return { this, table[write_slot].element_index };
 		}
@@ -315,19 +306,17 @@ public:
 		else if (write_slot < 0) {//a clean slot exit without a dirty write slot
 			//write to the clean slot
 			Slot& slot = table[clean_slot];
-			slot.key_value = { key, Value(std::forward<ValueArgs>(value_args)) };
 			slot.clean = false;
 			slot.element_index = elements.size();
-			elements.push_back(clean_slot);
+			elements.push_back({clean_slot,{ key, Value(std::forward<ValueArgs>(value_args)) }});
 			write_slot = clean_slot; // used for return iterator
 			dirty_slots++; //clean slot is now dirty until rehash
 		}
 		else {//clean slot and dirty write slot are both set
 			//write to the earlier dirty write slot
 			Slot& slot = table[write_slot];
-			slot.key_value = { key, Value(std::forward<ValueArgs>(value_args)) };
 			slot.element_index = elements.size();
-			elements.push_back(write_slot);
+			elements.push_back({write_slot,{ key, Value(std::forward<ValueArgs>(value_args))}});
 		}
 
 		return { this, write_slot };
