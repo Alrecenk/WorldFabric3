@@ -238,19 +238,22 @@ void NetPhysicsApp::createViewTypes() {
 	ball_type = NetPhysics::RigidBody::addType(ball_shape, BALL_MODEL, transform, 0.6f, 0.6f);
 
 
-	float box_size = 0.15f;
+	float box_size = 0.08f;
 	float box_mass = 2.0f;
-	std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
+	//std::shared_ptr<Physics::ConvexPolyhedron> box_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(box_size, box_size, box_size), box_mass));
+	std::shared_ptr<Physics::Box> box_shape = std::make_shared<Physics::Box>(glm::vec3(-box_size, -box_size, -box_size), glm::vec3(box_size, box_size, box_size), box_mass) ;
 	std::shared_ptr<GLTF> box = std::make_shared<GLTF>();
-	box->setBoundingBoxModel(glm::vec3(-box_size * 0.5, -box_size * 0.5f, -box_size * 0.5f), glm::vec3(box_size * 0.5f, box_size * 0.5f, box_size * 0.5f), glm::vec4(0.5, 0.5, 1, 1));
+	box->setBoundingBoxModel(glm::vec3(-box_size, -box_size, -box_size), glm::vec3(box_size, box_size, box_size), glm::vec4(0.5, 0.5, 1, 1));
 	scene->createModelSet("box", box, false, false);
 	transform = glm::mat4(1.0f);
 	box_type = NetPhysics::RigidBody::addType(box_shape, "box", transform, 0.4f, 0.6f);
 
 	std::shared_ptr<GLTF> wall = std::make_shared<GLTF>();
-	wall->setBoundingBoxModel(glm::vec3(-wall_size * 0.5, -wall_size * 0.5f, -wall_size * 0.5f), glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f), glm::vec4(0.7f, 0.7f, 0.8f, 1));
+	glm::vec3 ws = glm::vec3(wall_size * 0.5f, wall_size * 0.5f, wall_size * 0.5f) ;
+	
+	wall->setBoundingBoxModel(-ws, ws, glm::vec4(0.7f, 0.7f, 0.8f, 1));
 	scene->createModelSet("wall", wall, false, false);
-	std::shared_ptr<Physics::ConvexPolyhedron> wall_shape = std::make_shared<Physics::ConvexPolyhedron>(Physics::ConvexPolyhedron::makeAxisAlignedBox(glm::vec3(wall_size, wall_size, wall_size)));
+	std::shared_ptr<Physics::Box> wall_shape = std::make_shared<Physics::Box>(-ws,ws);
 	wall_type = NetPhysics::RigidBody::addType(wall_shape, "wall", transform, 0.6f, 0.6f);
 
 	float rod_mass = 2.0f;
