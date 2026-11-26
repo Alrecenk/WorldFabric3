@@ -270,13 +270,13 @@ public:
 	}
 
 	//Update the constraint target based on information at the start of the frame
-	virtual void updateConstraint(BodyInstant& body_1, BodyInstant& body_2);
+	void updateConstraint(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Apply starting impulses carried over if the constraint has existed for multiple frames in a row
-	virtual void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2);
+	void applyWarmingImpulse(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Applies impulses to velocity of involved bodies to attempt to satisfy the constraint
-	virtual void applyConstraint(BodyInstant& body_1, BodyInstant& body_2);
+	void applyConstraint(BodyInstant& body_1, BodyInstant& body_2);
 
 	//Retargets this constraint to the objects after they have moved
 	//Returns whether constraint is still valid
@@ -298,12 +298,10 @@ public:
 	int64_t id_2 = -1;
 	char shape_2 = -1;
 
-	//inline_vector<Collision,max_collision_points +1> points; // todo change logic not to push 1 above maxsize before clearing out old
-	std::vector<Collision> points;
+	inline_vector<Collision,max_collision_points +1> points; // todo change logic not to push 1 above maxsize before clearing out old
+	//std::vector<Collision> points;
 
 	static inline float squared_distance_for_match = 1e-6f;
-	
-
 
 	ManifoldCollision() {}
 

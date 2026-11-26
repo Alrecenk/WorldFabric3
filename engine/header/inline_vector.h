@@ -9,7 +9,6 @@ class inline_vector {
 public:
 	using value_type = typename Value;
 
-
 	Value data[capacity] ;
 	unsigned char filled = 0 ;
 
@@ -83,12 +82,11 @@ public:
 				data[k] = Value();
 			}
 		}
-
 		filled = new_size ;
 	}
 
 	void reserve(std::size_t new_capacity){
-		//Doesn't make sense as reservatio nis fixed, but allows drop in replacement in code that previously used vectors
+		//Doesn't make sense as reservation is fixed, but allows drop in replacement in code that previously used vectors
 	}
 };
 #endif // #ifndef _INLINE_VECTOR_H_
