@@ -36,7 +36,7 @@ private:
 	// returns a pair of the first available dirty write slot followed by the first clean slot
 	//If the key is in the table, clean_slot = -1, and write_slot contains the found Key's location
 	//if write slot < -1 then there were no empty dirty slots before the clean slot was hit
-	std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table, const std::vector<Element>& elements) const{
+	static inline std::pair<int, int> findSlot(const Key& key,const std::vector<Slot>& table, const std::vector<Element>& elements){
 			
 		size_t hash = std::hash<Key>{}(key);
 		int slot_index = hash % table.size();
