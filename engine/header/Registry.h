@@ -180,24 +180,14 @@ inline void serializeArg(std::vector<char>& buffer, const T& arg) {
         size_t len = str.size();
         buffer.insert(buffer.end(), reinterpret_cast<const char*>(&len), reinterpret_cast<const char*>(&len) + sizeof(len));
         buffer.insert(buffer.end(), str.begin(), str.end());
-    }
-    else if constexpr (std::is_trivially_copyable_v<RawType>) {
-        //Serialize plain old data types
-        const char* data = reinterpret_cast<const char*>(&arg);
-        buffer.insert(buffer.end(), data, data + sizeof(RawType));
-    }
-    else if constexpr (is_vector_v<RawType>) {
+    } else if constexpr (is_vector_v<RawType>) {
 		//Serialize vector
         size_t size = arg.size();
         buffer.insert(buffer.end(), reinterpret_cast<const char*>(&size), reinterpret_cast<const char*>(&size) + sizeof(size));
         for (const auto& item : arg) {
             serializeArg(buffer, item);  // recursively serialize each item
         }
-    }else if constexpr (is_pair_v<RawType>) {
-		// Serialize pair
-		serializeArg(buffer, arg.first);
-		serializeArg(buffer, arg.second);
-	}else if constexpr (is_any_set_v<RawType>) {
+    }else if constexpr (is_any_set_v<RawType>) {
 		//Serialize set or unordered_set
 		size_t size = arg.size();
 		buffer.insert(buffer.end(), reinterpret_cast<const char*>(&size), reinterpret_cast<const char*>(&size) + sizeof(size));
@@ -216,7 +206,15 @@ inline void serializeArg(std::vector<char>& buffer, const T& arg) {
 		}
 	}else if constexpr (has_getStructure_v<RawType>){
 		serializeTupleArg(buffer, getStructure(const_cast<RawType&>(arg)));
-	}else if constexpr (is_tuple_like_v<RawType>) {
+	} else if constexpr (std::is_trivially_copyable_v<RawType>) {
+		//Serialize plain old data types
+		const char* data = reinterpret_cast<const char*>(&arg);
+		buffer.insert(buffer.end(), data, data + sizeof(RawType));
+	}else if constexpr (is_pair_v<RawType>) {
+		// Serialize pair
+		serializeArg(buffer, arg.first);
+		serializeArg(buffer, arg.second);
+	} else if constexpr (is_tuple_like_v<RawType>) {
 		// Serialize tuple (any size)
 		serializeTupleArg(buffer, arg);
 	}else {
@@ -239,15 +237,7 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
         std::string result(data, len);
         data += len;
         return result;
-    }
-    else if constexpr (std::is_trivially_copyable_v<RawType>) {
-        // Deserialize plain old data types
-        RawType value;
-        std::memcpy(&value, data, sizeof(RawType));
-        data += sizeof(RawType);
-        return value;
-    }
-    else if constexpr (is_vector_v<RawType>) {
+    } else if constexpr (is_vector_v<RawType>) {
 		// Deserialize vector
         size_t size;
         std::memcpy(&size, data, sizeof(size));
@@ -258,7 +248,7 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
             result.push_back(deserializeArg<typename RawType::value_type>(data));  // recursively deserialize
         }
         return result;
-    }else if constexpr (is_any_set_v<RawType>) {
+    } else if constexpr (is_any_set_v<RawType>) {
 		// Deserialize set or unordered_set
 		size_t size;
 		std::memcpy(&size, data, sizeof(size));
@@ -268,13 +258,7 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
 			result.insert(deserializeArg<typename RawType::value_type>(data));  // recursively deserialize
 		}
 		return result;
-	}else if constexpr (is_pair_v<RawType>) {
-		//Deserialize pair
-		RawType result;
-		result.first = deserializeArg<typename RawType::first_type>(data);
-		result.second = deserializeArg<typename RawType::second_type>(data);
-		return result;
-	}else if constexpr (is_any_map_v<RawType>) {
+	} else if constexpr (is_any_map_v<RawType>) {
 		// Deserialize map or unordered_map
 		size_t size;
 		std::memcpy(&size, data, sizeof(size));
@@ -286,7 +270,7 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
 			result.emplace(std::move(key), std::move(value));
 		}
 		return result;
-	}else if constexpr (has_getStructure_v<RawType>) { // Custom objects typically use this
+	} else if constexpr (has_getStructure_v<RawType>) { // Custom objects typically use this
 		RawType result ;
 		auto ref_tuple = getStructure(result);
 		deserializeTupleArg(data, ref_tuple);
@@ -294,6 +278,18 @@ inline std::remove_cvref_t<T> deserializeArg(const char*& data) {
 			result.onDeserialize(); // Call any post-deserialization logic if it exists
 		}
 		return result ;
+	} else if constexpr (std::is_trivially_copyable_v<RawType>) {
+		// Deserialize plain old data types
+		RawType value;
+		std::memcpy(&value, data, sizeof(RawType));
+		data += sizeof(RawType);
+		return value;
+	} else if constexpr (is_pair_v<RawType>) {
+		//Deserialize pair
+		RawType result;
+		result.first = deserializeArg<typename RawType::first_type>(data);
+		result.second = deserializeArg<typename RawType::second_type>(data);
+		return result;
 	} else if constexpr (is_tuple_like_v<RawType>) {
 		//DeserializeTuple
 		RawType result{};
